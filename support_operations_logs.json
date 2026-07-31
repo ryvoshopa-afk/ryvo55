@@ -1,0 +1,14 @@
+[
+  {
+    "id": "log-1784814695365-q0ax8",
+    "action": "[AI_SUCCESS] Session test-conv-999: Gemini answered successfully in 5150ms.",
+    "operator": "AI_Gateway",
+    "created_at": "2026-07-23T13:51:35.365Z"
+  },
+  {
+    "id": "log-1784814690216-ps84t",
+    "action": "[AI_CALL_START] Received message for session test-conv-999: \"مرحباً، ما هي أوقات العمل وطرق الشحن والتوصيل لدى متجركم؟\"",
+    "operator": "AI_Gateway",
+    "created_at": "2026-07-23T13:51:30.216Z"
+  }
+]
