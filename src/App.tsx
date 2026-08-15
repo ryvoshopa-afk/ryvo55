@@ -2137,7 +2137,7 @@ export default function App() {
             )}
 
             {/* About & Trust indicators banner */}
-            <div className="bg-[#121622] rounded-3xl p-3 sm:p-12 text-white relative overflow-hidden border border-slate-150 dark:border-[var(--border-dark)] shadow-xs mt-12">
+            <div className="bg-white dark:bg-[#121622] rounded-3xl p-6 sm:p-12 text-slate-900 dark:text-white relative overflow-hidden border border-slate-200 dark:border-[var(--border-dark)] shadow-xs mt-12">
               <div className="absolute right-0 top-0 w-96 h-96 bg-gradient-to-br from-[var(--primary-color)]/10 to-transparent rounded-full blur-3xl -mr-32 -mt-32"></div>
               
               <div className="relative max-w-2xl space-y-4">
@@ -2148,7 +2148,7 @@ export default function App() {
                 <h3 className="text-xl sm:text-2xl font-black leading-snug">
                   {language === 'ar' ? 'من نحن - RYVO 🏍️' : 'About RYVO 🏍️'}
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
                   {language === 'ar' 
                     ? 'RYVO هو متجرك المتخصص لعشاق الدراجات النارية، نوفر الدراجات والإكسسوارات والمستلزمات المختارة بعناية مع تجربة شراء احترافية تجمع بين الجودة، الشغف، والابتكار.' 
                     : 'RYVO is your specialized store for motorcycle enthusiasts. We provide carefully selected bikes, accessories, and supplies with a professional shopping experience that combines quality, passion, and innovation.'}
@@ -2163,7 +2163,7 @@ export default function App() {
       </main>
 
       {/* Footer Area */}
-      <footer className="bg-slate-50 dark:bg-[#090B0E] border-t border-slate-150 dark:border-[var(--border-dark)] py-16 mt-20 transition-colors">
+      <footer className="bg-slate-100 dark:bg-[#090B0E] border-t border-slate-200 dark:border-[var(--border-dark)] py-16 mt-20 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 text-right">
@@ -2174,10 +2174,10 @@ export default function App() {
                 {shopLogo && (shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/')) ? (
                   <img src={shopLogo} alt="RYVO" className="h-8 object-contain" referrerPolicy="no-referrer" />
                 ) : (
-                  <span className="text-xl font-black uppercase text-slate-850 dark:text-white tracking-wider">{shopLogo || 'RYVO'}</span>
+                  <span className="text-xl font-black uppercase text-slate-900 dark:text-white tracking-wider">{shopLogo || 'RYVO'}</span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                 {language === 'ar' 
                   ? 'رايفو هو وجهتك المتخصصة الأولى للحصول على الدراجات النارية عالية الأداء، الخوذات الذكية الكاربون، والإكسسوارات الفاخرة المعتمدة دولياً لضمان سلامتك وراحتك.'
                   : 'Ryvo is your ultimate specialized hub for high-performance motorcycles, smart carbon helmets, and internationally certified premium accessories.'}
@@ -2253,14 +2253,14 @@ export default function App() {
 
             {/* Column 2: Legal & Support links (Col span 4) */}
             <div className={`md:col-span-4 space-y-4 ${isRtl ? 'text-right' : 'text-left'}`}>
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 {language === 'ar' ? 'السياسات والروابط القانونية' : 'Legal Policies & Support'}
               </h4>
               <ul className="space-y-2 text-xs font-black">
                 <li>
                   <button 
                     onClick={() => { setLegalTab('terms'); setIsLegalOpen(true); }}
-                    className="text-slate-500 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-all cursor-pointer"
+                    className="text-slate-600 dark:text-slate-400 hover:text-[var(--primary-color)] dark:hover:text-[var(--primary-color)] transition-all cursor-pointer"
                   >
                     {language === 'ar' ? '📜 الشروط والأحكام العامة' : '📜 General Terms & Conditions'}
                   </button>
@@ -2268,7 +2268,7 @@ export default function App() {
                 <li>
                   <button 
                     onClick={() => { setLegalTab('privacy'); setIsLegalOpen(true); }}
-                    className="text-slate-500 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-all cursor-pointer"
+                    className="text-slate-600 dark:text-slate-400 hover:text-[var(--primary-color)] dark:hover:text-[var(--primary-color)] transition-all cursor-pointer"
                   >
                     {language === 'ar' ? '🔒 سياسة الخصوصية وبينات المشترين' : '🔒 Privacy Policy & Data Protection'}
                   </button>
@@ -2276,7 +2276,7 @@ export default function App() {
                 <li>
                   <button 
                     onClick={() => { setLegalTab('returns'); setIsLegalOpen(true); }}
-                    className="text-slate-500 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-all cursor-pointer"
+                    className="text-slate-600 dark:text-slate-400 hover:text-[var(--primary-color)] dark:hover:text-[var(--primary-color)] transition-all cursor-pointer"
                   >
                     {language === 'ar' ? '🔄 سياسة الاسترجاع والاستبدال المرنة' : '🔄 Returns & Refund Guidelines'}
                   </button>
@@ -2284,7 +2284,7 @@ export default function App() {
                 <li>
                   <button 
                     onClick={() => { setLegalTab('shipping'); setIsLegalOpen(true); }}
-                    className="text-slate-500 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-all cursor-pointer"
+                    className="text-slate-600 dark:text-slate-400 hover:text-[var(--primary-color)] dark:hover:text-[var(--primary-color)] transition-all cursor-pointer"
                   >
                     {language === 'ar' ? '🚚 سياسة الشحن والتوصيل السريع' : '🚚 Express Shipping & Delivery'}
                   </button>
@@ -2292,7 +2292,7 @@ export default function App() {
                 <li>
                   <button 
                     onClick={() => { setLegalTab('contact'); setIsLegalOpen(true); }}
-                    className="text-slate-500 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-all cursor-pointer"
+                    className="text-slate-600 dark:text-slate-400 hover:text-[var(--primary-color)] dark:hover:text-[var(--primary-color)] transition-all cursor-pointer"
                   >
                     {language === 'ar' ? '📞 معلومات الاتصال والدعم الفني 24/7' : '📞 Technical Support & Contact'}
                   </button>
@@ -2302,10 +2302,10 @@ export default function App() {
 
             {/* Column 3: Newsletter & Marketing (Col span 4) */}
             <div className={`md:col-span-4 space-y-4 ${isRtl ? 'text-right' : 'text-left'}`}>
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 {language === 'ar' ? 'النشرة البريدية والعروض' : 'Newsletter & Coupons'}
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
                 {language === 'ar'
                   ? 'اشترك للحصول على كوبونات خصم حصرية تصل إلى 25% وتنبيهات فورية عند إضافة دراجات أو إكسسوارات جديدة للمخزن.'
                   : 'Subscribe to get instant custom coupon codes up to 25% off and first alerts on high-performance product restocks.'}
@@ -2317,7 +2317,7 @@ export default function App() {
                   value={newsletterEmail}
                   onChange={(e) => setNewsletterEmail(e.target.value)}
                   placeholder={language === 'ar' ? 'بريدك الإلكتروني...' : 'your.email@example.com'}
-                  className="flex-1 text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121622] text-slate-850 dark:text-white outline-none focus:border-amber-500 transition-colors"
+                  className="flex-1 text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121622] text-slate-900 dark:text-white outline-none focus:border-[var(--primary-color)] transition-colors"
                 />
                 <button
                   onClick={() => {
@@ -2333,7 +2333,7 @@ export default function App() {
                       setTimeout(() => setNewsletterSubscribed(false), 4000);
                     }
                   }}
-                  className="px-4 py-3 bg-slate-900 text-white hover:bg-slate-800 dark:bg-amber-500 dark:text-white text-xs font-black rounded-xl transition-all cursor-pointer"
+                  className="px-4 py-3 bg-[var(--primary-color)] hover:brightness-110 text-white text-xs font-black rounded-xl transition-all cursor-pointer shadow-sm"
                 >
                   {newsletterSubscribed 
                     ? (language === 'ar' ? 'تم الاشتراك بنجاح! 🚀' : 'Subscribed! 🚀') 

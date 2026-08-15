@@ -376,7 +376,7 @@ export default function ProductDetailsModal({
             {/* Description */}
             <div className="space-y-1.5">
               <h4 className="text-xs uppercase font-black tracking-wider text-slate-400">{t.description}</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-850 leading-relaxed font-sans">
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-sans">
                 {description}
               </p>
             </div>
@@ -385,7 +385,7 @@ export default function ProductDetailsModal({
             {featuresList.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-xs uppercase font-black tracking-wider text-slate-400">{t.features}</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-slate-600 dark:text-gray-800">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
                   {featuresList.map((feat, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary-color)] flex-shrink-0" />
@@ -522,10 +522,10 @@ export default function ProductDetailsModal({
                                       <User className="w-3.5 h-3.5" />
                                     </div>
                                     <div className="flex flex-col text-left">
-                                      <span className="text-xs font-bold text-slate-850 dark:text-gray-250 flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                                         {rev.name}
                                         {isTopRating && (
-                                          <span className="text-[9px] font-black bg-amber-500/10 text-amber-605 dark:text-amber-400 px-1.5 py-0.5 rounded-md">
+                                          <span className="text-[9px] font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-md">
                                             {isRtl ? 'أفضل تقييم 🏆' : 'Top Rated 🏆'}
                                           </span>
                                         )}
@@ -550,7 +550,7 @@ export default function ProductDetailsModal({
                                       src={rev.attached_photo} 
                                       alt="Attached User Review"
                                       onClick={() => setZoomImg(rev.attached_photo || '')}
-                                      className="max-h-24 rounded-lg object-contain bg-[#121622] p-1 border border-slate-200 dark:border-slate-850 cursor-zoom-in hover:opacity-90 hover:scale-[1.03] transition-all" 
+                                      className="max-h-24 rounded-lg object-contain bg-white dark:bg-[#121622] p-1 border border-slate-200 dark:border-slate-800 cursor-zoom-in hover:opacity-90 hover:scale-[1.03] transition-all" 
                                       referrerPolicy="no-referrer" 
                                     />
                                   </div>
@@ -564,7 +564,7 @@ export default function ProductDetailsModal({
                               <button
                                 type="button"
                                 onClick={() => setShowAllReviews(!showAllReviews)}
-                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1"
+                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1 border border-slate-200 dark:border-white/10"
                               >
                                 <span>{showAllReviews ? '⬆️' : '⬇️'}</span>
                                 <span>
@@ -583,19 +583,19 @@ export default function ProductDetailsModal({
               </div>
 
               {/* New review input form */}
-              <div className="bg-slate-50 dark:bg-[#090B0E] rounded-2xl p-4 border border-slate-150 dark:border-[var(--border-dark)]">
+              <div className="bg-slate-50 dark:bg-[#090B0E] rounded-2xl p-4 border border-slate-200 dark:border-[var(--border-dark)]">
                 {reviewSent ? (
                   <p className="text-xs font-bold text-emerald-500 py-1 flex items-center gap-1.5 justify-center">
                     <span>{t.review_success}</span>
                   </p>
                 ) : (
                   <form onSubmit={handleReviewSubmit} className="space-y-3">
-                    <h4 className="text-xs font-black text-slate-700 dark:text-slate-800">{t.write_a_review}</h4>
+                    <h4 className="text-xs font-black text-slate-900 dark:text-white">{t.write_a_review}</h4>
                     
                     {/* Star Rating Select slider */}
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold text-slate-400 uppercase">{t.rating_label}:</span>
-                      <div className="flex gap-1 text-gray-800">
+                      <div className="flex gap-1">
                         {[1, 2, 3, 4, 5].map((starValue) => (
                           <button
                             key={starValue}
@@ -603,7 +603,7 @@ export default function ProductDetailsModal({
                             type="button"
                             onClick={() => setReviewRating(starValue)}
                             className={`hover:scale-110 active:scale-95 transition-transform ${
-                              starValue <= reviewRating ? 'text-amber-400' : 'text-slate-200 dark:text-slate-750'
+                              starValue <= reviewRating ? 'text-amber-400' : 'text-slate-200 dark:text-slate-700'
                             }`}
                           >
                             <Star className="w-4 h-4 fill-current" />
@@ -621,7 +621,7 @@ export default function ProductDetailsModal({
                         placeholder={currentLanguage === 'ar' ? 'الاسم الكريم' : 'Your name'}
                         value={reviewName}
                         onChange={(e) => setReviewName(e.target.value)}
-                        className={`text-base md:text-xs px-3 py-2 rounded-xl border bg-white dark:bg-slate-900 border-slate-150 dark:border-[var(--border-dark)] focus:border-[var(--primary-color)] text-slate-800 dark:text-white outline-none ${
+                        className={`text-base md:text-xs px-3 py-2 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-[var(--border-dark)] focus:border-[var(--primary-color)] text-slate-900 dark:text-white outline-none ${
                           isRtl ? 'text-right' : 'text-left'
                         }`}
                       />
@@ -632,7 +632,7 @@ export default function ProductDetailsModal({
                         placeholder={t.review_placeholder}
                         value={reviewText}
                         onChange={(e) => setReviewText(e.target.value)}
-                        className={`text-base md:text-xs px-3 py-2 rounded-xl border bg-white dark:bg-slate-900 border-slate-150 dark:border-[var(--border-dark)] focus:border-[var(--primary-color)] text-slate-800 dark:text-white outline-none ${
+                        className={`text-base md:text-xs px-3 py-2 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-[var(--border-dark)] focus:border-[var(--primary-color)] text-slate-900 dark:text-white outline-none ${
                           isRtl ? 'text-right' : 'text-left'
                         }`}
                       />

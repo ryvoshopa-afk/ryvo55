@@ -12,8 +12,10 @@
   --primary-color-rgb: 229, 62, 62;
   --bg-dark: #090B0E;
   --surface-dark: #121622;
+  --surface-dark-card: #151A28;
   --bg-light: #F8F9FA;
   --surface-light: #FFFFFF;
+  --surface-light-card: #F1F5F9;
   --text-primary-dark: #FFFFFF;
   --text-secondary-dark: #94A3B8;
   --text-primary-light: #0F172A;
@@ -23,12 +25,19 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+
   body {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--bg-light);
     color: var(--text-primary-light);
+    overflow-x: hidden;
+    min-height: 100vh;
   }
 
   .dark body {
@@ -62,5 +71,28 @@
 
 .animate-spin-slow {
   animation: spin-slow 12s linear infinite;
+}
+
+/* Scrollbar polish */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
 }
 

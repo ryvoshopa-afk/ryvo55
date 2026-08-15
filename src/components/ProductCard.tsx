@@ -92,7 +92,7 @@ export default function ProductCard({
   return (
     <div
       id={`product-card-${product.id}`}
-      className="group bg-white dark:bg-[#121622] rounded-2xl overflow-hidden border border-slate-200 dark:border-[var(--border-dark)] shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col relative dark:hover:border-[var(--primary-color)]/50"
+      className="group bg-white dark:bg-[#121622] rounded-2xl overflow-hidden border border-slate-200 dark:border-[var(--border-dark)] shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col relative hover:border-slate-300 dark:hover:border-[var(--primary-color)]/50"
     >
       {/* Corner Tag/Badge & Discount Tag */}
       <div className={`absolute top-3 ${isRtl ? 'left-3' : 'right-3'} z-10 flex flex-col gap-1 items-end`}>
@@ -111,7 +111,7 @@ export default function ProductCard({
       {/* Product Image & Hover Action Overlay */}
       <div 
         onClick={onViewDetails}
-        className="relative aspect-square w-full bg-slate-50 dark:bg-[#18233c] overflow-hidden cursor-pointer"
+        className="relative aspect-square w-full bg-slate-50 dark:bg-slate-900/60 overflow-hidden cursor-pointer flex items-center justify-center p-2"
       >
         <img
           src={product.image}
@@ -120,7 +120,7 @@ export default function ProductCard({
           height={400}
           loading="lazy"
           referrerPolicy="no-referrer"
-          className="object-cover w-full h-full transform scale-100 group-hover:scale-105 transition-transform duration-700"
+          className="object-cover w-full h-full transform scale-100 group-hover:scale-105 transition-transform duration-700 rounded-xl"
         />
 
         {/* Quick Share / Copy Link Button */}
@@ -130,7 +130,7 @@ export default function ProductCard({
           className={`absolute top-3 ${isRtl ? 'right-3' : 'left-3'} z-10 p-2.5 rounded-full shadow-lg transition-all active:scale-90 flex items-center justify-center ${
             copied 
               ? 'bg-emerald-500 text-white animate-bounce' 
-              : 'bg-white/90 hover:bg-white text-slate-800 dark:bg-slate-900/95 dark:hover:bg-slate-900 dark:text-slate-200 border border-slate-200/55 dark:border-slate-800/80 shadow-md'
+              : 'bg-white/90 hover:bg-white text-slate-800 dark:bg-slate-900/95 dark:hover:bg-slate-900 dark:text-slate-200 border border-slate-200/80 dark:border-slate-800/80 shadow-md'
           }`}
           title={isRtl ? 'مشاركة ونسخ الرابط 🔗' : 'Share & Copy Product Link 🔗'}
         >
@@ -142,7 +142,7 @@ export default function ProductCard({
           <button
             id={`btn-card-view-details-${product.id}`}
             onClick={(e) => { e.stopPropagation(); onViewDetails(); }}
-            className="p-3 bg-white hover:bg-[var(--primary-color)] hover:text-slate-950 dark:bg-slate-800 dark:hover:bg-[var(--primary-color)] dark:hover:text-[#0A0C10] text-slate-800 dark:text-gray-100 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all"
+            className="p-3 bg-white hover:bg-[var(--primary-color)] hover:text-white dark:bg-slate-800 dark:hover:bg-[var(--primary-color)] dark:hover:text-white text-slate-800 dark:text-slate-100 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all"
             title={t.view_details}
           >
             <Eye className="w-5 h-5" />
@@ -152,7 +152,7 @@ export default function ProductCard({
             id={`btn-card-toggle-favorite-${product.id}`}
             onClick={(e) => { e.stopPropagation(); onFavoriteToggle(); }}
             className={`p-3 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all ${
-              isFavorite ? 'bg-rose-500 text-white' : 'bg-white text-rose-500 dark:bg-slate-800 dark:hover:bg-rose-500/10 hover:bg-rose-50'
+              isFavorite ? 'bg-rose-500 text-white' : 'bg-white text-rose-500 dark:bg-slate-800 dark:hover:bg-rose-500/10 hover:bg-rose-50 border border-slate-200 dark:border-white/10'
             }`}
             title={t.favorites}
           >
@@ -163,8 +163,8 @@ export default function ProductCard({
         {/* Flash Deal Ticking Timer overlay for Featured Products */}
         {product.is_featured && (
           <div className="absolute bottom-2 left-2 right-2 bg-slate-900/90 backdrop-blur-md text-white px-2.5 py-1.5 rounded-xl flex items-center justify-between text-[10px] font-black tracking-wide border border-white/10 shadow-md">
-            <span className="text-amber-500 animate-pulse flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            <span className="text-amber-400 animate-pulse flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
               <span>{isRtl ? 'عرض فلاش محدود 🔥' : 'FLASH DEAL 🔥'}</span>
             </span>
             <span className="font-mono text-white tracking-widest">
@@ -183,7 +183,7 @@ export default function ProductCard({
           </span>
 
           {/* Title */}
-          <h3 className="font-bold text-slate-850 dark:text-gray-150 text-sm sm:text-base line-clamp-2 leading-snug group-hover:text-amber-500 dark:group-hover:text-[var(--primary-color)] transition-colors mb-2">
+          <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base line-clamp-2 leading-snug group-hover:text-[var(--primary-color)] transition-colors mb-2">
             {name}
           </h3>
 
@@ -192,9 +192,9 @@ export default function ProductCard({
             <div className="flex text-amber-400">
               <Star className="w-3.5 h-3.5 fill-current" />
             </div>
-            <span className="font-bold text-slate-500 dark:text-slate-400">{ratingAvg}</span>
-            <span className="text-slate-800 dark:text-slate-700">|</span>
-            <span className={`font-semibold ${product.stock > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+            <span className="font-bold text-slate-600 dark:text-slate-400">{ratingAvg}</span>
+            <span className="text-slate-300 dark:text-slate-700">|</span>
+            <span className={`font-semibold ${product.stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
               {product.stock > 0 ? `${product.stock} ${t.stock_count}` : t.out_of_stock}
             </span>
           </div>
@@ -217,7 +217,7 @@ export default function ProductCard({
               </div>
             </div>
             
-            <span className={`text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800/80 ${product.stock > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800/80 ${product.stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
               {product.stock > 0 ? `${product.stock} ${t.stock_count}` : t.out_of_stock}
             </span>
           </div>
@@ -249,7 +249,7 @@ export default function ProductCard({
                   ? 'bg-[var(--primary-color)] hover:brightness-110 text-white font-black shadow-sm active:scale-95'
                   : 'bg-slate-50 dark:bg-[#0E1116] text-slate-400 dark:text-slate-600 border border-transparent cursor-not-allowed'
               }`}
-              title={t.buyNow || 'شراء الآن ⚡'}
+              title={t.buy_now}
             >
               <span>⚡</span>
               <span>{isRtl ? 'شراء الآن' : 'Buy Now'}</span>
