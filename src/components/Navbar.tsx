@@ -194,6 +194,20 @@ export default function Navbar({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Lock background body scroll when mobile menu drawer is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      const originalOverflow = document.body.style.overflow;
+      const originalTouchAction = document.body.style.touchAction;
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        document.body.style.touchAction = originalTouchAction;
+      };
+    }
+  }, [isMobileMenuOpen]);
+
   useEffect(() => {
     const loadNotifs = () => {
       let titleText = isRtl ? 'أهلاً بك في متجر رايفو الفاخر! 🎉' : 'Welcome to Ryvo Premium Store! 🎉';
@@ -1059,142 +1073,157 @@ export default function Navbar({
               className="fixed inset-0 bg-black/60 z-[70] backdrop-blur-xs md:hidden"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className={`fixed inset-y-0 ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} z-[70] w-80 max-w-[85vw] bg-white dark:bg-[#121622] border-slate-200 dark:border-[var(--border-dark)] p-5 shadow-2xl flex flex-col justify-between md:hidden animate-in fade-in duration-200 overflow-y-auto pt-[max(1.25rem,env(safe-area-inset-top))] pb-[calc(4.5rem+max(8px,env(safe-area-inset-bottom)))]`}>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-white/10">
-                  <span className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[var(--primary-color)]"></span>
-                    <span>{isRtl ? 'قائمة RYVO الرئيسية' : 'RYVO Main Menu'}</span>
-                  </span>
-                  <button 
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors cursor-pointer"
-                    aria-label={isRtl ? 'إغلاق القائمة' : 'Close menu'}
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  {/* Home */}
-                  <button
-                    onClick={() => { onNavigate('home'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 py-2.5 px-3.5 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
-                      currentView === 'home'
-                        ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
-                        : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
-                    }`}
-                  >
-                    <Home className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
-                    <span>{t.home || (isRtl ? 'الرئيسية' : 'Home')}</span>
-                  </button>
-
-                  {/* Store / Catalog */}
-                  <button
-                    onClick={() => {
-                      onNavigate('home');
-                      setIsMobileMenuOpen(false);
-                      setTimeout(() => {
-                        document.getElementById('products-grid')?.scrollIntoView({ behavior: 'smooth' });
-                      }, 100);
-                    }}
-                    className={`flex items-center gap-3 py-2.5 px-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors ${isRtl ? 'text-right' : 'text-left'}`}
-                  >
-                    <ShoppingBag className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
-                    <span>{isRtl ? 'المتجر والمنتجات 🏍️' : 'Store & Products 🏍️'}</span>
-                  </button>
-
-                  {/* Categories */}
-                  <button
-                    onClick={() => {
-                      onNavigate('home');
-                      setIsMobileMenuOpen(false);
-                      setTimeout(() => {
-                        document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' });
-                      }, 100);
-                    }}
-                    className={`flex items-center gap-3 py-2.5 px-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors ${isRtl ? 'text-right' : 'text-left'}`}
-                  >
-                    <Grid className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
-                    <span>{isRtl ? 'جميع الفئات والتصنيفات ⚡' : 'All Categories ⚡'}</span>
-                  </button>
-
-                  {/* Track Order */}
-                  <button
-                    onClick={() => { onNavigate('track'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 py-2.5 px-3.5 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
-                      currentView === 'track'
-                        ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
-                        : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
-                    }`}
-                  >
-                    <Truck className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
-                    <span>{t.track_tab || (isRtl ? 'تتبع الطلب 🚚' : 'Track Order 🚚')}</span>
-                  </button>
-
-                  {/* Wishlist / Favorites */}
-                  <button
-                    onClick={() => { onFavoritesOpen(); setIsMobileMenuOpen(false); }}
-                    className="flex items-center justify-between py-2.5 px-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Heart className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
-                      <span>{t.favorites || (isRtl ? 'المفضلة ❤️' : 'Wishlist ❤️')}</span>
-                    </div>
-                    {favoritesCount > 0 && (
-                      <span className="px-2 py-0.5 text-[10px] bg-[var(--primary-color)] text-white rounded-full font-black">
-                        {favoritesCount}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Support Chat */}
-                  <button
-                    onClick={() => { onNavigate('chat'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 py-2.5 px-3.5 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
-                      currentView === 'chat'
-                        ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
-                        : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
-                    }`}
-                  >
-                    <MessageSquare className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
-                    <span>{t.support_tab || (isRtl ? 'الدردشة والدعم 💬' : 'Chat & Support 💬')}</span>
-                  </button>
-
-                  {/* Blog */}
-                  <button
-                    onClick={() => { onNavigate('blog'); setIsMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 py-2.5 px-3.5 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
-                      currentView === 'blog'
-                        ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
-                        : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
-                    }`}
-                  >
-                    <BookOpen className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
-                    <span>{isRtl ? 'المدونة والمقالات ✍️' : 'Blog & Articles ✍️'}</span>
-                  </button>
-
-                  {/* Account / Dashboard */}
-                  {currentUser && (
-                    <button
-                      onClick={() => { onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard'); setIsMobileMenuOpen(false); }}
-                      className={`flex items-center gap-3 py-2.5 px-3.5 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
-                        currentView === 'dashboard' || currentView === 'admin'
-                          ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
-                          : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
-                      }`}
-                    >
-                      <UserIcon className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
-                      <span>{currentUser.role === 'admin' ? (isRtl ? 'لوحة تحكم المسؤول ⚙️' : 'Admin Panel ⚙️') : (isRtl ? 'حسابي الشخصي 👤' : 'My Account 👤')}</span>
-                    </button>
-                  )}
-                </div>
+            <div 
+              className={`fixed inset-y-0 ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} z-[70] w-80 max-w-[85vw] h-[100dvh] max-h-[100dvh] bg-white dark:bg-[#121622] border-slate-200 dark:border-[var(--border-dark)] shadow-2xl flex flex-col justify-between md:hidden animate-in fade-in duration-200 overflow-hidden select-none`}
+              style={{
+                touchAction: 'pan-y'
+              }}
+            >
+              {/* Drawer Fixed Header */}
+              <div 
+                className="shrink-0 px-5 pt-4 pb-3.5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between"
+                style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
+              >
+                <span className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[var(--primary-color)]"></span>
+                  <span>{isRtl ? 'قائمة RYVO الرئيسية' : 'RYVO Main Menu'}</span>
+                </span>
+                <button 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors cursor-pointer"
+                  aria-label={isRtl ? 'إغلاق القائمة' : 'Close menu'}
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-white/10 space-y-2 mt-4">
+              {/* Drawer Scrollable Navigation Links (Full independent scrolling on all mobile viewports) */}
+              <div 
+                className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-1.5 overscroll-contain"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+              >
+                {/* Home */}
+                <button
+                  onClick={() => { onNavigate('home'); setIsMobileMenuOpen(false); }}
+                  className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
+                    currentView === 'home'
+                      ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
+                      : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                  }`}
+                >
+                  <Home className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                  <span>{t.home || (isRtl ? 'الرئيسية' : 'Home')}</span>
+                </button>
+
+                {/* Store / Catalog */}
+                <button
+                  onClick={() => {
+                    onNavigate('home');
+                    setIsMobileMenuOpen(false);
+                    setTimeout(() => {
+                      document.getElementById('products-grid')?.scrollIntoView({ behavior: 'smooth' });
+                    }, 100);
+                  }}
+                  className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors ${isRtl ? 'text-right' : 'text-left'}`}
+                >
+                  <ShoppingBag className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                  <span>{isRtl ? 'المتجر والمنتجات 🏍️' : 'Store & Products 🏍️'}</span>
+                </button>
+
+                {/* Categories */}
+                <button
+                  onClick={() => {
+                    onNavigate('home');
+                    setIsMobileMenuOpen(false);
+                    setTimeout(() => {
+                      document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }, 100);
+                  }}
+                  className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors ${isRtl ? 'text-right' : 'text-left'}`}
+                >
+                  <Grid className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                  <span>{isRtl ? 'جميع الفئات والتصنيفات ⚡' : 'All Categories ⚡'}</span>
+                </button>
+
+                {/* Track Order */}
+                <button
+                  onClick={() => { onNavigate('track'); setIsMobileMenuOpen(false); }}
+                  className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
+                    currentView === 'track'
+                      ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
+                      : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                  }`}
+                >
+                  <Truck className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                  <span>{t.track_tab || (isRtl ? 'تتبع الطلب 🚚' : 'Track Order 🚚')}</span>
+                </button>
+
+                {/* Wishlist / Favorites */}
+                <button
+                  onClick={() => { onFavoritesOpen(); setIsMobileMenuOpen(false); }}
+                  className="w-full flex items-center justify-between py-2.5 px-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Heart className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                    <span>{t.favorites || (isRtl ? 'المفضلة ❤️' : 'Wishlist ❤️')}</span>
+                  </div>
+                  {favoritesCount > 0 && (
+                    <span className="px-2 py-0.5 text-[10px] bg-[var(--primary-color)] text-white rounded-full font-black">
+                      {favoritesCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Support Chat */}
+                <button
+                  onClick={() => { onNavigate('chat'); setIsMobileMenuOpen(false); }}
+                  className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
+                    currentView === 'chat'
+                      ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
+                      : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                  }`}
+                >
+                  <MessageSquare className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                  <span>{t.support_tab || (isRtl ? 'الدردشة والدعم 💬' : 'Chat & Support 💬')}</span>
+                </button>
+
+                {/* Blog */}
+                <button
+                  onClick={() => { onNavigate('blog'); setIsMobileMenuOpen(false); }}
+                  className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
+                    currentView === 'blog'
+                      ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
+                      : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                  <span>{isRtl ? 'المدونة والمقالات ✍️' : 'Blog & Articles ✍️'}</span>
+                </button>
+
+                {/* Account / Dashboard */}
+                {currentUser && (
+                  <button
+                    onClick={() => { onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard'); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
+                      currentView === 'dashboard' || currentView === 'admin'
+                        ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
+                        : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                    }`}
+                  >
+                    <UserIcon className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                    <span>{currentUser.role === 'admin' ? (isRtl ? 'لوحة تحكم المسؤول ⚙️' : 'Admin Panel ⚙️') : (isRtl ? 'حسابي الشخصي 👤' : 'My Account 👤')}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Drawer Fixed Footer / Actions (with bottom safe-area & Bottom Nav clearance) */}
+              <div 
+                className="shrink-0 p-4 border-t border-slate-100 dark:border-white/10 space-y-2 bg-slate-50/50 dark:bg-[#0E121A]/50"
+                style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+              >
                 {currentUser ? (
                   <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between p-2.5 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+                    <div className="flex items-center justify-between p-2.5 bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-white/5 rounded-xl">
                       <div className="flex items-center gap-2">
                         <UserIcon className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
                         <span className="font-bold text-xs text-slate-900 dark:text-white truncate max-w-[140px]">{currentUser.name}</span>
