@@ -155,15 +155,15 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl text-slate-100 text-center overflow-hidden">
+      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl text-slate-800 dark:text-slate-100 text-center overflow-hidden">
         {/* Glow Effects */}
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-red-600/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-rose-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -left-24 w-48 h-48 bg-red-600/10 dark:bg-red-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-rose-600/10 dark:bg-rose-600/20 rounded-full blur-3xl pointer-events-none" />
 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
@@ -179,14 +179,14 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
             </div>
 
             <div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-red-500/10 text-red-400 border border-red-500/30 mb-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-red-500/10 text-red-500 dark:text-red-400 border border-red-500/30 mb-2">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 {isRtl ? 'توثيق البريد الإلكتروني (OTP)' : 'Email Verification (OTP)'}
               </span>
-              <h2 className="text-2xl font-black text-white">
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">
                 {isRtl ? 'أدخل رمز الأمان المكون من 6 أرقام' : 'Enter 6-Digit Verification Code'}
               </h2>
-              <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-1">
                 {isRtl 
                   ? `أرسلنا كود الأمان المكون من 6 أرقام إلى: ${email || 'بريدك الإلكتروني'}`
                   : `We sent a 6-digit security code to: ${email || 'your email'}`}
@@ -200,7 +200,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={isRtl ? 'البريد الإلكتروني' : 'Your Email Address'}
-                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-center text-sm text-white focus:border-red-500 outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-center text-sm text-slate-900 dark:text-white focus:border-red-500 outline-none"
                 />
               </div>
             )}
@@ -217,7 +217,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
                   value={digit}
                   onChange={(e) => handleDigitChange(idx, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(idx, e)}
-                  className="w-11 h-13 md:w-12 md:h-14 text-center text-xl font-black font-mono bg-slate-950 border-2 border-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500/30 rounded-xl text-white outline-none transition-all"
+                  className="w-11 h-13 md:w-12 md:h-14 text-center text-xl font-black font-mono bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500/30 rounded-xl text-slate-900 dark:text-white outline-none transition-all"
                 />
               ))}
             </div>
@@ -225,8 +225,8 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
             {message && (
               <div className={`p-3 rounded-xl text-xs font-bold w-full text-center ${
                 message.includes('نجاح') || message.includes('sent')
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
               }`}>
                 {message}
               </div>
@@ -251,7 +251,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
               <button
                 onClick={handleResendOtp}
                 disabled={resendCooldown > 0 || isSubmitting}
-                className="text-red-400 hover:text-red-300 font-bold disabled:opacity-50 transition-colors flex items-center gap-1 cursor-pointer"
+                className="text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 font-bold disabled:opacity-50 transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSubmitting ? 'animate-spin' : ''}`} />
                 {resendCooldown > 0
@@ -264,7 +264,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
                   onClose();
                   onOpenAuth();
                 }}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
               >
                 {isRtl ? 'تسجيل الدخول' : 'Sign In'}
               </button>
@@ -278,10 +278,10 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
             <div className="relative flex items-center justify-center w-20 h-20 bg-red-500/10 border border-red-500/30 rounded-full">
               <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
             </div>
-            <h3 className="text-xl font-black text-red-400">
+            <h3 className="text-xl font-black text-red-500 dark:text-red-400">
               {isRtl ? 'جاري التحقق والتفعيل...' : 'Verifying OTP code...'}
             </h3>
-            <p className="text-sm text-slate-400 max-w-xs">
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
               {isRtl
                 ? 'يرجى الانتظار لحظات، جاري المطابقة مع خوادم المتجر الرسمية.'
                 : 'Please wait a moment while we validate your 6-digit code.'}
@@ -296,38 +296,38 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
               <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-red-600/20 via-emerald-500/20 to-red-700/20 border-2 border-red-500 flex items-center justify-center shadow-lg shadow-red-500/20">
                 <ShieldCheck className="w-12 h-12 text-red-500" />
               </div>
-              <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-slate-950 p-1.5 rounded-full border-2 border-slate-900 shadow">
-                <CheckCircle2 className="w-5 h-5" />
+              <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-slate-950 p-1.5 rounded-full border-2 border-white dark:border-slate-900 shadow">
+                <CheckCircle2 className="w-5 h-5 text-white dark:text-slate-950" />
               </div>
             </div>
 
             <div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-red-500/10 text-red-400 border border-red-500/20 mb-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-red-500/10 text-red-500 dark:text-red-400 border border-red-500/20 mb-2">
                 <Sparkles className="w-3.5 h-3.5" />
                 {isRtl ? 'تفعيل حساب رسمي' : 'Official Verification'}
               </span>
-              <h2 className="text-2xl font-black text-white">
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">
                 {isRtl ? 'تم تفعيل البريد الإلكتروني بنجاح! 🎉' : 'Email Verified Successfully! 🎉'}
               </h2>
             </div>
 
             {email && (
-              <div className="px-4 py-1.5 bg-slate-800/80 border border-slate-700/80 rounded-xl font-mono text-xs text-red-400 font-bold max-w-full truncate">
+              <div className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl font-mono text-xs text-red-600 dark:text-red-400 font-bold max-w-full truncate">
                 {email}
               </div>
             )}
 
-            <div className="w-full p-4 bg-slate-950/60 border border-slate-800/80 rounded-2xl text-right text-xs text-slate-300 space-y-2">
+            <div className="w-full p-4 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl text-right text-xs text-slate-700 dark:text-slate-300 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">{isRtl ? 'حالة الحساب:' : 'Account Status:'}</span>
-                <span className="font-bold text-emerald-400 flex items-center gap-1">
+                <span className="text-slate-500 dark:text-slate-400">{isRtl ? 'حالة الحساب:' : 'Account Status:'}</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   {isRtl ? 'نشط ومُفعّل (Active)' : 'Active & Verified'}
                 </span>
               </div>
-              <div className="flex items-center justify-between border-t border-slate-800/80 pt-2">
-                <span className="text-slate-400">{isRtl ? 'هدية الانضمام:' : 'Welcome Bonus:'}</span>
-                <span className="font-bold text-red-400">
+              <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800/80 pt-2">
+                <span className="text-slate-500 dark:text-slate-400">{isRtl ? 'هدية الانضمام:' : 'Welcome Bonus:'}</span>
+                <span className="font-bold text-red-600 dark:text-red-400">
                   {isRtl ? '100 نقطة ولاء مجانية 🎉' : '100 Free Loyalty Points'}
                 </span>
               </div>
@@ -347,7 +347,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
 
               <button
                 onClick={onClose}
-                className="w-full py-3.5 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all flex items-center justify-center gap-2 border border-slate-700 cursor-pointer"
+                className="w-full py-3.5 px-6 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 cursor-pointer"
               >
                 <ShoppingBag className="w-4 h-4" />
                 {isRtl ? 'تصفح المتجر 🛍️' : 'Browse Store 🛍️'}
@@ -359,15 +359,15 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
         {/* STATE 4: ERROR */}
         {status === 'error' && (
           <div className="py-6 flex flex-col items-center justify-center space-y-4">
-            <div className="w-20 h-20 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <div className="w-20 h-20 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 dark:text-amber-400">
               <AlertCircle className="w-10 h-10" />
             </div>
 
-            <h3 className="text-xl font-extrabold text-amber-400">
+            <h3 className="text-xl font-extrabold text-amber-500 dark:text-amber-400">
               {isRtl ? 'تعذر التحقق' : 'Verification Issue'}
             </h3>
 
-            <p className="text-xs text-slate-300 leading-relaxed max-w-sm">
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm">
               {message}
             </p>
 
