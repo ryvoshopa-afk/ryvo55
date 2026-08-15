@@ -76,21 +76,20 @@ export default function Hero({ currentLanguage, onShopClick, shopLogo, heroSlide
   const slideDesc = currentLanguage === 'ar' ? slide.desc_ar : currentLanguage === 'fr' ? slide.desc_fr : slide.desc_en;
 
   return (
-    <div className={`relative overflow-hidden bg-slate-100 dark:bg-gradient-to-br dark:from-[#1E293B] dark:to-[#0F172A] rounded-3xl p-6 sm:p-12 mb-12 shadow-sm border border-slate-200 dark:border-white/5 transition-all duration-300`}>
+    <div className={`relative overflow-hidden bg-white dark:bg-[#121622] rounded-3xl p-6 sm:p-12 mb-12 shadow-xs border border-slate-200 dark:border-[var(--border-dark)] transition-all duration-300`}>
       
       {/* Cyber Grid Pattern Overlay for Sleek Interface Theme */}
-      <div className="absolute inset-0 opacity-[0.08] dark:opacity-20 pointer-events-none">
+      <div className="absolute inset-0 opacity-[0.05] dark:opacity-15 pointer-events-none">
         <svg width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" stroke="var(--primary-color, var(--primary-color, #38bdf8))" strokeWidth="1" />
+            <path d="M 40 0 L 0 0 0 40" stroke="var(--primary-color)" strokeWidth="1" />
           </pattern>
           <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
       </div>
 
       {/* Background blobs */}
-      <div className={`absolute top-0 right-0 w-96 h-96 bg-gradient-to-br ${slide.bg} rounded-full blur-3xl opacity-50 -mr-20 -mt-20 transition-all duration-1000`}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl -ml-20 -mb-20"></div>
+      <div className={`absolute top-0 right-0 w-96 h-96 bg-gradient-to-br ${slide.bg} rounded-full blur-3xl opacity-40 -mr-20 -mt-20 transition-all duration-1000`}></div>
 
       <div className="relative max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-12">
         
@@ -101,15 +100,15 @@ export default function Hero({ currentLanguage, onShopClick, shopLogo, heroSlide
               {shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/') ? (
                 <img src={shopLogo} alt="Logo" width={140} height={36} className="h-9 max-w-[140px] object-contain rounded-lg" referrerPolicy="no-referrer" />
               ) : (
-                <span className="text-sm font-black tracking-widest bg-gradient-to-r from-[var(--primary-color, #38bdf8)] to-amber-500 bg-clip-text text-transparent uppercase font-sans">
+                <span className="text-sm font-black tracking-widest text-[var(--primary-color)] uppercase font-sans">
                   {shopLogo}
                 </span>
               )}
-              <span className="text-[10px] font-black uppercase text-slate-405 dark:text-slate-500 tracking-wider">OFFICIAL BOUTIQUE</span>
+              <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">OFFICIAL BOUTIQUE</span>
             </div>
           )}
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-900/5 dark:bg-white/10 text-[var(--primary-color)] border border-[var(--primary-color)]/30 rounded-full text-xs font-bold uppercase tracking-widest w-fit">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20 rounded-full text-xs font-bold uppercase tracking-widest w-fit">
             <Sparkles className="w-3.5 h-3.5" />
             <span>{slide.category}</span>
           </div>
@@ -118,7 +117,7 @@ export default function Hero({ currentLanguage, onShopClick, shopLogo, heroSlide
             {slideTitle}
           </h1>
 
-          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-450 leading-relaxed max-w-xl transition-opacity duration-300">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl transition-opacity duration-300">
             {slideDesc}
           </p>
 
@@ -127,17 +126,17 @@ export default function Hero({ currentLanguage, onShopClick, shopLogo, heroSlide
             <button
               id="hero-cta-shop"
               onClick={onShopClick}
-              className="px-5 py-4 bg-[var(--primary-color)] hover:opacity-90 text-slate-950 font-black rounded-xl shadow-xl hover:shadow-[0_0_22px_rgba(var(--primary-color-rgb,56,189,248),0.4)] hover:scale-[1.03] active:scale-95 transition-all text-xs uppercase"
+              className="px-6 py-4 bg-[var(--primary-color)] hover:brightness-110 text-white font-black rounded-xl shadow-lg hover:shadow-red-500/20 active:scale-95 transition-all text-xs uppercase cursor-pointer"
             >
               {t.shop_now}
             </button>
-            <div className="hidden sm:flex items-center gap-6 text-xs font-bold text-slate-400 dark:text-slate-500">
-              <div className="flex items-center gap-1">
+            <div className="hidden sm:flex items-center gap-6 text-xs font-bold text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
                 <span>100% Safe</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Zap className="w-4 h-4 text-amber-500" />
+              <div className="flex items-center gap-1.5">
+                <Zap className="w-4 h-4 text-[var(--primary-color)]" />
                 <span>Lightning Shipping</span>
               </div>
             </div>

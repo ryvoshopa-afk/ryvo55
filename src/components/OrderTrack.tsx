@@ -306,7 +306,7 @@ export default function OrderTrack({ currentLanguage, orders, currentUser }: Ord
               <span>{isRtl ? 'سجل تتبع الشحنة بالتوقيت الدقيق ⏱️' : 'Detailed Status History & Timestamps ⏱️'}</span>
             </h3>
 
-            <div className="bg-slate-50 dark:bg-[#0A0C10] rounded-2xl p-5 sm:p-6 border border-slate-100 dark:border-slate-850 space-y-6">
+            <div className="bg-slate-50 dark:bg-[#090B0E] rounded-2xl p-5 sm:p-6 border border-slate-100 dark:border-slate-850 space-y-6">
               {(() => {
                 const history = searchedOrder.status_history && searchedOrder.status_history.length > 0
                   ? searchedOrder.status_history
@@ -331,7 +331,7 @@ export default function OrderTrack({ currentLanguage, orders, currentUser }: Ord
                           <span className={`absolute top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-[#0A0C10] flex items-center justify-center shadow-sm ${
                             isRtl ? '-right-[32px]' : '-left-[32px]'
                           } ${
-                            isLast ? 'bg-[var(--primary-color, #38bdf8)] ring-4 ring-[var(--primary-color, #38bdf8)]/20 ring-offset-0' : 'bg-slate-450 dark:bg-slate-700'
+                            isLast ? 'bg-[var(--primary-color)] ring-4 ring-[var(--primary-color)]/20 ring-offset-0' : 'bg-slate-450 dark:bg-slate-700'
                           }`} />
 
                           {/* Content card */}
@@ -339,17 +339,17 @@ export default function OrderTrack({ currentLanguage, orders, currentUser }: Ord
                             isRtl ? 'text-right' : 'text-left'
                           } ${
                             isLast 
-                              ? 'bg-white dark:bg-[#11141D] border-slate-200 dark:border-slate-850 shadow-sm' 
+                              ? 'bg-white dark:bg-[#121622] border-slate-200 dark:border-slate-850 shadow-sm' 
                               : 'bg-white/40 dark:bg-white/[0.02] border-slate-100/50 dark:border-slate-200/40'
                           }`}>
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm">{info.icon}</span>
-                                <strong className={`text-xs font-black ${isLast ? 'text-[var(--primary-color, #38bdf8)]' : 'text-slate-800 dark:text-gray-250'}`}>
+                                <strong className={`text-xs font-black ${isLast ? 'text-[var(--primary-color)]' : 'text-slate-800 dark:text-gray-250'}`}>
                                   {info.title}
                                 </strong>
                                 {isLast && (
-                                  <span className="px-1.5 py-0.5 bg-[var(--primary-color, #38bdf8)]/10 text-[var(--primary-color, #38bdf8)] border border-[var(--primary-color, #38bdf8)]/25 rounded-md text-[8px] font-black uppercase tracking-wider">
+                                  <span className="px-1.5 py-0.5 bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/25 rounded-md text-[8px] font-black uppercase tracking-wider">
                                     {isRtl ? 'الحالة الحالية' : 'Current State'}
                                   </span>
                                 )}
@@ -374,7 +374,7 @@ export default function OrderTrack({ currentLanguage, orders, currentUser }: Ord
           {/* Ordered Item list */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">{t.products}</h3>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800 bg-slate-50 dark:bg-[#0A0C10] rounded-2xl p-4 border border-slate-100 dark:border-slate-850">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800 bg-slate-50 dark:bg-[#090B0E] rounded-2xl p-4 border border-slate-100 dark:border-slate-850">
               {searchedOrder.items.map((it, idx) => (
                 <div key={idx} className="py-3 flex items-center gap-4 text-xs font-semibold">
                   <img src={it.image} alt={it.name} className="w-10 h-10 object-cover rounded-lg bg-white border border-slate-200 p-0.5 flex-shrink-0" referrerPolicy="no-referrer" />
@@ -382,7 +382,7 @@ export default function OrderTrack({ currentLanguage, orders, currentUser }: Ord
                     <strong className="block text-slate-900 dark:text-gray-100 font-bold truncate">{it.name}</strong>
                     {it.color && (
                       <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md bg-slate-250 dark:bg-slate-800 text-[10px] text-slate-500 dark:text-slate-400 font-bold">
-                        {t.selected_color || 'اللون'}: <span className="text-[var(--primary-color, #38bdf8)]">{it.color}</span>
+                        {t.selected_color || 'اللون'}: <span className="text-[var(--primary-color)]">{it.color}</span>
                       </span>
                     )}
                   </div>
@@ -396,7 +396,7 @@ export default function OrderTrack({ currentLanguage, orders, currentUser }: Ord
           </div>
 
           {/* Customer Metadata breakdown */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs bg-slate-50 dark:bg-[#0A0C10] rounded-2xl p-6 border border-slate-100 dark:border-slate-850">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs bg-slate-50 dark:bg-[#090B0E] rounded-2xl p-6 border border-slate-100 dark:border-slate-850">
             <div className="space-y-3 font-sans">
               <strong className="text-xs font-black uppercase text-amber-500 block pb-1 border-b dark:border-slate-200">{t.personal_info || 'معلومات الشحنة'}</strong>
               <div className="space-y-2 text-slate-650 dark:text-slate-800">
@@ -425,7 +425,7 @@ export default function OrderTrack({ currentLanguage, orders, currentUser }: Ord
 
               <div className="pt-4 border-t dark:border-slate-200 flex items-center justify-between">
                 <span className="text-xs text-slate-400 font-extrabold">{t.total}:</span>
-                <strong className="text-[var(--primary-color, #38bdf8)] text-xl font-black font-sans">{searchedOrder.total} {t.currency}</strong>
+                <strong className="text-[var(--primary-color)] text-xl font-black font-sans">{searchedOrder.total} {t.currency}</strong>
               </div>
             </div>
           </div>

@@ -182,7 +182,7 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
 
         <button
           onClick={onNavigateHome}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-black bg-slate-900 text-white hover:bg-slate-800 dark:bg-[var(--primary-color,#38bdf8)] dark:text-[#0A0C10] flex items-center gap-1.5 transition-all self-start sm:self-auto cursor-pointer`}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-black bg-slate-900 text-white hover:bg-slate-800 dark:bg-[var(--primary-color)] dark:text-white flex items-center gap-1.5 transition-all self-start sm:self-auto cursor-pointer`}
         >
           <ArrowLeft className={`w-4 h-4 ${isRtl ? 'rotate-180' : ''}`} />
           <span>{isRtl ? 'العودة للمتجر 🛒' : 'Back to Store 🛒'}</span>
@@ -201,21 +201,21 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={isRtl ? 'ابحث عن مقال صيانة، خوذة...' : 'Search articles...'}
-                className={`w-full text-xs py-3.5 pr-10 pl-10 rounded-2xl bg-white dark:bg-[#11141D] border border-slate-200 dark:border-[#1E293B] text-slate-850 dark:text-white outline-none focus:border-sky-500 transition-colors ${
+                className={`w-full text-xs py-3.5 pr-10 pl-10 rounded-2xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-850 dark:text-white outline-none focus:border-sky-500 transition-colors ${
                   isRtl ? 'pr-11 pl-4' : 'pl-11 pr-4'
                 }`}
               />
             </div>
 
             {/* Category Pills */}
-            <div className="flex flex-wrap items-center gap-1.5 bg-slate-100/50 dark:bg-[#11141D] p-1.5 rounded-2xl border dark:border-[#1E293B]">
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-100/50 dark:bg-[#121622] p-1.5 rounded-2xl border dark:border-[var(--border-dark)]">
               {categories.map(cat => (
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
                   className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                     activeCategory === cat.id
-                      ? 'bg-slate-900 text-white dark:bg-sky-500 dark:text-[#0A0C10] shadow-md'
+                      ? 'bg-slate-900 text-white dark:bg-sky-500 dark:text-white shadow-md'
                       : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
@@ -227,7 +227,7 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
 
           {/* Articles Grid */}
           {filteredArticles.length === 0 ? (
-            <div className="text-center p-16 bg-slate-50 dark:bg-slate-900/40 rounded-3xl border border-slate-150 dark:border-[#1E293B]">
+            <div className="text-center p-16 bg-slate-50 dark:bg-slate-900/40 rounded-3xl border border-slate-150 dark:border-[var(--border-dark)]">
               <p className="text-xs font-bold text-slate-450">
                 {isRtl ? 'لم نعثر على أي مقالات تطابق هذا البحث حالياً.' : 'No matched articles found.'}
               </p>
@@ -241,7 +241,7 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
                 return (
                   <div
                     key={art.id}
-                    className="group bg-white dark:bg-[#11141D] rounded-3xl border border-slate-150 dark:border-[#1E293B] overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full"
+                    className="group bg-white dark:bg-[#121622] rounded-3xl border border-slate-150 dark:border-[var(--border-dark)] overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full"
                   >
                     {/* Cover image */}
                     <div className="relative h-56 sm:h-64 overflow-hidden bg-slate-150">
@@ -294,7 +294,7 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
                         </button>
                         
                         <div className="flex gap-2">
-                          <span className="text-[10px] bg-slate-50 dark:bg-slate-900 border dark:border-[#1E293B] text-slate-450 px-2.5 py-1 rounded-lg">
+                          <span className="text-[10px] bg-slate-50 dark:bg-slate-900 border dark:border-[var(--border-dark)] text-slate-450 px-2.5 py-1 rounded-lg">
                             {isRtl ? 'مقال مقروء' : 'Article read'}
                           </span>
                         </div>
@@ -311,7 +311,7 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Main Article column */}
-          <div className={`lg:col-span-8 bg-white dark:bg-[#11141D] rounded-3xl border border-slate-150 dark:border-[#1E293B] overflow-hidden p-6 sm:p-10 space-y-6 ${isRtl ? 'text-right' : 'text-left'}`}>
+          <div className={`lg:col-span-8 bg-white dark:bg-[#121622] rounded-3xl border border-slate-150 dark:border-[var(--border-dark)] overflow-hidden p-6 sm:p-10 space-y-6 ${isRtl ? 'text-right' : 'text-left'}`}>
             <button
               onClick={() => setSelectedArticle(null)}
               className="text-xs font-black text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
@@ -376,9 +376,9 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
                 <input
                   type="email"
                   placeholder="name@example.com"
-                  className="flex-1 text-xs p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0A0C10] outline-none text-slate-850 dark:text-white"
+                  className="flex-1 text-xs p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#090B0E] outline-none text-slate-850 dark:text-white"
                 />
-                <button className="px-5 py-3.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-sky-500 dark:text-[#0A0C10] text-xs font-black rounded-xl transition-all cursor-pointer">
+                <button className="px-5 py-3.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-sky-500 dark:text-white text-xs font-black rounded-xl transition-all cursor-pointer">
                   {isRtl ? 'اشترك ⚡' : 'Subscribe ⚡'}
                 </button>
               </div>
@@ -387,7 +387,7 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
 
           {/* Smart SEO recommendations Inspector Column */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-slate-50 dark:bg-[#11141D] rounded-3xl border border-slate-150 dark:border-[#1E293B] p-6 space-y-6">
+            <div className="bg-slate-50 dark:bg-[#121622] rounded-3xl border border-slate-150 dark:border-[var(--border-dark)] p-6 space-y-6">
               
               <div className="flex items-center gap-2 text-amber-500">
                 <Sparkles className="w-5 h-5 animate-spin-slow" />
@@ -403,7 +403,7 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
               </p>
 
               {/* Title Tag Analysis */}
-              <div className="space-y-2 p-4 bg-white dark:bg-[#0A0C10] rounded-2xl border dark:border-slate-800">
+              <div className="space-y-2 p-4 bg-white dark:bg-[#090B0E] rounded-2xl border dark:border-slate-800">
                 <span className="text-[10px] font-black uppercase text-slate-400 block">{isRtl ? 'وسم عنوان الصفحة (Title Tag)' : 'Page Title Tag'}</span>
                 <p className="text-xs font-black text-sky-500 break-words">
                   {isRtl ? selectedArticle.seo_title_tag_ar : selectedArticle.seo_title_tag_en}
@@ -415,7 +415,7 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
               </div>
 
               {/* Meta Description Analysis */}
-              <div className="space-y-2 p-4 bg-white dark:bg-[#0A0C10] rounded-2xl border dark:border-slate-800">
+              <div className="space-y-2 p-4 bg-white dark:bg-[#090B0E] rounded-2xl border dark:border-slate-800">
                 <span className="text-[10px] font-black uppercase text-slate-400 block">{isRtl ? 'الوصف الميتا (Meta Description)' : 'Meta Description'}</span>
                 <p className="text-xs text-slate-500 leading-relaxed font-bold">
                   {isRtl ? selectedArticle.seo_description_ar : selectedArticle.seo_description_en}
@@ -427,7 +427,7 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
               </div>
 
               {/* Meta Keywords Analysis */}
-              <div className="space-y-2 p-4 bg-white dark:bg-[#0A0C10] rounded-2xl border dark:border-slate-800">
+              <div className="space-y-2 p-4 bg-white dark:bg-[#090B0E] rounded-2xl border dark:border-slate-800">
                 <span className="text-[10px] font-black uppercase text-slate-400 block">{isRtl ? 'الكلمات الدلالية الموصى بها' : 'Meta Keywords'}</span>
                 <div className="flex flex-wrap gap-1 pt-1">
                   {(isRtl ? selectedArticle.seo_keywords_ar : selectedArticle.seo_keywords_en).split(',').map((kw, idx) => (
@@ -439,7 +439,7 @@ export default function BlogSection({ currentLanguage, onNavigateHome }: BlogSec
               </div>
 
               {/* Schema JSON-LD simulation */}
-              <div className="space-y-2 p-4 bg-[#0A0C10] text-amber-500 rounded-2xl border border-slate-850 font-mono text-[9px] overflow-x-auto scrollbar-thin">
+              <div className="space-y-2 p-4 bg-[#090B0E] text-amber-500 rounded-2xl border border-slate-850 font-mono text-[9px] overflow-x-auto scrollbar-thin">
                 <span className="text-[10px] font-black text-slate-500 block font-sans uppercase">{isRtl ? 'ترميز البيانات المنظمة JSON-LD' : 'JSON-LD Structured Schema'}</span>
                 <pre className="text-[9px] text-slate-350 select-all">
 {`{

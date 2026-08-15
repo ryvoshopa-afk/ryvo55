@@ -150,7 +150,10 @@ export default function StoreSettingsPanel({ settings, onSaveSettings, isRtl }: 
     try {
       const res = await fetch('/api/email/test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('ryvo_session_token') || ''}`
+        },
         body: JSON.stringify({ testEmail: testEmailInput })
       });
       const data = await res.json();
@@ -159,7 +162,7 @@ export default function StoreSettingsPanel({ settings, onSaveSettings, isRtl }: 
         setShowTestModal(false);
         fetchLogs();
       } else {
-        showNotification('error', data.message || 'فشل إرسال البريد الاختباري');
+        showNotification('error', data.message || (isRtl ? 'فشل إرسال البريد الاختباري' : 'Failed to send test email'));
       }
     } catch (err: any) {
       showNotification('error', err.message || 'حدث خطأ أثناء الاتصال بالخادم');
@@ -171,7 +174,11 @@ export default function StoreSettingsPanel({ settings, onSaveSettings, isRtl }: 
   const fetchLogs = async () => {
     setIsFetchingLogs(true);
     try {
-      const res = await fetch('/api/email/logs');
+      const res = await fetch('/api/email/logs', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('ryvo_session_token') || ''}`
+        }
+      });
       const data = await res.json();
       if (data.success && Array.isArray(data.logs)) {
         setEmailLogs(data.logs);

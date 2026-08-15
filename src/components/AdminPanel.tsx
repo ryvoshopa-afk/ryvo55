@@ -166,6 +166,7 @@ interface AdminPanelProps {
   onDeleteReview: (revId: string) => void;
   shopLogo: string;
   onUpdateLogo: (logo: string) => void;
+  onDeleteLogo?: () => void;
   brandColor: string;
   onUpdateBrandColor: (color: string) => void;
   socialLinks?: {
@@ -223,6 +224,7 @@ export default function AdminPanel({
   onDeleteReview,
   shopLogo,
   onUpdateLogo,
+  onDeleteLogo,
   brandColor,
   onUpdateBrandColor,
   socialLinks,
@@ -2461,15 +2463,20 @@ export default function AdminPanel({
 
   const handleAdminOwnPasswordChange = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!adminOwnNewPassword.trim()) {
+
+    if (!adminOwnNewPassword) {
       triggerToast(isRtl ? 'يرجى كتابة كلمة المرور الجديدة!' : 'Please enter the new password!');
       return;
     }
-    if (adminOwnNewPassword.trim().length < 4) {
-      triggerToast(isRtl ? 'كلمة المرور يجب أن تكون 4 أحرف على الأقل!' : 'Password must be at least 4 characters!');
+    if (adminOwnNewPassword.length < 6) {
+      triggerToast(isRtl ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل!' : 'Password must be at least 6 characters!');
       return;
     }
-    if (adminOwnConfirmPassword.trim() && adminOwnNewPassword.trim() !== adminOwnConfirmPassword.trim()) {
+    if (!adminOwnConfirmPassword) {
+      triggerToast(isRtl ? 'يرجى تأكيد كلمة المرور الجديدة!' : 'Please confirm the new password!');
+      return;
+    }
+    if (adminOwnNewPassword !== adminOwnConfirmPassword) {
       triggerToast(isRtl ? 'كلمتا المرور غير متطابقتين!' : 'Passwords do not match!');
       return;
     }
@@ -2478,36 +2485,67 @@ export default function AdminPanel({
     const adminEmail = (currentUser?.email || 'ryvo.shopa@gmail.com').toLowerCase().trim();
 
     try {
+      const token = localStorage.getItem('ryvo_auth_token') || sessionStorage.getItem('ryvo_auth_token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-admin-email': adminEmail,
+        'x-user-email': adminEmail
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch('/api/admin/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           email: adminEmail,
-          newPassword: adminOwnNewPassword.trim()
+          newPassword: adminOwnNewPassword,
+          confirmPassword: adminOwnConfirmPassword
         })
       });
 
-      const data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch (_) {}
+
       if (res.ok && data.success) {
-        // Also update local registered users state & localStorage
+        // Update local registered users state & localStorage without storing password Hash
         const updatedUsers = registeredUsers.map(u => {
-          if (u.email.toLowerCase() === adminEmail) {
-            return { ...u, password: adminOwnNewPassword.trim() };
+          if (u.email && u.email.toLowerCase() === adminEmail) {
+            return { ...u, password: adminOwnNewPassword };
           }
           return u;
         });
         setRegisteredUsers(updatedUsers);
         localStorage.setItem('ryvo_registered_users', JSON.stringify(updatedUsers));
 
-        triggerToast(isRtl ? 'تم تحديث كلمة مرور حساب الإدارة بنجاح! 🔑' : 'Admin password updated successfully! 🔑');
+        triggerToast(isRtl ? '✅ تم تغيير كلمة مرور حساب الإدارة بنجاح.' : '✅ Admin password changed successfully.');
         setAdminOwnNewPassword('');
         setAdminOwnConfirmPassword('');
       } else {
-        triggerToast(data.error || (isRtl ? 'فشل تحديث كلمة المرور' : 'Failed to update password'));
+        if (res.status === 401) {
+          triggerToast(isRtl ? 'جلسة المدير غير صالحة، يرجى إعادة تسجيل الدخول' : 'Invalid admin session, please log in again');
+        } else if (res.status === 403) {
+          triggerToast(isRtl ? 'غير مصرح لك بتغيير كلمة المرور (403)' : 'Not authorized (403)');
+        } else if (res.status === 404) {
+          triggerToast(isRtl ? 'المسار غير موجود بالخادم (404)' : 'Endpoint not found (404)');
+        } else if (res.status === 400) {
+          triggerToast(data.error || (isRtl ? 'بيانات كلمة المرور غير صالحة (400)' : 'Invalid password payload (400)'));
+        } else if (res.status === 500) {
+          triggerToast(data.error || (isRtl ? 'خطأ داخلي في الخادم (500)' : 'Internal server error (500)'));
+        } else {
+          triggerToast(data.error || (isRtl ? 'فشل تحديث كلمة المرور' : 'Failed to update password'));
+        }
       }
     } catch (err: any) {
       console.error("Error changing admin password:", err);
-      triggerToast(isRtl ? 'حدث خطأ أثناء الاتصال بالخادم' : 'Error connecting to server');
+      if (err instanceof TypeError || err?.name === 'TypeError' || !navigator.onLine) {
+        triggerToast(isRtl ? 'فشل الاتصال بالخادم (NETWORK_ERROR)' : 'Server connection failed (NETWORK_ERROR)');
+      } else {
+        triggerToast(isRtl ? 'حدث خطأ أثناء تنفيذ طلب تغيير كلمة المرور' : 'Error executing password change request');
+      }
     } finally {
       setIsChangingAdminPassword(false);
     }
@@ -2556,6 +2594,7 @@ export default function AdminPanel({
   const [groupSubjects, setGroupSubjects] = useState('');
   const [groupBody, setGroupBody] = useState('');
   const [selectedGroupEmails, setSelectedGroupEmails] = useState<string[]>([]);
+  const [isSendingGroupEmail, setIsSendingGroupEmail] = useState(false);
 
   const toggleGroupEmailSelection = (email: string) => {
     if (selectedGroupEmails.includes(email)) {
@@ -2565,7 +2604,7 @@ export default function AdminPanel({
     }
   };
 
-  const sendGroupEmail = () => {
+  const sendGroupEmail = async () => {
     if (selectedGroupEmails.length === 0) {
       triggerToast(isRtl ? 'يرجى اختيار مستلم واحد على الأقل!' : 'Please select at least one recipient!');
       return;
@@ -2574,34 +2613,44 @@ export default function AdminPanel({
       triggerToast(isRtl ? 'يرجى تعبئة عنوان ومضمون الرسالة!' : 'Please fulfill email subject and body text!');
       return;
     }
-    
-    // Read current emails
-    let currentEmails: any[] = [];
-    const saved = localStorage.getItem('ryvo_customer_emails');
-    if (saved) {
-      try { currentEmails = JSON.parse(saved); } catch (e) {}
+
+    setIsSendingGroupEmail(true);
+    triggerToast(isRtl ? '⏳ جاري إرسال البريد الجماعي عبر الخادم...' : '⏳ Dispatching bulk emails via server...');
+
+    try {
+      const sessionToken = localStorage.getItem('ryvo_session_token') || localStorage.getItem('admin_session') || '';
+      const res = await fetch('/api/admin/bulk-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`
+        },
+        body: JSON.stringify({
+          subject: groupSubjects,
+          title: groupSubjects,
+          messageHtml: groupBody,
+          recipientGroup: 'custom',
+          customEmails: selectedGroupEmails,
+          ctaText: 'تصفح العروض الآن 🛍️',
+          ctaUrl: 'https://ryvo.shop'
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const count = data.report?.successCount ?? selectedGroupEmails.length;
+        triggerToast(isRtl ? `تم إرسال الرسالة الجماعية بنجاح إلى ${count} مستلم! 📨` : `Bulk email broadcast sent successfully to ${count} recipient(s)! 📨`);
+        setGroupSubjects('');
+        setGroupBody('');
+        setSelectedGroupEmails([]);
+      } else {
+        triggerToast(isRtl ? `فشل إرسال البريد الجماعي: ${data.error || 'خطأ غير معروف'}` : `Dispatch failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      triggerToast(isRtl ? `خطأ في الاتصال أثناء الإرسال: ${err.message}` : `Network error: ${err.message}`);
+    } finally {
+      setIsSendingGroupEmail(false);
     }
-
-    const today = new Date();
-    const formattedDate = today.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
-    const formattedTime = today.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const newSimulatedEmails = selectedGroupEmails.map(email => ({
-      id: `email-group-${Math.floor(Math.random() * 9999999)}-${Date.now()}`,
-      to: email,
-      subject: groupSubjects,
-      body: groupBody,
-      date: formattedDate,
-      time: formattedTime
-    }));
-
-    const finalEmails = [...currentEmails, ...newSimulatedEmails];
-    localStorage.setItem('ryvo_customer_emails', JSON.stringify(finalEmails));
-    
-    setGroupSubjects('');
-    setGroupBody('');
-    setSelectedGroupEmails([]);
-    triggerToast(isRtl ? 'تم إرسال الرسالة الجماعية لبريد العملاء بنجاح! 📨' : 'Group message sent to customers successfully! 📨');
   };
 
   if (!currentUser || currentUser.role === 'customer' || currentUser.role === 'affiliate') return null;
@@ -3734,7 +3783,7 @@ export default function AdminPanel({
                 : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <Users className="w-4 h-4 text-[var(--primary-color, #38bdf8)]" />
+            <Users className="w-4 h-4 text-[var(--primary-color)]" />
             <span>{isRtl ? 'إدارة العملاء 👤' : 'Customers 👤'}</span>
           </button>
         )}
@@ -4270,7 +4319,7 @@ export default function AdminPanel({
                     <div className="space-y-1 sm:col-span-1">
                       <label className="font-bold text-slate-400">{t.p_image || 'صورة المنتج'}</label>
                       <div className="flex flex-col gap-2">
-                        <label className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-200 hover:border-[var(--primary-color, #38bdf8)] transition-all cursor-pointer font-extrabold text-[10px] text-slate-500 dark:text-slate-400 overflow-hidden truncate">
+                        <label className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-200 hover:border-[var(--primary-color)] transition-all cursor-pointer font-extrabold text-[10px] text-slate-500 dark:text-slate-400 overflow-hidden truncate">
                           <span>{image ? '✓ تم الرفع' : '📥 ارفع الصورة من جهازك'}</span>
                           <input
                             type="file"
@@ -6094,7 +6143,7 @@ export default function AdminPanel({
                       <th className="p-4 text-center">{currentLanguage === 'ar' ? 'الإجراء' : 'Actions'}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-[#0A0C10]">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-[#090B0E]">
                     {reviews.map((rev, rIdx) => (
                       <tr key={rev.id || `rev-row-${rIdx}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/40 transition-colors">
                         <td className="p-4 font-black text-slate-900 dark:text-white max-w-[150px] truncate">{rev.product_name}</td>
@@ -6141,98 +6190,165 @@ export default function AdminPanel({
           </div>
         )}
 
-        {/* PANEL E: BRAND LOGO STYLE CUSTOMIZER */}
+        {/* PANEL E: BRAND LOGO & VISUAL IDENTITY PIPELINE */}
         {adminTab === 'logo' && (
           <div className="bg-white dark:bg-[#131b2e] rounded-3xl p-6 sm:p-8 border border-slate-100 dark:border-slate-200/80 shadow-md text-left animate-in zoom-in-95 duration-200 space-y-6">
-            <h3 className="font-extrabold text-sm uppercase tracking-wider text-amber-500 border-b border-[#1E293B] pb-3 mb-6 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>{t.admin_tab_logo || 'تخصيص شعار المتجر 🎨'}</span>
+            <h3 className="font-extrabold text-sm uppercase tracking-wider text-amber-500 border-b border-[#1E293B] pb-3 mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>{currentLanguage === 'ar' ? 'هوية المتجر والشعار الموحد 🎨' : 'Store Visual Identity & Unified Logo 🎨'}</span>
+              </div>
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-400 font-mono px-2.5 py-1 rounded-full border border-emerald-500/20 dir-ltr">
+                Centralized Branding
+              </span>
             </h3>
 
-            <p className="text-xs text-slate-450 leading-relaxed font-sans max-w-xl">
+            <p className="text-xs text-slate-400 leading-relaxed font-sans max-w-2xl">
               {currentLanguage === 'ar'
-                ? 'خصص هوية وشعار متجر رايفو المتميز مباشرة من هذه اللوحة. يمكنك كتابة الشعار كروية نصية وسيقوم الهيدر بتنسيقه تلقائياً أو رفع صورة شعار مخصصة.'
-                : 'Modify and customize your primary header brand identity slogan live or upload a fine brand logo image.'}
+                ? 'عند رفع شعار جديد، يتم اعتماد الشعار في جميع أنحاء النظام وتوليد أيقونات الفافيكون (Favicons) لجميع المتصفحات والهواتف، وتحديث الهوية الموحدة لجميع قوالب البريد الإلكتروني تلقائياً مع منع التخزين المؤقت.'
+                : 'When a new logo is uploaded, it is automatically adopted across the entire platform, generating favicons for browsers & PWA, and updating all email templates dynamically.'}
             </p>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              {/* PANEL E.1: LOGO DESIGN */}
+              {/* PANEL E.1: LOGO UPLOAD & MANAGEMENT */}
               <div className="space-y-4 bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-sm">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-400 uppercase">
-                    {currentLanguage === 'ar' ? 'اسم الشعار المطلوب (نصي):' : 'Desired Logo Branding Slogan (Text):'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={shopLogo.startsWith('data:image') || shopLogo.includes('http') ? '' : shopLogo}
-                    onChange={(e) => {
-                      onUpdateLogo(e.target.value);
-                    }}
-                    placeholder="مثال: RYVO"
-                    className="w-full p-3 bg-white dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-200 focus:border-[var(--primary-color, #38bdf8)] text-xs font-bold rounded-xl outline-none text-slate-800 dark:text-gray-100 transition-all text-center uppercase tracking-widest"
-                  />
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-800">
+                  <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                    {currentLanguage === 'ar' ? 'رفع الشعار الموحد 🖼️' : 'Upload Unified Logo 🖼️'}
+                  </span>
+                  {(shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/')) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onDeleteLogo) {
+                          onDeleteLogo();
+                        } else {
+                          onUpdateLogo('RYVO');
+                        }
+                        triggerToast(currentLanguage === 'ar' ? 'تم إعادة الشعار الافتراضي للمتجر' : 'Reset logo to default');
+                      }}
+                      className="text-[11px] text-red-400 hover:text-red-300 font-bold flex items-center gap-1 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg border border-red-500/20 transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{currentLanguage === 'ar' ? 'حذف الشعار واستعادة الافتراضي' : 'Delete & Reset Logo'}</span>
+                    </button>
+                  )}
                 </div>
 
-                <div className="space-y-3 border-t border-slate-200 dark:border-slate-800 pt-4">
+                <div className="space-y-3">
                   <label className="block text-xs font-bold text-slate-400 uppercase">
-                    {currentLanguage === 'ar' ? 'رفع شعار المتجر كصورة 🖼️:' : 'Upload Brand Logo Image 🖼️:'}
+                    {currentLanguage === 'ar' ? 'اختر ملف الصورة من جهازك:' : 'Select image file from your device:'}
                   </label>
-                  <div className="flex flex-col gap-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const img = new Image();
+                        img.onload = () => {
+                          const canvas = document.createElement('canvas');
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+                          const ctx = canvas.getContext('2d');
+                          if (ctx) {
+                            ctx.drawImage(img, 0, 0);
+                            const pngDataUrl = canvas.toDataURL('image/png');
+                            onUpdateLogo(pngDataUrl);
+                            triggerToast(currentLanguage === 'ar' ? 'تم تحديث الشعار وتوليد جميع الأيقونات بنجاح! 🚀' : 'Logo & favicons updated successfully!');
+                          }
+                        };
+                        img.onerror = () => {
                           const reader = new FileReader();
                           reader.onloadend = () => {
                             if (typeof reader.result === 'string') {
                               onUpdateLogo(reader.result);
-                              triggerToast(currentLanguage === 'ar' ? 'تم تحديث صورة الشعار بنجاح!' : 'Logo image uploaded successfully!');
+                              triggerToast(currentLanguage === 'ar' ? 'تم تحديث صورة الشعار بنجاح!' : 'Logo updated successfully!');
                             }
                           };
                           reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="block w-full text-[10px] text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-[var(--primary-color, #38bdf8)]/10 file:text-[var(--primary-color, #38bdf8)] hover:file:bg-[var(--primary-color, #38bdf8)]/20 cursor-pointer"
-                    />
-                    
-                    <span className="text-[10px] text-slate-400 block font-semibold">{currentLanguage === 'ar' ? 'أو أدخل رابط مستند الصورة المباشر:' : 'Or paste a direct logo image URL:'}</span>
+                        };
+                        img.src = URL.createObjectURL(file);
+                      }
+                    }}
+                    className="block w-full text-[11px] text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-[var(--primary-color)]/10 file:text-[var(--primary-color)] hover:file:bg-[var(--primary-color)]/20 cursor-pointer"
+                  />
+                  
+                  <span className="text-[10px] text-slate-400 block font-semibold">{currentLanguage === 'ar' ? 'أو أدخل رابط مستند الصورة المباشر:' : 'Or paste direct logo image URL:'}</span>
+                  <input
+                    type="text"
+                    onChange={(e) => {
+                      if (e.target.value.trim()) {
+                        onUpdateLogo(e.target.value.trim());
+                        triggerToast(currentLanguage === 'ar' ? 'تم تحديث رابط الشعار وتطبيقه!' : 'Logo URL updated successfully!');
+                      }
+                    }}
+                    placeholder="https://..."
+                    className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-white rounded-xl outline-none"
+                  />
+
+                  <div className="pt-2">
+                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                      {currentLanguage === 'ar' ? 'أو اكتب الشعار كعنوان نصي:' : 'Or type text brand slogan:'}
+                    </label>
                     <input
                       type="text"
+                      value={shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/') ? '' : shopLogo}
                       onChange={(e) => {
-                        if (e.target.value.trim()) {
-                          onUpdateLogo(e.target.value.trim());
-                        }
+                        onUpdateLogo(e.target.value);
                       }}
-                      placeholder="https://..."
-                      className="w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-white rounded-xl outline-none"
+                      placeholder="مثال: RYVO"
+                      className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-800 dark:text-gray-100 transition-all text-center uppercase tracking-widest"
                     />
                   </div>
                 </div>
 
-                <div className="p-3 bg-white dark:bg-[#0A0C10] border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center space-y-2">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">
-                    {currentLanguage === 'ar' ? 'معاينة الشعار الحالي' : 'Live Header Visualizing'}
+                {/* PREVIEW BOX */}
+                <div className="p-4 bg-white dark:bg-[#090B0E] border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center space-y-3">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    {currentLanguage === 'ar' ? 'معاينة الشعار الحالي للعلامة التجارية' : 'Live Brand Logo Preview'}
                   </span>
                   
-                  {/* Visual rendering preview resembling Navbar header logo */}
-                  <div className="p-3 bg-slate-50 dark:bg-[#11141D] rounded-xl border border-slate-100 dark:border-slate-850 w-full text-center flex items-center justify-center">
+                  <div className="p-4 bg-slate-50 dark:bg-[#121622] rounded-xl border border-slate-100 dark:border-slate-850 w-full text-center flex items-center justify-center min-h-[70px]">
                     {shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/') ? (
-                      <img src={shopLogo} alt="Shop Logo" className="h-10 max-w-[150px] object-contain rounded-lg" referrerPolicy="no-referrer" />
+                      <img src={shopLogo} alt="Shop Logo" className="h-12 max-w-[200px] object-contain rounded-lg" referrerPolicy="no-referrer" />
                     ) : shopLogo.toUpperCase().includes('RYVO') ? (
-                      <span className="text-lg font-black font-sans tracking-tight">
-                        <span className="text-[var(--primary-color, #38bdf8)]">RYVO</span>
+                      <span className="text-xl font-black font-sans tracking-tight">
+                        <span className="text-[var(--primary-color)]">RYVO</span>
                         <span className="text-slate-900 dark:text-white">
                           {shopLogo.toUpperCase().replace('RYVO', '').trim() || 'STORE'}
                         </span>
                       </span>
                     ) : (
-                      <span className="text-sm font-black tracking-widest bg-gradient-to-r from-[var(--primary-color, #38bdf8)] to-amber-500 bg-clip-text text-transparent uppercase font-sans">
+                      <span className="text-base font-black tracking-widest bg-gradient-to-r from-[var(--primary-color)] to-amber-500 bg-clip-text text-transparent uppercase font-sans">
                         {shopLogo}
                       </span>
                     )}
+                  </div>
+                </div>
+
+                {/* SYSTEM AUTOMATION STATUS */}
+                <div className="p-3.5 bg-slate-100/70 dark:bg-slate-800/40 rounded-xl border border-slate-200/50 dark:border-slate-700/50 space-y-2 text-[11px]">
+                  <span className="font-extrabold text-slate-700 dark:text-slate-300 block mb-1">
+                    {currentLanguage === 'ar' ? '⚡ حالة التحديث الآلي للهوية:' : '⚡ Automated Identity Pipeline Status:'}
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[10px]">
+                    <div className="flex items-center gap-1.5 text-emerald-500 font-semibold">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>{currentLanguage === 'ar' ? 'الشعار الموحد للموقع' : 'Website Central Logo'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-emerald-500 font-semibold">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>{currentLanguage === 'ar' ? 'Favicon & PWA (جميع المقاسات)' : 'Favicons (16,32,180,192,512)'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-emerald-500 font-semibold">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>{currentLanguage === 'ar' ? 'قوالب البريد الإلكتروني' : 'HTML Email Templates'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-emerald-500 font-semibold">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>{currentLanguage === 'ar' ? 'منع الكاش القديم (?v=TIMESTAMP)' : 'Cache-Busting Enabled'}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -6255,7 +6371,7 @@ export default function AdminPanel({
                   <label className="block text-xs font-bold text-slate-400 uppercase">
                     {currentLanguage === 'ar' ? 'اختر اللون يدوياً 🖌️:' : 'Choose Custom Color 🖌️:'}
                   </label>
-                  <div className="flex items-center gap-3 bg-white dark:bg-[#0A0C10] p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-3 bg-white dark:bg-[#090B0E] p-3 rounded-xl border border-slate-200 dark:border-slate-800">
                     <input
                       type="color"
                       value={brandColor}
@@ -6280,6 +6396,7 @@ export default function AdminPanel({
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {[
+                      { name: currentLanguage === 'ar' ? 'أحمر RYVO الرسمي ❤️' : 'RYVO Official Red ❤️', val: '#E53E3E' },
                       { name: currentLanguage === 'ar' ? 'سماوي جليدي' : 'Ice Blue', val: '#38bdf8' },
                       { name: currentLanguage === 'ar' ? 'أزرق ملكي' : 'Royal Blue', val: '#3572FF' },
                       { name: currentLanguage === 'ar' ? 'ذهبي ساطع' : 'Bright Gold', val: '#f59e0b' },
@@ -6295,7 +6412,7 @@ export default function AdminPanel({
                           onClick={() => onUpdateBrandColor(preset.val)}
                           className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left text-[10px] font-black cursor-pointer ${
                             isActive
-                              ? 'bg-white dark:bg-black border-slate-350 dark:border-[var(--primary-color, #38bdf8)] shadow-sm scale-103'
+                              ? 'bg-white dark:bg-black border-slate-350 dark:border-[var(--primary-color)] shadow-sm scale-103'
                               : 'bg-white/50 dark:bg-black/35 border-slate-200 dark:border-slate-900 hover:scale-102 hover:border-slate-300'
                           }`}
                         >
@@ -6313,7 +6430,7 @@ export default function AdminPanel({
                 </div>
 
                 {/* Mini mockup rendering widget to show styling response */}
-                <div className="p-4 bg-white dark:bg-[#0A0C10] rounded-xl border border-slate-150 dark:border-slate-800 flex flex-col gap-2.5 shadow-sm">
+                <div className="p-4 bg-white dark:bg-[#090B0E] rounded-xl border border-slate-150 dark:border-slate-800 flex flex-col gap-2.5 shadow-sm">
                   <div className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: brandColor }} />
                     <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
@@ -6398,7 +6515,7 @@ export default function AdminPanel({
                       value={tempTextAr}
                       onChange={(e) => setTempTextAr(e.target.value)}
                       placeholder="اكتب هنا..."
-                      className="w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
+                      className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
                     />
                   </div>
 
@@ -6409,7 +6526,7 @@ export default function AdminPanel({
                       value={tempTextEn}
                       onChange={(e) => setTempTextEn(e.target.value)}
                       placeholder="Write translation..."
-                      className="w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
+                      className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
                     />
                   </div>
 
@@ -6420,7 +6537,7 @@ export default function AdminPanel({
                       value={tempTextFr}
                       onChange={(e) => setTempTextFr(e.target.value)}
                       placeholder="Écrire en français..."
-                      className="w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
+                      className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
                     />
                   </div>
 
@@ -6431,7 +6548,7 @@ export default function AdminPanel({
                       value={tempLink}
                       onChange={(e) => setTempLink(e.target.value)}
                       placeholder="e.g. products/sale"
-                      className="w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-left"
+                      className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-left"
                     />
                   </div>
                 </div>
@@ -6497,7 +6614,7 @@ export default function AdminPanel({
             </div>
 
             {/* Form to Add New Affiliate Partner */}
-            <div className="bg-slate-50 dark:bg-[#0A0C10] p-5 rounded-2xl border border-slate-105 dark:border-slate-800 space-y-4">
+            <div className="bg-slate-50 dark:bg-[#090B0E] p-5 rounded-2xl border border-slate-105 dark:border-slate-800 space-y-4">
               <h4 className="text-xs font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <span>➕ {isRtl ? 'تسجيل شريك / مسوق بالعمولة جديد' : 'Register New Affiliate Partner'}</span>
               </h4>
@@ -6570,7 +6687,7 @@ export default function AdminPanel({
                     value={affName}
                     onChange={(e) => setAffName(e.target.value)}
                     placeholder={isRtl ? 'سارة المنصوري' : 'Sarah Al-Mansouri'}
-                    className={`w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white ${isRtl ? 'text-right' : 'text-left'}`}
+                    className={`w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white ${isRtl ? 'text-right' : 'text-left'}`}
                   />
                 </div>
 
@@ -6582,7 +6699,7 @@ export default function AdminPanel({
                     value={affEmail}
                     onChange={(e) => setAffEmail(e.target.value)}
                     placeholder="sarah@ryvo.co"
-                    className="w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-left font-sans"
+                    className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-left font-sans"
                   />
                 </div>
 
@@ -6594,7 +6711,7 @@ export default function AdminPanel({
                     value={affPhone}
                     onChange={(e) => setAffPhone(e.target.value)}
                     placeholder="05xxxxxxxx"
-                    className="w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-left font-sans"
+                    className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-left font-sans"
                   />
                 </div>
 
@@ -6606,7 +6723,7 @@ export default function AdminPanel({
                     value={affPassword}
                     onChange={(e) => setAffPassword(e.target.value)}
                     placeholder="123456"
-                    className="w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-left font-sans"
+                    className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-left font-sans"
                   />
                 </div>
 
@@ -6618,7 +6735,7 @@ export default function AdminPanel({
                     value={affCode}
                     onChange={(e) => setAffCode(e.target.value)}
                     placeholder="SARAH15"
-                    className="w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-205 dark:border-slate-800 text-xs font-black rounded-xl outline-none text-slate-850 dark:text-white text-center font-sans tracking-widest uppercase"
+                    className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-205 dark:border-slate-800 text-xs font-black rounded-xl outline-none text-slate-850 dark:text-white text-center font-sans tracking-widest uppercase"
                   />
                 </div>
 
@@ -6631,7 +6748,7 @@ export default function AdminPanel({
                     required
                     value={affDiscount}
                     onChange={(e) => setAffDiscount(Number(e.target.value) || 0)}
-                    className="w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-center font-sans"
+                    className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-center font-sans"
                   />
                 </div>
 
@@ -6644,7 +6761,7 @@ export default function AdminPanel({
                     required
                     value={affCommission}
                     onChange={(e) => setAffCommission(Number(e.target.value) || 0)}
-                    className="w-full p-2.5 bg-white dark:bg-[#0A0C10] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-center font-sans"
+                    className="w-full p-2.5 bg-white dark:bg-[#090B0E] border border-slate-205 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white text-center font-sans"
                   />
                 </div>
 
@@ -6672,7 +6789,7 @@ export default function AdminPanel({
               ) : (
                 <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
                   <table className="w-full text-xs text-left text-slate-500 dark:text-slate-400">
-                    <thead className="bg-slate-50 dark:bg-[#0A0C10] text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">
+                    <thead className="bg-slate-50 dark:bg-[#090B0E] text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">
                       <tr>
                         <th scope="col" className={`px-6 py-4.5 ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'المسوق الشريك' : 'Affiliate'}</th>
                         <th scope="col" className="px-6 py-4.5 text-center">{isRtl ? 'كود الخصم' : 'Promo Code'}</th>
@@ -6683,7 +6800,7 @@ export default function AdminPanel({
                         <th scope="col" className="px-6 py-4.5 text-center">{isRtl ? 'الإجراءات والتحويل' : 'Actions'}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-850 bg-white dark:bg-[#11141D]">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-850 bg-white dark:bg-[#121622]">
                       {affiliates.map((aff: any, affIdx: number) => (
                         <tr key={aff.id || `aff-row-${affIdx}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/40 transition-all">
                           <td className={`px-6 py-4 ${isRtl ? 'text-right' : 'text-left'}`}>
@@ -6711,7 +6828,7 @@ export default function AdminPanel({
                           <td className="px-6 py-4 text-center text-[10px] font-bold">
                             {aff.iban ? (
                               <div className="space-y-1.5 flex flex-col items-center">
-                                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 px-2.5 py-1.5 rounded-xl justify-between">
+                                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 px-2.5 py-1.5 rounded-xl justify-between">
                                   <span className="font-mono text-[10.5px] text-slate-800 dark:text-slate-200 select-all tracking-tight break-all font-bold" title={aff.iban}>
                                     {aff.iban}
                                   </span>
@@ -6860,7 +6977,7 @@ export default function AdminPanel({
               </div>
 
               {/* Master Toggle Switch */}
-              <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#0A0C10] p-2 px-3 rounded-xl border border-slate-150 dark:border-slate-800">
+              <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#090B0E] p-2 px-3 rounded-xl border border-slate-150 dark:border-slate-800">
                 <span className="text-xs font-black text-slate-700 dark:text-slate-300">{isRtl ? 'تفعيل عجلة الحظ في المتجر:' : 'Enable Lucky Wheel:'}</span>
                 <button
                   type="button"
@@ -6900,7 +7017,7 @@ export default function AdminPanel({
                   return (
                     <div 
                       key={seg.id || `seg-${idx}`} 
-                      className="bg-slate-50 dark:bg-[#0A0C10] p-4 rounded-2xl border border-slate-105 dark:border-slate-800 flex flex-wrap gap-4 items-center justify-between"
+                      className="bg-slate-50 dark:bg-[#090B0E] p-4 rounded-2xl border border-slate-105 dark:border-slate-800 flex flex-wrap gap-4 items-center justify-between"
                     >
                       {/* Left: Slice Index & Names */}
                       <div className="flex items-center gap-3 flex-1 min-w-[280px]">
@@ -6919,7 +7036,7 @@ export default function AdminPanel({
                                 updated[idx] = { ...seg, textAr: e.target.value };
                                 onUpdateWheelSettings({ ...wheelSettings, segments: updated });
                               }}
-                              className="w-full p-2 bg-white dark:bg-[#11141D] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
+                              className="w-full p-2 bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
                             />
                           </div>
 
@@ -6933,7 +7050,7 @@ export default function AdminPanel({
                                 updated[idx] = { ...seg, textEn: e.target.value };
                                 onUpdateWheelSettings({ ...wheelSettings, segments: updated });
                               }}
-                              className="w-full p-2 bg-white dark:bg-[#11141D] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
+                              className="w-full p-2 bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
                             />
                           </div>
                         </div>
@@ -6951,7 +7068,7 @@ export default function AdminPanel({
                               updated[idx] = { ...seg, type: e.target.value as any };
                               onUpdateWheelSettings({ ...wheelSettings, segments: updated });
                             }}
-                            className="w-full p-2 bg-white dark:bg-[#11141D] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
+                            className="w-full p-2 bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none text-slate-850 dark:text-white"
                           >
                             <option value="coupon">{isRtl ? 'كوبون خصم 🏷️' : 'Discount Coupon 🏷️'}</option>
                             <option value="points">{isRtl ? 'ربح نقاط 🪙' : 'Win Points 🪙'}</option>
@@ -6973,7 +7090,7 @@ export default function AdminPanel({
                                 updated[idx] = { ...seg, value: Number(e.target.value) || 0 };
                                 onUpdateWheelSettings({ ...wheelSettings, segments: updated });
                               }}
-                              className="w-full p-2 bg-white dark:bg-[#11141D] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none font-sans text-slate-850 dark:text-white"
+                              className="w-full p-2 bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl outline-none font-sans text-slate-850 dark:text-white"
                             />
                           </div>
                         )}
@@ -6991,7 +7108,7 @@ export default function AdminPanel({
                                 updated[idx] = { ...seg, couponCode: e.target.value.toUpperCase().trim() };
                                 onUpdateWheelSettings({ ...wheelSettings, segments: updated });
                               }}
-                              className="w-full p-2 bg-white dark:bg-[#11141D] border border-slate-200 dark:border-slate-800 text-xs font-mono font-bold rounded-xl outline-none text-slate-850 dark:text-white"
+                              className="w-full p-2 bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-800 text-xs font-mono font-bold rounded-xl outline-none text-slate-850 dark:text-white"
                             />
                           </div>
                         )}
@@ -7271,7 +7388,7 @@ export default function AdminPanel({
                             type="text"
                             value={supportSettings.supportName || ''}
                             onChange={(e) => handleSaveSupportSettings({ ...supportSettings, supportName: e.target.value })}
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-right font-sans"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-right font-sans"
                             placeholder="مثال: ريم (الدعم المالي والتقني)"
                           />
                         </div>
@@ -7281,7 +7398,7 @@ export default function AdminPanel({
                             type="text"
                             value={supportSettings.supportAvatar || ''}
                             onChange={(e) => handleSaveSupportSettings({ ...supportSettings, supportAvatar: e.target.value })}
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-right font-mono"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-right font-mono"
                             placeholder="https://example.com/avatar.png"
                           />
                         </div>
@@ -7293,7 +7410,7 @@ export default function AdminPanel({
                           value={supportSettings.welcomeMessage || ''}
                           onChange={(e) => handleSaveSupportSettings({ ...supportSettings, welcomeMessage: e.target.value })}
                           rows={3}
-                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-right font-sans"
+                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-right font-sans"
                           placeholder="مثال: مرحباً بك في متجرنا! كيف يمكنني مساعدتك؟"
                         />
                       </div>
@@ -7341,7 +7458,7 @@ export default function AdminPanel({
 
                       {/* Suggestion Form for Add/Edit */}
                       {editingSuggestion && (
-                        <div className="bg-white dark:bg-[#11141D] border border-slate-200 dark:border-slate-800 p-4 rounded-2xl space-y-3 animate-in slide-in-from-top-2">
+                        <div className="bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-800 p-4 rounded-2xl space-y-3 animate-in slide-in-from-top-2">
                           <h5 className="text-[11px] font-black text-emerald-505">
                             {editingSuggestion.textAr ? '✏️ تعديل الاقتراح المحدد' : '➕ إضافة اقتراح جديد'}
                           </h5>
@@ -7353,7 +7470,7 @@ export default function AdminPanel({
                                 type="text"
                                 value={suggTextAr}
                                 onChange={(e) => setSuggTextAr(e.target.value)}
-                                className="w-full text-xs p-2.5 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-right"
+                                className="w-full text-xs p-2.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-right"
                                 placeholder="مثال: أين طلبي؟"
                               />
                             </div>
@@ -7363,7 +7480,7 @@ export default function AdminPanel({
                                 type="text"
                                 value={suggTextEn}
                                 onChange={(e) => setSuggTextEn(e.target.value)}
-                                className="w-full text-xs p-2.5 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-left font-sans"
+                                className="w-full text-xs p-2.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-left font-sans"
                                 placeholder="e.g. Where is my order?"
                               />
                             </div>
@@ -7373,7 +7490,7 @@ export default function AdminPanel({
                                 type="text"
                                 value={suggIcon}
                                 onChange={(e) => setSuggIcon(e.target.value)}
-                                className="w-full text-xs p-2.5 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-center"
+                                className="w-full text-xs p-2.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-center"
                                 placeholder="💡"
                               />
                             </div>
@@ -7439,7 +7556,7 @@ export default function AdminPanel({
                           <p className="text-center py-6 text-slate-400 text-xs font-bold">لا توجد اقتراحات سريعة مسجلة حالياً. اضغط إضافة للبدء!</p>
                         ) : (
                           [...supportSettings.suggestions].sort((a,b) => (a.order || 0) - (b.order || 0)).map((sugg, index) => (
-                            <div key={sugg.id || `sugg-${index}`} className="p-3.5 bg-white dark:bg-[#11141D] border border-slate-150 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 text-right">
+                            <div key={sugg.id || `sugg-${index}`} className="p-3.5 bg-white dark:bg-[#121622] border border-slate-150 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 text-right">
                               <div className="flex items-center gap-1">
                                 <button
                                   type="button"
@@ -7628,12 +7745,12 @@ export default function AdminPanel({
                             value={quickReplySearchTerm}
                             onChange={(e) => setQuickReplySearchTerm(e.target.value)}
                             placeholder={isRtl ? '🔍 بحث في الردود...' : '🔍 Search replies...'}
-                            className="px-3 py-2 bg-white dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-emerald-500 font-sans"
+                            className="px-3 py-2 bg-white dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-emerald-500 font-sans"
                           />
                           <select
                             value={quickReplyScopeFilter}
                             onChange={(e: any) => setQuickReplyScopeFilter(e.target.value)}
-                            className="px-3 py-2 bg-white dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-emerald-500 font-sans cursor-pointer"
+                            className="px-3 py-2 bg-white dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-emerald-500 font-sans cursor-pointer"
                           >
                             <option value="all">{isRtl ? 'جميع النطاقات (عام وخاص)' : 'All Scopes'}</option>
                             <option value="shared">{isRtl ? 'عام لجميع الموظفين' : 'Shared'}</option>
@@ -7652,7 +7769,7 @@ export default function AdminPanel({
                             className={`px-3 py-1.5 text-xs font-black rounded-xl transition-all cursor-pointer shrink-0 ${
                               quickReplyCategoryFilter === cat
                                 ? 'bg-emerald-600 text-white shadow-sm'
-                                : 'bg-white dark:bg-[#0A0C10] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                                : 'bg-white dark:bg-[#090B0E] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300'
                             }`}
                           >
                             {cat}
@@ -7662,7 +7779,7 @@ export default function AdminPanel({
 
                       {/* Quick Replies Grid */}
                       {filteredQuickReplies.length === 0 ? (
-                        <div className="py-12 text-center text-slate-400 font-bold text-xs bg-white dark:bg-[#0A0C10] rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                        <div className="py-12 text-center text-slate-400 font-bold text-xs bg-white dark:bg-[#090B0E] rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
                           {isRtl ? 'لا توجد ردود سريعة مطابقة للبحث' : 'No quick replies found'}
                         </div>
                       ) : (
@@ -7670,7 +7787,7 @@ export default function AdminPanel({
                           {filteredQuickReplies.map((qr: any, idx: number) => (
                             <div
                               key={qr.id || `qr-card-${idx}`}
-                              className={`p-4 bg-white dark:bg-[#0A0C10] border rounded-2xl space-y-3 transition-all flex flex-col justify-between ${
+                              className={`p-4 bg-white dark:bg-[#090B0E] border rounded-2xl space-y-3 transition-all flex flex-col justify-between ${
                                 qr.isActive
                                   ? 'border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 shadow-sm'
                                   : 'border-slate-200/60 dark:border-slate-800/60 opacity-60 bg-slate-100/50 dark:bg-slate-900/30'
@@ -7839,7 +7956,7 @@ export default function AdminPanel({
                         {currentSuggestions.map((sug: any, sIdx: number) => (
                           <div
                             key={sug.id || sIdx}
-                            className={`p-3.5 bg-white dark:bg-[#0A0C10] border rounded-2xl flex items-center justify-between gap-3 transition-all ${
+                            className={`p-3.5 bg-white dark:bg-[#090B0E] border rounded-2xl flex items-center justify-between gap-3 transition-all ${
                               sug.isActive
                                 ? 'border-slate-200 dark:border-slate-800'
                                 : 'border-slate-200/60 dark:border-slate-800/60 opacity-50'
@@ -7930,7 +8047,7 @@ export default function AdminPanel({
                               value={broadcastTitle}
                               onChange={(e) => setBroadcastTitle(e.target.value)}
                               placeholder="مثال: عرض نهاية الأسبوع الرهيب! 🎁"
-                              className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-amber-500 font-sans text-right"
+                              className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-amber-500 font-sans text-right"
                             />
                           </div>
 
@@ -7941,7 +8058,7 @@ export default function AdminPanel({
                               onChange={(e) => setBroadcastBody(e.target.value)}
                               placeholder="اكتب هنا تفاصيل العرض أو التنبيه الذي ترغب في بثه فورياً على هواتف وشاشات العملاء..."
                               rows={3}
-                              className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-amber-500 font-sans text-right"
+                              className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none focus:border-amber-500 font-sans text-right"
                             />
                           </div>
                         </div>
@@ -7958,7 +8075,7 @@ export default function AdminPanel({
                                   className={`p-2 rounded-xl text-sm border text-center transition-all cursor-pointer ${
                                     broadcastIcon === emoji
                                       ? 'bg-amber-500 border-amber-500 text-white scale-110 font-bold'
-                                      : 'bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 hover:bg-slate-50 text-slate-700 dark:text-white'
+                                      : 'bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 hover:bg-slate-50 text-slate-700 dark:text-white'
                                   }`}
                                 >
                                   {emoji}
@@ -7976,7 +8093,7 @@ export default function AdminPanel({
                                 className={`flex-1 py-2 rounded-xl text-[10px] font-black border text-center cursor-pointer transition-all ${
                                   broadcastTarget === 'all'
                                     ? 'bg-slate-900 dark:bg-amber-500 border-slate-900 dark:border-amber-500 text-white dark:text-slate-950 shadow-sm'
-                                    : 'bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                                    : 'bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
                                 }`}
                               >
                                 جميع الزوار والعملاء
@@ -7987,7 +8104,7 @@ export default function AdminPanel({
                                 className={`flex-1 py-2 rounded-xl text-[10px] font-black border text-center cursor-pointer transition-all ${
                                   broadcastTarget === 'registered'
                                     ? 'bg-slate-900 dark:bg-amber-500 border-slate-900 dark:border-amber-500 text-white dark:text-slate-950 shadow-sm'
-                                    : 'bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                                    : 'bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
                                 }`}
                               >
                                 العملاء المسجلين فقط
@@ -8383,7 +8500,7 @@ export default function AdminPanel({
                             key={req.email ? `req-${req.email}-${reqIdx}` : `req-${reqIdx}`}
                             type="button"
                             onClick={() => setSelectedSessionEmail(req.email)}
-                            className="p-3 bg-white dark:bg-[#11141D] hover:bg-rose-500 hover:text-white rounded-xl border border-rose-500/20 hover:border-rose-500 flex flex-col gap-1 text-right transition-all cursor-pointer shadow-sm"
+                            className="p-3 bg-white dark:bg-[#121622] hover:bg-rose-500 hover:text-white rounded-xl border border-rose-500/20 hover:border-rose-500 flex flex-col gap-1 text-right transition-all cursor-pointer shadow-sm"
                           >
                             <div className="flex justify-between items-center w-full">
                               <strong className="text-xs font-extrabold truncate max-w-[70%]">{req.name}</strong>
@@ -8452,7 +8569,7 @@ export default function AdminPanel({
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     
                     {/* Column 1: Client names list / Sidebar Directory with search filter */}
-                    <div className="border border-slate-150 dark:border-slate-200 rounded-2xl p-4 bg-white dark:bg-[#11141D] flex flex-col h-[500px]">
+                    <div className="border border-slate-150 dark:border-slate-200 rounded-2xl p-4 bg-white dark:bg-[#121622] flex flex-col h-[500px]">
                       <div className="pb-3 border-b border-slate-100 dark:border-slate-850 space-y-2 text-center">
                         <div className="text-[10px] font-black uppercase text-slate-400 tracking-wide">
                           <span>{isRtl ? '👤 قائمة جلسات الدعم والعملاء' : '👤 Support Sessions & Directory'}</span>
@@ -8466,7 +8583,7 @@ export default function AdminPanel({
                             onChange={(e) => {
                               setSupportSearchTerm(e.target.value);
                             }}
-                            className="w-full text-[10px] p-2 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-lg text-slate-805 dark:text-white outline-none font-sans text-right"
+                            className="w-full text-[10px] p-2 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-lg text-slate-805 dark:text-white outline-none font-sans text-right"
                           />
                         </div>
                       </div>
@@ -8507,7 +8624,7 @@ export default function AdminPanel({
                                 className={`w-full p-3 rounded-xl border text-right flex items-center gap-3 transition-all cursor-pointer ${
                                   isSelected
                                     ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
-                                    : 'bg-slate-50 dark:bg-[#0A0C10] hover:bg-slate-100 dark:hover:bg-[#151a26] text-slate-800 dark:text-gray-100 border-slate-200 dark:border-slate-800'
+                                    : 'bg-slate-50 dark:bg-[#090B0E] hover:bg-slate-100 dark:hover:bg-[#151a26] text-slate-800 dark:text-gray-100 border-slate-200 dark:border-slate-800'
                                 }`}
                               >
                                 {/* WhatsApp styled circular avatar */}
@@ -8583,7 +8700,7 @@ export default function AdminPanel({
                     </div>
 
                     {/* Columns 2 & 3: Chat log visualization */}
-                    <div className="lg:col-span-2 border border-slate-150 dark:border-slate-200 rounded-2xl bg-slate-50 dark:bg-[#0A0C10] flex flex-col h-[500px]">
+                    <div className="lg:col-span-2 border border-slate-150 dark:border-slate-200 rounded-2xl bg-slate-50 dark:bg-[#090B0E] flex flex-col h-[500px]">
                     {/* AI Summary Banner - shown when available */}
                     {selectedAiSummary && (
                       <div className="flex-shrink-0 bg-gradient-to-r from-sky-500/10 via-violet-500/5 to-sky-500/10 border-b border-sky-500/20 px-4 py-2.5">
@@ -8619,7 +8736,7 @@ export default function AdminPanel({
                                   ? msg.sender_type === 'ai'
                                     ? 'bg-sky-500/10 border border-sky-500/25 text-slate-800 dark:text-sky-100'
                                     : 'bg-slate-900 border border-slate-700 text-white'
-                                  : 'bg-[var(--primary-color,#38bdf8)]/10 text-slate-850 dark:text-gray-100 border border-[var(--primary-color,#38bdf8)]/20'
+                                  : 'bg-[var(--primary-color)]/10 text-slate-850 dark:text-gray-100 border border-[var(--primary-color)]/20'
                             }`}>
                               {msg.isInternal && (
                                 <p className="text-[9px] font-black text-amber-600 dark:text-amber-400 mb-1 flex items-center gap-1">🔒 {isRtl ? 'ملاحظة داخلية (مخفية عن العميل)' : 'Internal note (hidden from customer)'}</p>
@@ -8662,7 +8779,7 @@ export default function AdminPanel({
                   </div>
 
                   {/* Column 4: Submission panel & Logistic tracking / Switchable Tabbed Column */}
-                  <div className="border border-slate-150 dark:border-slate-200 rounded-2xl p-5 bg-white dark:bg-[#11141D] flex flex-col justify-between space-y-4">
+                  <div className="border border-slate-150 dark:border-slate-200 rounded-2xl p-5 bg-white dark:bg-[#121622] flex flex-col justify-between space-y-4">
                     <div className="space-y-4">
                       
                       {/* Tabs selector */}
@@ -8698,57 +8815,57 @@ export default function AdminPanel({
                             <span>👤 {isRtl ? 'تفاصيل وهوية العميل' : 'Customer Profile Metadata'}</span>
                           </h4>
                           <div className="grid grid-cols-2 gap-2 text-[10.5px]">
-                            <div className="bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'الاسم' : 'Name'}</span>
                               <strong className="text-slate-800 dark:text-slate-200 block truncate">{selectedConv?.clientName || (isRtl ? "عميل زائر" : "Guest Customer")}</strong>
                             </div>
-                            <div className="bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'البريد الإلكتروني' : 'Email'}</span>
                               <strong className="text-slate-850 dark:text-slate-300 block truncate font-mono text-[8px]">{selectedConv?.clientEmail || selectedSessionEmail}</strong>
                             </div>
-                            <div className="bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'رقم الهاتف' : 'Phone'}</span>
                               <strong className="text-slate-800 dark:text-slate-200 block truncate">{selectedConv?.clientPhone || (isRtl ? "غير مسجل" : "Not Registered")}</strong>
                             </div>
-                            <div className="bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'الدولة' : 'Country'}</span>
                               <strong className="text-slate-800 dark:text-slate-200 block truncate">🇸🇦 {selectedConv?.country || "SA"}</strong>
                             </div>
-                            <div className="bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'اللغة' : 'Language'}</span>
                               <strong className="text-slate-800 dark:text-slate-200 block truncate uppercase">{(selectedConv?.language || 'ar') === 'ar' ? 'العربية' : 'English'}</strong>
                             </div>
-                            <div className="bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'عدد طلبات المتجر' : 'Orders Count'}</span>
                               <strong className="text-emerald-500 block font-black">{orders.filter(o => o.user_email?.toLowerCase() === selectedSessionEmail.toLowerCase()).length} {isRtl ? 'طلب' : 'orders'}</strong>
                             </div>
-                            <div className="col-span-2 bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="col-span-2 bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'آخر طلب' : 'Last Order Details'}</span>
                               <strong className="text-slate-800 dark:text-slate-200 block font-mono text-[9.5px] truncate">{selectedConv?.lastOrderDetails || (isRtl ? "لا يوجد" : "None")}</strong>
                             </div>
-                            <div className="col-span-2 bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="col-span-2 bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'حالة الطلبات' : 'Orders Status'}</span>
                               <strong className="text-slate-800 dark:text-slate-200 block text-[9px] truncate">
                                 {orders.filter(o => o.user_email?.toLowerCase() === selectedSessionEmail.toLowerCase()).map(o => `#${o.id} (${o.status})`).join(', ') || (isRtl ? "لا يوجد طلبات" : "No orders")}
                               </strong>
                             </div>
-                            <div className="bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'الجهاز' : 'Device'}</span>
                               <strong className="text-slate-800 dark:text-slate-200 block truncate">{selectedConv?.device || "Desktop"}</strong>
                             </div>
-                            <div className="bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'نظام التشغيل' : 'OS'}</span>
                               <strong className="text-slate-800 dark:text-slate-200 block truncate">{selectedConv?.os || "Windows"}</strong>
                             </div>
-                            <div className="bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'المتصفح' : 'Browser'}</span>
                               <strong className="text-slate-800 dark:text-slate-200 block truncate">{selectedConv?.browser || "Chrome"}</strong>
                             </div>
-                            <div className="bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'عنوان IP' : 'IP Address'}</span>
                               <strong className="text-slate-850 dark:text-slate-300 block font-mono text-[9px] truncate">{selectedConv?.ip || "95.140.23.11"}</strong>
                             </div>
-                            <div className="col-span-2 bg-slate-50 dark:bg-[#0A0C10] p-2 rounded-xl text-right">
+                            <div className="col-span-2 bg-slate-50 dark:bg-[#090B0E] p-2 rounded-xl text-right">
                               <span className="text-[8.5px] text-slate-400 block font-bold">{isRtl ? 'وقت دخول العميل' : 'Client Entry Time'}</span>
                               <strong className="text-slate-850 dark:text-slate-300 block font-mono text-[9px] truncate">
                                 {selectedConv?.createdAt ? new Date(selectedConv.createdAt).toLocaleString(isRtl ? 'ar-SA' : 'en-US') : (isRtl ? "الآن" : "Just now")}
@@ -8768,7 +8885,7 @@ export default function AdminPanel({
                                   {isRtl ? '📦 تتبع طلبات المشتري واختيارها:' : '📦 Select Customer Order to Track:'}
                                 </label>
                                 {clientOrders.length === 0 ? (
-                                  <div className="text-[10px] text-slate-405 italic p-2.5 bg-slate-50 dark:bg-[#0A0C10] rounded-xl border border-slate-100 dark:border-slate-800 text-center font-sans font-medium">
+                                  <div className="text-[10px] text-slate-405 italic p-2.5 bg-slate-50 dark:bg-[#090B0E] rounded-xl border border-slate-100 dark:border-slate-800 text-center font-sans font-medium">
                                     🚫 {isRtl ? 'العميل ليس لديه أي طلبات شراء بالمتجر' : 'No recorded transactions for this customer'}
                                   </div>
                                 ) : (
@@ -8776,7 +8893,7 @@ export default function AdminPanel({
                                     <select
                                       value={supportSelectedOrderId}
                                       onChange={(e) => setSupportSelectedOrderId(e.target.value)}
-                                      className="w-full text-[10.5px] p-2 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none font-mono text-right"
+                                      className="w-full text-[10.5px] p-2 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none font-mono text-right"
                                     >
                                       <option value="">{isRtl ? '-- حدد من قائمة الطلبات --' : '-- Choose active order ID --'}</option>
                                       {clientOrders.map((o, oIdx) => (
@@ -8791,7 +8908,7 @@ export default function AdminPanel({
                                       const selectedOrd = clientOrders.find(o => o.id === supportSelectedOrderId);
                                       if (!selectedOrd) return null;
                                       return (
-                                        <div className="p-3 bg-slate-50 dark:bg-[#0A0C10] rounded-2xl border border-slate-100 dark:border-slate-800/80 space-y-2.5 animate-in slide-in-from-top-1">
+                                        <div className="p-3 bg-slate-50 dark:bg-[#090B0E] rounded-2xl border border-slate-100 dark:border-slate-800/80 space-y-2.5 animate-in slide-in-from-top-1">
                                           <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-400">
                                             <span>{isRtl ? 'مسار الشحن الحالي' : 'Logistics Pipeline'}</span>
                                             <span className="text-emerald-500 font-mono text-[9.5px]/none bg-emerald-500/10 px-2 py-0.5 rounded-full">{selectedOrd.status}</span>
@@ -8913,7 +9030,7 @@ export default function AdminPanel({
                                     {smartSuggestions.map((qr: any, qrIdx: number) => (
                                       <div
                                         key={qr.id || `smart-qr-${qrIdx}`}
-                                        className="p-2 bg-white dark:bg-[#11141D] border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 rounded-xl flex flex-col gap-1 transition-all"
+                                        className="p-2 bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 rounded-xl flex flex-col gap-1 transition-all"
                                       >
                                         <div className="flex items-center justify-between gap-1">
                                           <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 truncate">
@@ -8958,7 +9075,7 @@ export default function AdminPanel({
                               onChange={(e) => setSupportReply(e.target.value)}
                               placeholder={isRtl ? 'اكتب ردك هنا...' : 'Type your reply...'}
                               rows={3}
-                              className="w-full mt-2 text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-slate-205 dark:border-slate-805 focus:border-emerald-500 text-slate-850 dark:text-white outline-none font-sans text-right"
+                              className="w-full mt-2 text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-205 dark:border-slate-805 focus:border-emerald-500 text-slate-850 dark:text-white outline-none font-sans text-right"
                             />
                           </div>
                         </div>
@@ -9071,8 +9188,8 @@ export default function AdminPanel({
             
             {/* Header */}
             <div className="border-b border-slate-100 dark:border-slate-850 pb-4">
-              <h3 className="font-extrabold text-sm uppercase tracking-wider text-[var(--primary-color, #38bdf8)] flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-[var(--primary-color, #38bdf8)]" />
+              <h3 className="font-extrabold text-sm uppercase tracking-wider text-[var(--primary-color)] flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-[var(--primary-color)]" />
                 <span>{isRtl ? 'إدارة حسابات وجواز مرور العملاء والرسائل الجماعية 👤' : 'Identify Management & Bulk Virtual Broadcast Senders 👤'}</span>
               </h3>
             </div>
@@ -9105,7 +9222,7 @@ export default function AdminPanel({
                     value={adminOwnNewPassword}
                     onChange={(e) => setAdminOwnNewPassword(e.target.value)}
                     placeholder={isRtl ? 'أدخل كلمة المرور الجديدة...' : 'Enter new password...'}
-                    className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none focus:border-amber-500"
+                    className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none focus:border-amber-500"
                   />
                 </div>
 
@@ -9118,7 +9235,7 @@ export default function AdminPanel({
                     value={adminOwnConfirmPassword}
                     onChange={(e) => setAdminOwnConfirmPassword(e.target.value)}
                     placeholder={isRtl ? 'أعد كتابة كلمة المرور' : 'Confirm password'}
-                    className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none focus:border-amber-500"
+                    className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none focus:border-amber-500"
                   />
                 </div>
 
@@ -9135,7 +9252,7 @@ export default function AdminPanel({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               
               {/* Column 1: Password Changer box */}
-              <div className="border border-slate-150 dark:border-slate-200 rounded-2xl p-5 bg-slate-50 dark:bg-[#11141D] space-y-4">
+              <div className="border border-slate-150 dark:border-slate-200 rounded-2xl p-5 bg-slate-50 dark:bg-[#121622] space-y-4">
                 <h4 className="text-xs font-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-200 pb-2 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
                   <span>{isRtl ? 'تغيير كلمة المرور لأي مستخدم 🔑' : 'Manually Override User Password 🔑'}</span>
@@ -9147,7 +9264,7 @@ export default function AdminPanel({
                     <select
                       value={selectedUserEmail}
                       onChange={(e) => setSelectedUserEmail(e.target.value)}
-                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-200 text-slate-850 dark:text-white outline-none"
+                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-200 text-slate-850 dark:text-white outline-none"
                     >
                       <option value="">{isRtl ? '-- حدد الحساب --' : '-- Choose user account --'}</option>
                       {registeredUsers.map((u, idx) => (
@@ -9163,7 +9280,7 @@ export default function AdminPanel({
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder={isRtl ? 'مثال: pass12345' : 'e.g. secureNew123'}
-                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-200 text-slate-850 dark:text-white outline-none"
+                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-200 text-slate-850 dark:text-white outline-none"
                     />
                   </div>
 
@@ -9178,7 +9295,7 @@ export default function AdminPanel({
               </div>
 
               {/* Column 2: Bulk virtual email broadcasting */}
-              <div className="border border-slate-150 dark:border-slate-200 rounded-2xl p-5 bg-slate-50 dark:bg-[#11141D] space-y-4">
+              <div className="border border-slate-150 dark:border-slate-200 rounded-2xl p-5 bg-slate-50 dark:bg-[#121622] space-y-4">
                 <h4 className="text-xs font-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-200 pb-2 flex items-center justify-between">
                   <span>{isRtl ? 'إرسال رسالة جماعية لصناديق البريد 📩' : 'Virtual Bulk Email Broadcasting Hub 📩'}</span>
                   <button
@@ -9198,7 +9315,7 @@ export default function AdminPanel({
                   {/* Recipient Checklist */}
                   <div className="space-y-1">
                     <label className="block text-[10px] uppercase font-black tracking-widest text-slate-400">{isRtl ? 'تحديد المستلمين بالنقرة:' : 'Recipients Checklist Selection:'}</label>
-                    <div className="max-h-24 overflow-y-auto border border-slate-205 dark:border-slate-200 bg-white dark:bg-[#0A0C10] p-2.5 rounded-xl space-y-1.5">
+                    <div className="max-h-24 overflow-y-auto border border-slate-205 dark:border-slate-200 bg-white dark:bg-[#090B0E] p-2.5 rounded-xl space-y-1.5">
                       {registeredUsers.filter(u => u.role !== 'admin').map((u, idx) => {
                         const isChecked = selectedGroupEmails.includes(u.email);
                         return (
@@ -9207,7 +9324,7 @@ export default function AdminPanel({
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => toggleGroupEmailSelection(u.email)}
-                              className="rounded bg-slate-50 border-slate-200 text-[var(--primary-color, #38bdf8)] focus:ring-[var(--primary-color, #38bdf8)]"
+                              className="rounded bg-slate-50 border-slate-200 text-[var(--primary-color)] focus:ring-[var(--primary-color)]"
                             />
                             <span className="truncate text-slate-800 dark:text-white font-sans">{u.name} ({u.email})</span>
                           </label>
@@ -9223,7 +9340,7 @@ export default function AdminPanel({
                       value={groupSubjects}
                       onChange={(e) => setGroupSubjects(e.target.value)}
                       placeholder={isRtl ? 'مثال: أسعار مخفضة وهدايا حصرية لك' : 'e.g. Mega Discount & Gift Store Campaign'}
-                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-200 outline-none"
+                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-200 outline-none"
                     />
                   </div>
 
@@ -9234,16 +9351,19 @@ export default function AdminPanel({
                       onChange={(e) => setGroupBody(e.target.value)}
                       placeholder={isRtl ? 'مرحباً، يسعدنا إبلاغك...' : 'Dear Customer, we are proud to launch...'}
                       rows={3}
-                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-200 outline-none font-sans"
+                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-200 outline-none font-sans"
                     />
                   </div>
 
                   <button
                     type="button"
+                    disabled={isSendingGroupEmail}
                     onClick={sendGroupEmail}
-                    className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl cursor-pointer transition-all shadow-md uppercase"
+                    className="w-full py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 font-black text-xs rounded-xl cursor-pointer transition-all shadow-md uppercase"
                   >
-                    {isRtl ? 'بث وإرسال لبريد المختارين 📨' : 'Broadcast to Recipients Inboxes 📨'}
+                    {isSendingGroupEmail 
+                      ? (isRtl ? 'جاري بث البريد... ⏳' : 'Broadcasting Email... ⏳') 
+                      : (isRtl ? 'بث وإرسال لبريد المختارين 📨' : 'Broadcast to Recipients Inboxes 📨')}
                   </button>
 
                 </div>
@@ -9252,7 +9372,7 @@ export default function AdminPanel({
             </div>
 
             {/* Registered Customers Directory & Shipping Profiles */}
-            <div className="border border-slate-150 dark:border-slate-800/80 rounded-2xl p-5 bg-slate-50 dark:bg-[#11141D] mt-6 space-y-4 text-left">
+            <div className="border border-slate-150 dark:border-slate-800/80 rounded-2xl p-5 bg-slate-50 dark:bg-[#121622] mt-6 space-y-4 text-left">
               <h4 className="text-xs font-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center justify-between">
                 <span className="flex items-center gap-1.5 font-sans">
                   <span className="text-emerald-500">📋</span>
@@ -9294,11 +9414,11 @@ export default function AdminPanel({
                       }
                     });
                   }}
-                  className="w-full text-xs p-2.5 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none font-sans"
+                  className="w-full text-xs p-2.5 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none font-sans"
                 />
               </div>
 
-              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-[#0A0C10] max-h-96">
+              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-[#090B0E] max-h-96">
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-[#151923] border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">
@@ -9380,13 +9500,13 @@ export default function AdminPanel({
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div onClick={() => { setIsPointsModalOpen(false); setPointsTargetUser(null); }} className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
                 
-                <div className="bg-white dark:bg-[#11141D] rounded-3xl p-6 sm:p-8 w-full max-w-md border border-slate-150 dark:border-slate-800 text-left font-sans text-xs relative animate-in zoom-in-95 duration-200">
+                <div className="bg-white dark:bg-[#121622] rounded-3xl p-6 sm:p-8 w-full max-w-md border border-slate-150 dark:border-slate-800 text-left font-sans text-xs relative animate-in zoom-in-95 duration-200">
                   <button onClick={() => { setIsPointsModalOpen(false); setPointsTargetUser(null); }} className="absolute top-4 right-4 p-2 rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer">
                     <span>✕</span>
                   </button>
                   
                   <div className="space-y-4">
-                    <h3 className="font-extrabold text-sm uppercase text-[var(--primary-color, #38bdf8)] tracking-wider flex items-center gap-1.5 border-b pb-3 border-slate-100 dark:border-slate-800">
+                    <h3 className="font-extrabold text-sm uppercase text-[var(--primary-color)] tracking-wider flex items-center gap-1.5 border-b pb-3 border-slate-100 dark:border-slate-800">
                       <span>🪙</span>
                       <span>{isRtl ? 'شحن نقاط مكافأة جديدة لعميل' : 'Reward Points Manager'}</span>
                     </h3>
@@ -9406,7 +9526,7 @@ export default function AdminPanel({
                           type="number"
                           value={pointsToAdd}
                           onChange={(e) => setPointsToAdd(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none font-mono"
+                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none font-mono"
                           min="1"
                         />
                       </div>
@@ -9420,7 +9540,7 @@ export default function AdminPanel({
                           onChange={(e) => setPointsReason(e.target.value)}
                           placeholder={isRtl ? 'مثال: تعويض عن تأخير بسيط في الشحن 🎁' : 'e.g. Compensation for shipment delay 🎁'}
                           rows={3}
-                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none"
+                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none"
                         />
                       </div>
 
@@ -9441,7 +9561,7 @@ export default function AdminPanel({
             )}
 
             {/* Newsletter Subscribers Control Center */}
-            <div className="border border-slate-150 dark:border-slate-800/80 rounded-2xl p-5 bg-slate-50 dark:bg-[#11141D] mt-6 space-y-4 text-left">
+            <div className="border border-slate-150 dark:border-slate-800/80 rounded-2xl p-5 bg-slate-50 dark:bg-[#121622] mt-6 space-y-4 text-left">
               <h4 className="text-xs font-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center justify-between">
                 <span className="flex items-center gap-1.5 font-sans">
                   <span className="text-pink-500">📧</span>
@@ -9454,7 +9574,7 @@ export default function AdminPanel({
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left side: Add manually */}
-                <div className="lg:col-span-1 border border-slate-200 dark:border-slate-800/80 p-4 rounded-xl bg-white dark:bg-[#0A0C10] space-y-3">
+                <div className="lg:col-span-1 border border-slate-200 dark:border-slate-800/80 p-4 rounded-xl bg-white dark:bg-[#090B0E] space-y-3">
                   <h5 className="text-[11px] uppercase font-black text-slate-400">{isRtl ? 'إضافة مشترك جديد يدويًا:' : 'Manually Subscribe Contact:'}</h5>
                   <form onSubmit={handleAddSubscriber} className="space-y-3">
                     <input
@@ -9463,7 +9583,7 @@ export default function AdminPanel({
                       placeholder="subscriber@domain.com"
                       value={newSubscriberEmail}
                       onChange={(e) => setNewSubscriberEmail(e.target.value)}
-                      className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none"
+                      className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white outline-none"
                     />
                     <button
                       type="submit"
@@ -9494,11 +9614,11 @@ export default function AdminPanel({
                           }
                         });
                       }}
-                      className="w-full text-xs p-2.5 rounded-xl border bg-white dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none font-sans"
+                      className="w-full text-xs p-2.5 rounded-xl border bg-white dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none font-sans"
                     />
                   </div>
 
-                  <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-[#0A0C10] max-h-60">
+                  <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-[#090B0E] max-h-60">
                     <table className="w-full text-left border-collapse min-w-[500px]">
                       <thead>
                         <tr className="bg-slate-50 dark:bg-[#151923] border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">
@@ -9583,7 +9703,7 @@ export default function AdminPanel({
                 placeholder={isRtl ? 'ابحث بالبريد الإلكتروني أو الاسم...' : 'Search by email or name...'}
                 value={sessionSearch}
                 onChange={(e) => setSessionSearch(e.target.value)}
-                className="w-full text-xs p-3 pl-10 rounded-2xl border bg-slate-50 dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none"
+                className="w-full text-xs p-3 pl-10 rounded-2xl border bg-slate-50 dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
             </div>
@@ -9827,7 +9947,7 @@ export default function AdminPanel({
                   placeholder={isRtl ? 'ابحث بالبريد الإلكتروني، الاسم، الإجراء، أو التفاصيل...' : 'Search by email, name, action, details...'}
                   value={auditLogSearch}
                   onChange={(e) => setAuditLogSearch(e.target.value)}
-                  className="w-full text-xs p-3 pl-10 rounded-2xl border bg-slate-50 dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none"
+                  className="w-full text-xs p-3 pl-10 rounded-2xl border bg-slate-50 dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none"
                 />
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               </div>
@@ -9836,7 +9956,7 @@ export default function AdminPanel({
               <select
                 value={auditLogActionFilter}
                 onChange={(e) => setAuditLogActionFilter(e.target.value)}
-                className="p-3 text-xs rounded-2xl border bg-slate-50 dark:bg-[#0A0C10] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none font-bold"
+                className="p-3 text-xs rounded-2xl border bg-slate-50 dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 text-slate-850 dark:text-white outline-none font-bold"
               >
                 <option value="ALL">{isRtl ? 'جميع الإجراءات' : 'All Actions'}</option>
                 <option value="LOGIN">{isRtl ? 'تسجيل الدخول' : 'Logins'}</option>
@@ -9969,7 +10089,7 @@ export default function AdminPanel({
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Form creation column */}
-              <div className="lg:col-span-1 border border-slate-150 dark:border-slate-800 p-5 rounded-2xl bg-slate-50 dark:bg-[#11141D] space-y-4">
+              <div className="lg:col-span-1 border border-slate-150 dark:border-slate-800 p-5 rounded-2xl bg-slate-50 dark:bg-[#121622] space-y-4">
                 <h4 className="text-xs font-black text-slate-800 dark:text-gray-100 border-b border-slate-200 dark:border-slate-800 pb-2">
                   {isRtl ? 'إضافة إداري جديد 👤' : 'Add New Administrator User 👤'}
                 </h4>
@@ -9983,7 +10103,7 @@ export default function AdminPanel({
                       value={newAdminName}
                       onChange={(e) => setNewAdminName(e.target.value)}
                       placeholder="مثال: أحمد العلي"
-                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                     />
                   </div>
 
@@ -9995,7 +10115,7 @@ export default function AdminPanel({
                       value={newAdminEmail}
                       onChange={(e) => setNewAdminEmail(e.target.value)}
                       placeholder="admin@ryvo.co"
-                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                     />
                   </div>
 
@@ -10008,7 +10128,7 @@ export default function AdminPanel({
                         value={newAdminPassword}
                         onChange={(e) => setNewAdminPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full text-xs p-3 pr-10 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                        className="w-full text-xs p-3 pr-10 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                       />
                       <button
                         type="button"
@@ -10025,7 +10145,7 @@ export default function AdminPanel({
                     <select
                       value={newAdminRole}
                       onChange={(e: any) => setNewAdminRole(e.target.value)}
-                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-850 dark:text-white border-slate-200 dark:border-slate-800 outline-none font-sans font-bold"
+                      className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-850 dark:text-white border-slate-200 dark:border-slate-800 outline-none font-sans font-bold"
                     >
                       <option value="admin">{isRtl ? 'مدير عام فرعي (Admin)' : 'Sub-Admin'}</option>
                       <option value="manager">{isRtl ? 'مدير عمليات ومنتجات (Manager)' : 'Operations Manager'}</option>
@@ -10124,7 +10244,7 @@ export default function AdminPanel({
 
                   {/* Custom sub-admins */}
                   {customAdmins.map((adm: any, admIdx: number) => (
-                    <div key={adm.id || adm.email || `custom-adm-${admIdx}`} className="p-4 bg-slate-50 dark:bg-[#11141D] border border-slate-150 dark:border-slate-800 rounded-2xl space-y-2 relative">
+                    <div key={adm.id || adm.email || `custom-adm-${admIdx}`} className="p-4 bg-slate-50 dark:bg-[#121622] border border-slate-150 dark:border-slate-800 rounded-2xl space-y-2 relative">
                       <div className="flex justify-between items-start">
                         <div>
                           <strong className="text-xs font-black text-slate-900 dark:text-white block">{adm.name}</strong>
@@ -10213,7 +10333,7 @@ export default function AdminPanel({
                   onClick={() => { setAdSubTab('hero_slides'); setEditingAd(null); }}
                   className={`px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
                     adSubTab === 'hero_slides'
-                      ? 'bg-white dark:bg-[#11141D] text-pink-505 dark:text-amber-400 shadow-sm'
+                      ? 'bg-white dark:bg-[#121622] text-pink-505 dark:text-amber-400 shadow-sm'
                       : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                   }`}
                 >
@@ -10224,7 +10344,7 @@ export default function AdminPanel({
                   onClick={() => { setAdSubTab('popups'); setEditingAd(null); }}
                   className={`px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
                     adSubTab === 'popups'
-                      ? 'bg-white dark:bg-[#11141D] text-pink-550 dark:text-amber-400 shadow-sm'
+                      ? 'bg-white dark:bg-[#121622] text-pink-550 dark:text-amber-400 shadow-sm'
                       : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                   }`}
                 >
@@ -10235,7 +10355,7 @@ export default function AdminPanel({
                   onClick={() => { setAdSubTab('social_links'); setEditingAd(null); }}
                   className={`px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
                     adSubTab === 'social_links'
-                      ? 'bg-white dark:bg-[#11141D] text-pink-550 dark:text-amber-400 shadow-sm'
+                      ? 'bg-white dark:bg-[#121622] text-pink-550 dark:text-amber-400 shadow-sm'
                       : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                   }`}
                 >
@@ -10263,7 +10383,7 @@ export default function AdminPanel({
                         className={`p-5 rounded-2xl border text-left transition-all relative cursor-pointer ${
                           selectedSlideIndex === idx && editingSlide
                             ? 'bg-pink-500/5 border-pink-505 dark:border-pink-400 scale-[1.02] shadow-sm'
-                            : 'bg-slate-50 dark:bg-[#11141D] border-slate-150 dark:border-slate-800 hover:border-slate-300'
+                            : 'bg-slate-50 dark:bg-[#121622] border-slate-150 dark:border-slate-800 hover:border-slate-300'
                         }`}
                       >
                         <div className="flex justify-between items-center mb-2">
@@ -10284,7 +10404,7 @@ export default function AdminPanel({
                 </div>
 
                 {editingSlide && (
-                  <form onSubmit={handleSaveSlideSubmit} className="p-6 bg-slate-55 dark:bg-[#11141D] border border-slate-150 dark:border-slate-800 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-6 scale-in-95 ease-out duration-200">
+                  <form onSubmit={handleSaveSlideSubmit} className="p-6 bg-slate-55 dark:bg-[#121622] border border-slate-150 dark:border-slate-800 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-6 scale-in-95 ease-out duration-200">
                     {/* Visual image & background presets column */}
                     <div className="space-y-4">
                       <h4 className="text-xs font-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-2 flex items-center gap-1.5">
@@ -10320,7 +10440,7 @@ export default function AdminPanel({
                             value={slideImage}
                             onChange={(e) => setSlideImage(e.target.value)}
                             placeholder={isRtl ? "أو ضع رابط الصورة المباشر هنا (URL)..." : "Or paste direct image URL here..."}
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-205 dark:border-slate-800 outline-none"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-205 dark:border-slate-800 outline-none"
                           />
                         </div>
                         <span className="text-[9px] text-slate-400 block font-semibold">{isRtl ? 'يمكنك رفع صورة مباشرة من جهازك أو لصق رابط صورة خارجي.' : 'You can upload an image from your device or paste an external direct URL.'}</span>
@@ -10334,7 +10454,7 @@ export default function AdminPanel({
                           value={slideCategory}
                           onChange={(e) => setSlideCategory(e.target.value)}
                           placeholder="مثال: عرض محدود"
-                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-205 dark:border-slate-800 outline-none"
+                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-205 dark:border-slate-800 outline-none"
                         />
                       </div>
 
@@ -10343,7 +10463,7 @@ export default function AdminPanel({
                         <select
                           value={slideBg}
                           onChange={(e) => setSlideBg(e.target.value)}
-                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-850 dark:text-white border-slate-205 dark:border-slate-800 outline-none"
+                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-850 dark:text-white border-slate-205 dark:border-slate-800 outline-none"
                         >
                           <option value="from-[#0F172A] to-[#1E293B]">Slate dark (افتراضي مميز)</option>
                           <option value="from-[#31110F] to-[#110403]">Deep Cherry (كرزي داكن فخم)</option>
@@ -10353,7 +10473,7 @@ export default function AdminPanel({
                         </select>
                       </div>
 
-                      <div className="p-4 bg-white/50 dark:bg-[#0A0C10]/45 rounded-xl border border-slate-150 dark:border-slate-800 text-center relative h-32 overflow-hidden flex items-center justify-center">
+                      <div className="p-4 bg-white/50 dark:bg-[#090B0E]/45 rounded-xl border border-slate-150 dark:border-slate-800 text-center relative h-32 overflow-hidden flex items-center justify-center">
                         {slideImage ? (
                           <img src={slideImage} alt="Feature preview" className="absolute inset-0 w-full h-full object-cover opacity-50 select-none" referrerPolicy="no-referrer" />
                         ) : (
@@ -10382,7 +10502,7 @@ export default function AdminPanel({
                           value={slideTitleAr}
                           onChange={(e) => setSlideTitleAr(e.target.value)}
                           placeholder="العنوان الرياضي الرئيسي"
-                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
+                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
                         />
                         <textarea
                           required
@@ -10390,7 +10510,7 @@ export default function AdminPanel({
                           onChange={(e) => setSlideDescAr(e.target.value)}
                           placeholder="الوصف أو نص الإعلان التفصيلي في بضعة أسطر"
                           rows={2}
-                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
+                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
                         />
                       </div>
 
@@ -10403,7 +10523,7 @@ export default function AdminPanel({
                           value={slideTitleEn}
                           onChange={(e) => setSlideTitleEn(e.target.value)}
                           placeholder="English Ad Headline"
-                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
+                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
                         />
                         <textarea
                           required
@@ -10411,7 +10531,7 @@ export default function AdminPanel({
                           onChange={(e) => setSlideDescEn(e.target.value)}
                           placeholder="English marketing copywriting message here"
                           rows={2}
-                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
+                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
                         />
                       </div>
 
@@ -10424,7 +10544,7 @@ export default function AdminPanel({
                           value={slideTitleFr}
                           onChange={(e) => setSlideTitleFr(e.target.value)}
                           placeholder="Titre de l'annonce française"
-                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
+                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
                         />
                         <textarea
                           required
@@ -10432,7 +10552,7 @@ export default function AdminPanel({
                           onChange={(e) => setSlideDescFr(e.target.value)}
                           placeholder="Texte de promotion ou description détaillée"
                           rows={2}
-                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
+                          className="w-full text-xs p-2 rounded-lg border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-150 dark:border-slate-805 outline-none font-sans"
                         />
                       </div>
 
@@ -10488,7 +10608,7 @@ export default function AdminPanel({
 
                 {/* Form to create/edit Ad */}
                 {editingAd && (
-                  <form onSubmit={handleSaveAd} className="p-6 bg-slate-50 dark:bg-[#11141D] border border-slate-150 dark:border-slate-800 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-5 animate-in slide-in-from-top-4 duration-300 text-xs">
+                  <form onSubmit={handleSaveAd} className="p-6 bg-slate-50 dark:bg-[#121622] border border-slate-150 dark:border-slate-800 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-5 animate-in slide-in-from-top-4 duration-300 text-xs">
                     
                     {/* Media specifications */}
                     <div className="space-y-4">
@@ -10505,7 +10625,7 @@ export default function AdminPanel({
                             value={adForm.title_ar}
                             onChange={(e) => setAdForm({...adForm, title_ar: e.target.value})}
                             placeholder="عرض الافتتاح الكبير"
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                           />
                         </div>
                         <div className="space-y-1">
@@ -10516,7 +10636,7 @@ export default function AdminPanel({
                             value={adForm.title_en}
                             onChange={(e) => setAdForm({...adForm, title_en: e.target.value})}
                             placeholder="Grand Opening Offer"
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                           />
                         </div>
                       </div>
@@ -10527,7 +10647,7 @@ export default function AdminPanel({
                           <select
                             value={adForm.type}
                             onChange={(e) => setAdForm({...adForm, type: e.target.value as 'image' | 'video'})}
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                           >
                             <option value="image">{isRtl ? 'صورة 🖼️' : 'Image 🖼️'}</option>
                             <option value="video">{isRtl ? 'فيديو (MP4) 🎬' : 'Video (MP4) 🎬'}</option>
@@ -10540,7 +10660,7 @@ export default function AdminPanel({
                             required
                             value={adForm.priority}
                             onChange={(e) => setAdForm({...adForm, priority: Number(e.target.value)})}
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                           />
                         </div>
                       </div>
@@ -10579,7 +10699,7 @@ export default function AdminPanel({
                             value={adForm.mediaUrl}
                             onChange={(e) => setAdForm({...adForm, mediaUrl: e.target.value})}
                             placeholder={isRtl ? "أو ضع رابط الملف المباشر هنا (URL)..." : "Or paste direct URL here..."}
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                           />
                         </div>
                         <span className="text-[9px] text-slate-400 block font-semibold">
@@ -10594,7 +10714,7 @@ export default function AdminPanel({
                           value={adForm.clickUrl}
                           onChange={(e) => setAdForm({...adForm, clickUrl: e.target.value})}
                           placeholder="e.g., /#products or external URL"
-                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                          className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                         />
                       </div>
                     </div>
@@ -10614,7 +10734,7 @@ export default function AdminPanel({
                             min="0"
                             value={adForm.delaySeconds}
                             onChange={(e) => setAdForm({...adForm, delaySeconds: Number(e.target.value)})}
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                           />
                         </div>
                         <div className="space-y-1">
@@ -10625,7 +10745,7 @@ export default function AdminPanel({
                             min="0"
                             value={adForm.durationSeconds}
                             onChange={(e) => setAdForm({...adForm, durationSeconds: Number(e.target.value)})}
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                           />
                         </div>
                         <div className="space-y-1">
@@ -10636,7 +10756,7 @@ export default function AdminPanel({
                             min="0"
                             value={adForm.closeDelaySeconds}
                             onChange={(e) => setAdForm({...adForm, closeDelaySeconds: Number(e.target.value)})}
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                           />
                         </div>
                       </div>
@@ -10648,7 +10768,7 @@ export default function AdminPanel({
                             type="date"
                             value={adForm.startDate}
                             onChange={(e) => setAdForm({...adForm, startDate: e.target.value})}
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                           />
                         </div>
                         <div className="space-y-1">
@@ -10657,7 +10777,7 @@ export default function AdminPanel({
                             type="date"
                             value={adForm.endDate}
                             onChange={(e) => setAdForm({...adForm, endDate: e.target.value})}
-                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
+                            className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none"
                           />
                         </div>
                       </div>
@@ -10709,7 +10829,7 @@ export default function AdminPanel({
                     {isFetchingAds ? (
                       <div className="p-8 text-center text-xs text-slate-400 font-bold">{isRtl ? '⏳ جاري جلب الإعلانات...' : '⏳ Loading popup ads...'}</div>
                     ) : adsList.length === 0 ? (
-                      <div className="p-8 text-center bg-slate-50 dark:bg-[#11141D] border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-400 font-bold">
+                      <div className="p-8 text-center bg-slate-50 dark:bg-[#121622] border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-400 font-bold">
                         {isRtl ? '🔌 لم يتم العثور على أي إعلانات منبثقة مخصصة.' : '🔌 No custom popup ads found.'}
                       </div>
                     ) : (
@@ -10720,7 +10840,7 @@ export default function AdminPanel({
                           const isCurrentlyActive = ad.active && isDateValid;
 
                           return (
-                            <div key={ad.id || `ad-${adIdx}-${ad.title_ar || ad.title_en || 'ad'}`} className="p-4 bg-slate-50 dark:bg-[#11141D] border border-slate-150 dark:border-slate-800 rounded-2xl flex gap-4 relative">
+                            <div key={ad.id || `ad-${adIdx}-${ad.title_ar || ad.title_en || 'ad'}`} className="p-4 bg-slate-50 dark:bg-[#121622] border border-slate-150 dark:border-slate-800 rounded-2xl flex gap-4 relative">
                               <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-900 shrink-0 relative flex items-center justify-center">
                                 {ad.type === 'video' ? (
                                   <div className="text-center font-bold text-[8px] text-pink-500 flex flex-col items-center">
@@ -10804,7 +10924,7 @@ export default function AdminPanel({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
                   
                   {/* Platforms list inputs */}
-                  <div className="space-y-4 bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800">
+                  <div className="space-y-4 bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800">
                     <h5 className="font-extrabold text-[11px] text-pink-500 uppercase tracking-wider flex items-center gap-1">
                       <Sliders className="w-4 h-4" />
                       <span>{isRtl ? 'المنصات النشطة حالياً' : 'Configured Platforms'}</span>
@@ -10824,7 +10944,7 @@ export default function AdminPanel({
                             url = value;
                           }
                           return (
-                            <div key={platform} className="space-y-1.5 p-3 bg-white dark:bg-[#0A0C10] rounded-2xl border border-slate-150 dark:border-slate-800 shadow-sm">
+                            <div key={platform} className="space-y-1.5 p-3 bg-white dark:bg-[#090B0E] rounded-2xl border border-slate-150 dark:border-slate-800 shadow-sm">
                               <div className="flex items-center justify-between text-[10px] uppercase font-black tracking-widest text-slate-400">
                                 <span className="flex items-center gap-1.5">
                                   <span className={`w-2 h-2 rounded-full ${isEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-700'}`}></span>
@@ -10866,7 +10986,7 @@ export default function AdminPanel({
                                   }));
                                 }}
                                 placeholder={`https://${platform}.com/username`}
-                                className="w-full text-xs p-2.5 rounded-xl border bg-slate-50 dark:bg-[#11141D] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none font-mono"
+                                className="w-full text-xs p-2.5 rounded-xl border bg-slate-50 dark:bg-[#121622] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none font-mono"
                               />
                             </div>
                           );
@@ -10877,7 +10997,7 @@ export default function AdminPanel({
 
                   {/* Add Custom Platform and Save button */}
                   <div className="space-y-5 flex flex-col justify-between">
-                    <div className="space-y-4 bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800">
+                    <div className="space-y-4 bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800">
                       <h5 className="font-extrabold text-[11px] text-pink-500 uppercase tracking-wider flex items-center gap-1">
                         <Plus className="w-4 h-4" />
                         <span>{isRtl ? 'إضافة منصة جديدة للقائمة' : 'Add Custom Platform Anchor'}</span>
@@ -10891,7 +11011,7 @@ export default function AdminPanel({
                             value={newPlatformName}
                             onChange={(e) => setNewPlatformName(e.target.value)}
                             placeholder="e.g., snapchat"
-                            className="w-full text-xs p-2.5 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none font-mono"
+                            className="w-full text-xs p-2.5 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none font-mono"
                           />
                         </div>
 
@@ -10902,7 +11022,7 @@ export default function AdminPanel({
                             value={newPlatformUrl}
                             onChange={(e) => setNewPlatformUrl(e.target.value)}
                             placeholder="https://t.me/ryvo_channel"
-                            className="w-full text-xs p-2.5 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none font-mono"
+                            className="w-full text-xs p-2.5 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-200 dark:border-slate-800 outline-none font-mono"
                           />
                         </div>
 
@@ -10969,7 +11089,7 @@ export default function AdminPanel({
               <div className="lg:col-span-4 space-y-6">
                 
                 {/* ADV-1: Diagnostic Intelligence Box */}
-                <div className="bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-emerald-500/10 space-y-4">
+                <div className="bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-emerald-500/10 space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black uppercase text-slate-800 dark:text-emerald-400 tracking-wider flex items-center gap-1.5">
                       <span>📈</span>
@@ -10984,7 +11104,7 @@ export default function AdminPanel({
                       : 'AI reviews shopper behavior and detects stagnant products to optimize pricing & drive higher conversion.'}
                   </p>
 
-                  <div className="bg-white dark:bg-[#0A0C10] p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="bg-white dark:bg-[#090B0E] p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                     {insightsLoading ? (
                       <div className="py-8 text-center space-y-2">
                         <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -11036,7 +11156,7 @@ export default function AdminPanel({
                 </div>
 
                 {/* ADV-3: Customer Review Video Trigger */}
-                <div className="bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3">
+                <div className="bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3">
                   <h4 className="text-xs font-black uppercase text-slate-700 dark:text-slate-350 tracking-wider flex items-center gap-1.5">
                     <span>⭐</span>
                     <span>{isRtl ? 'مراجعات تستحق كإعلانات فيديو' : 'Turn Review into Ads'}</span>
@@ -11078,7 +11198,7 @@ export default function AdminPanel({
               {/* L-2: PORTRAIT REELS / SHORTS VIDEO FACTORY (Center / 5 cols) */}
               <div className="lg:col-span-5 space-y-6">
                 
-                <div className="bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4">
+                <div className="bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4">
                   <h4 className="text-xs font-black uppercase text-slate-800 dark:text-white tracking-wider flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                     <span className="flex items-center gap-1.5">
                       <span>🎬</span>
@@ -11095,7 +11215,7 @@ export default function AdminPanel({
                         <select
                           value={marketingSelectedProductId}
                           onChange={(e) => setMarketingSelectedProductId(e.target.value)}
-                          className="w-full text-[11px] p-2 rounded-lg border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-150 dark:border-slate-800 outline-none"
+                          className="w-full text-[11px] p-2 rounded-lg border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-150 dark:border-slate-800 outline-none"
                         >
                           <option value="">{isRtl ? 'اختر منتجاً...' : 'Choose Product...'}</option>
                           {products.map((p, pIdx) => (
@@ -11109,7 +11229,7 @@ export default function AdminPanel({
                         <select
                           value={backingTrack}
                           onChange={(e) => setBackingTrack(e.target.value as any)}
-                          className="w-full text-[11px] p-2 rounded-lg border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-150 dark:border-slate-800 outline-none"
+                          className="w-full text-[11px] p-2 rounded-lg border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-150 dark:border-slate-800 outline-none"
                         >
                           <option value="none">🎸 {isRtl ? 'بدون موسيقى' : 'No Backing Track'}</option>
                           <option value="synthwave">🌌 Synthwave Speed Beat</option>
@@ -11126,7 +11246,7 @@ export default function AdminPanel({
                         value={customPrompt}
                         onChange={(e) => setCustomPrompt(e.target.value)}
                         placeholder={isRtl ? "مثال: إعلان حماسي جداً يركز على سلامة الإطارات بالمنعطفات" : "E.g. High intensity, focus on speeds and aero carbon handles"}
-                        className="w-full text-xs p-2.5 rounded-lg border bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border-slate-150 dark:border-slate-800 outline-none"
+                        className="w-full text-xs p-2.5 rounded-lg border bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border-slate-150 dark:border-slate-800 outline-none"
                       />
                     </div>
 
@@ -11156,7 +11276,7 @@ export default function AdminPanel({
                           value={marketingScript}
                           onChange={(e) => setMarketingScript(e.target.value)}
                           rows={4}
-                          className="w-full text-[10px] font-mono leading-relaxed p-2.5 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-850 dark:text-gray-100 border-slate-150 dark:border-slate-800 outline-none resize-none font-sans"
+                          className="w-full text-[10px] font-mono leading-relaxed p-2.5 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-850 dark:text-gray-100 border-slate-150 dark:border-slate-800 outline-none resize-none font-sans"
                         />
                       </div>
                     )}
@@ -11380,7 +11500,7 @@ export default function AdminPanel({
                       {/* Right aligned floating TikTok panel */}
                       <div className="absolute right-3 bottom-12 flex flex-col items-center gap-3 text-center">
                         {/* Avatar */}
-                        <div className="w-7 h-7 rounded-full border border-white bg-[#0A0C10] overflow-hidden">
+                        <div className="w-7 h-7 rounded-full border border-white bg-[#090B0E] overflow-hidden">
                           <span className="text-[12px] leading-7 block">🏍️</span>
                         </div>
 
@@ -11407,7 +11527,7 @@ export default function AdminPanel({
                   </div>
 
                   {/* Active Backdrop/Filter Adjustment Workspace Controls */}
-                  <div className="bg-slate-50 dark:bg-[#11141D] p-3.5 rounded-xl border border-slate-150 dark:border-slate-800 space-y-3 font-sans text-xs">
+                  <div className="bg-slate-50 dark:bg-[#121622] p-3.5 rounded-xl border border-slate-150 dark:border-slate-800 space-y-3 font-sans text-xs">
                     
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
@@ -11415,7 +11535,7 @@ export default function AdminPanel({
                         <select
                           value={studioBackground}
                           onChange={(e) => setStudioBackground(e.target.value as any)}
-                          className="w-full text-[10px] p-2 rounded bg-white dark:bg-[#0A0C10] text-slate-800 dark:text-white border border-slate-205 dark:border-slate-800 outline-none"
+                          className="w-full text-[10px] p-2 rounded bg-white dark:bg-[#090B0E] text-slate-800 dark:text-white border border-slate-205 dark:border-slate-800 outline-none"
                         >
                           <option value="sunset">🌅 {isRtl ? 'طريق جبلي وقت الغروب' : 'Sunset Highway'}</option>
                           <option value="neon">🏎️ {isRtl ? 'حلبة سباق نيون بالليل' : 'Neon Night Speedtrack'}</option>
@@ -11429,7 +11549,7 @@ export default function AdminPanel({
                         <select
                           value={studioFilter}
                           onChange={(e) => setStudioFilter(e.target.value as any)}
-                          className="w-full text-[10px] p-2 rounded bg-white dark:bg-[#0A0C10] text-slate-850 dark:text-white border border-slate-205 dark:border-slate-800 outline-none"
+                          className="w-full text-[10px] p-2 rounded bg-white dark:bg-[#090B0E] text-slate-850 dark:text-white border border-slate-205 dark:border-slate-800 outline-none"
                         >
                           <option value="warm">🔥 Cinematic Warm</option>
                           <option value="purple">🌌 Anamorphic Neon Blue</option>
@@ -11445,7 +11565,7 @@ export default function AdminPanel({
                         <select
                           value={studioLighting}
                           onChange={(e) => setStudioLighting(e.target.value as any)}
-                          className="w-full text-[10px] p-2 rounded bg-white dark:bg-[#0A0C10] text-slate-850 dark:text-white border border-slate-205 dark:border-slate-800 outline-none"
+                          className="w-full text-[10px] p-2 rounded bg-white dark:bg-[#090B0E] text-slate-850 dark:text-white border border-slate-205 dark:border-slate-800 outline-none"
                         >
                           <option value="glow">💡 Backlit Amber Glow</option>
                           <option value="halo">⚡ Circular Focus Halo</option>
@@ -11711,7 +11831,7 @@ export default function AdminPanel({
                 ].map((sug, sugIdx) => (
                   <div 
                     key={sug.id || `sug-${sugIdx}`} 
-                    className="p-5 rounded-2xl bg-slate-50 dark:bg-[#11141D] border border-slate-150 dark:border-slate-800 flex flex-col justify-between space-y-4 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-md transition-all duration-300 group"
+                    className="p-5 rounded-2xl bg-slate-50 dark:bg-[#121622] border border-slate-150 dark:border-slate-800 flex flex-col justify-between space-y-4 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-md transition-all duration-300 group"
                   >
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between">
@@ -11761,7 +11881,7 @@ export default function AdminPanel({
                 </p>
 
                 {/* Categories tab pills */}
-                <div className="grid grid-cols-4 gap-1.5 bg-slate-100 dark:bg-[#11141D] p-1 rounded-xl font-sans">
+                <div className="grid grid-cols-4 gap-1.5 bg-slate-100 dark:bg-[#121622] p-1 rounded-xl font-sans">
                   {(['tips', 'compares', 'news', 'interactive'] as const).map(cat => (
                     <button
                       key={cat}
@@ -11801,7 +11921,7 @@ export default function AdminPanel({
                 </button>
 
                 {generatedContentText && (
-                  <div className="p-4 bg-slate-50 dark:bg-[#0A0C10] rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4 scale-in-95 ease-out duration-200">
+                  <div className="p-4 bg-slate-50 dark:bg-[#090B0E] rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4 scale-in-95 ease-out duration-200">
                     <pre className="text-xs text-slate-700 dark:text-gray-100 font-sans whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto font-sans">
                       {generatedContentText}
                     </pre>
@@ -11856,7 +11976,7 @@ export default function AdminPanel({
                       hashtag: '#السلامة_أولاً #خوذة_ذكية #دراجو_المملكة'
                     }
                   ].map((art, aIdx) => (
-                    <div key={aIdx} className="bg-slate-50 dark:bg-[#11141D] p-4 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-2.5 text-left">
+                    <div key={aIdx} className="bg-slate-50 dark:bg-[#121622] p-4 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-2.5 text-left">
                       <h5 className="text-xs font-black text-slate-800 dark:text-white leading-normal">{art.titleAr}</h5>
                       <p className="text-[10px] text-slate-400 font-semibold leading-relaxed font-sans">{art.descAr}</p>
                       
@@ -11891,7 +12011,7 @@ export default function AdminPanel({
       {/* NOTIFY CUSTOMER MODAL */}
       {notifyingOrder && (
         <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#11141D] text-slate-800 dark:text-gray-100 rounded-3xl w-full max-w-lg p-6 shadow-2xl relative border border-slate-205 dark:border-slate-800 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 text-left">
+          <div className="bg-white dark:bg-[#121622] text-slate-800 dark:text-gray-100 rounded-3xl w-full max-w-lg p-6 shadow-2xl relative border border-slate-205 dark:border-slate-800 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 text-left">
             
             {/* Header Action Row */}
             <div className="flex justify-between items-center pb-4 border-b border-slate-105 dark:border-slate-805">
@@ -11918,7 +12038,7 @@ export default function AdminPanel({
                   type="text"
                   disabled
                   value={notifyingOrder.user_email}
-                  className="w-full p-3 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl text-slate-400"
+                  className="w-full p-3 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl text-slate-400"
                 />
               </div>
 
@@ -11930,7 +12050,7 @@ export default function AdminPanel({
                   type="text"
                   value={notificationSubject}
                   onChange={(e) => setNotificationSubject(e.target.value)}
-                  className="w-full p-3 bg-white dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] text-xs font-bold rounded-xl text-slate-800 dark:text-gray-100 outline-none transition-all"
+                  className="w-full p-3 bg-white dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] text-xs font-bold rounded-xl text-slate-800 dark:text-gray-100 outline-none transition-all"
                   placeholder={isRtl ? 'أدخل عنوان الرسالة' : 'Enter email subject...'}
                 />
               </div>
@@ -11943,7 +12063,7 @@ export default function AdminPanel({
                   rows={8}
                   value={notificationBody}
                   onChange={(e) => setNotificationBody(e.target.value)}
-                  className="w-full p-3 bg-white dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] text-xs font-semibold rounded-xl text-slate-800 dark:text-gray-100 outline-none transition-all leading-relaxed"
+                  className="w-full p-3 bg-white dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] text-xs font-semibold rounded-xl text-slate-800 dark:text-gray-100 outline-none transition-all leading-relaxed"
                   placeholder={isRtl ? 'أدخل تفاصيل التحديث هنا...' : 'Enter notification body details...'}
                 />
               </div>
@@ -11970,7 +12090,7 @@ export default function AdminPanel({
               <button
                 type="button"
                 onClick={handleSendNotification}
-                className="px-5 py-2.5 bg-[var(--primary-color)] hover:opacity-90 text-[#0A0C10] rounded-xl transition-all text-xs font-black cursor-pointer flex items-center gap-1.5 hover:shadow-[0_0_15px_rgba(var(--primary-color-rgb),0.3)] shadow-sm"
+                className="px-5 py-2.5 bg-[var(--primary-color)] hover:opacity-90 text-white rounded-xl transition-all text-xs font-black cursor-pointer flex items-center gap-1.5 hover:shadow-[0_0_15px_rgba(var(--primary-color-rgb),0.3)] shadow-sm"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>{isRtl ? 'إرسال الإشعار' : 'Send Notification'}</span>
@@ -12182,7 +12302,7 @@ export default function AdminPanel({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             {/* Sec Box 1: Backup Hub */}
-            <div className="bg-slate-50 dark:bg-[#11141D] p-6 rounded-2xl border border-slate-150 dark:border-slate-800/80 space-y-6">
+            <div className="bg-slate-50 dark:bg-[#121622] p-6 rounded-2xl border border-slate-150 dark:border-slate-800/80 space-y-6">
               <div className="flex items-center gap-2">
                 <span className="p-2 rounded-xl bg-amber-500/10 text-amber-500 font-bold">🗄️</span>
                 <h4 className="text-xs font-black uppercase text-slate-800 dark:text-white tracking-wider">
@@ -12236,7 +12356,7 @@ export default function AdminPanel({
             </div>
 
             {/* Sec Box 2: Firewalls and Security */}
-            <div className="bg-slate-50 dark:bg-[#11141D] p-6 rounded-2xl border border-slate-150 dark:border-slate-800/80 space-y-6">
+            <div className="bg-slate-50 dark:bg-[#121622] p-6 rounded-2xl border border-slate-150 dark:border-slate-800/80 space-y-6">
               <div className="flex items-center gap-2">
                 <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 font-bold">🛡️</span>
                 <h4 className="text-xs font-black uppercase text-slate-800 dark:text-white tracking-wider">
@@ -12254,7 +12374,7 @@ export default function AdminPanel({
                   </div>
                 </div>
                 <select 
-                  className="text-[11px] font-black p-2 bg-slate-100 dark:bg-[#11141D] border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
+                  className="text-[11px] font-black p-2 bg-slate-100 dark:bg-[#121622] border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
                   onChange={(e) => triggerToast(isRtl ? `تم تغيير مستوى الحماية لـ: ${e.target.value}` : `Shield level shifted to: ${e.target.value}`)}
                 >
                   <option value="standard">{isRtl ? '🛡️ جدار حماية قياسي' : '🛡️ Standard Protection'}</option>
@@ -12318,7 +12438,7 @@ export default function AdminPanel({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               
               {/* Card 1: Traffic Volume */}
-              <div className="bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3">
+              <div className="bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">{isRtl ? 'حجم الطلبات / دقيقة' : 'Request Volume'}</span>
                   <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 font-mono">RPM</span>
@@ -12335,7 +12455,7 @@ export default function AdminPanel({
               </div>
 
               {/* Card 2: Server Latency */}
-              <div className="bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3">
+              <div className="bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">{isRtl ? 'وقت استجابة الخادم' : 'Server Latency'}</span>
                   {perfMetrics?.avgLatency !== undefined ? (
@@ -12364,7 +12484,7 @@ export default function AdminPanel({
               </div>
 
               {/* Card 3: Error Rates */}
-              <div className="bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3">
+              <div className="bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">{isRtl ? 'سلامة الردود ومعدل الأخطاء' : 'Response Error Rates'}</span>
                   <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 font-mono">ERRS</span>
@@ -12387,7 +12507,7 @@ export default function AdminPanel({
               </div>
 
               {/* Card 4: System Memory & Sockets */}
-              <div className="bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3">
+              <div className="bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">{isRtl ? 'استهلاك الذاكرة والاتصالات' : 'Memory & Socket Pool'}</span>
                   <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 font-mono">SYS</span>
@@ -12409,7 +12529,7 @@ export default function AdminPanel({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* Top API Route performance list */}
-              <div className="lg:col-span-2 bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4 text-xs">
+              <div className="lg:col-span-2 bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4 text-xs">
                 <h4 className="text-xs font-black uppercase text-slate-450 tracking-wider flex items-center justify-between">
                   <span>{isRtl ? 'أكثر مسارات API طلباً وحالتها:' : 'Top Requested API Endpoints:'}</span>
                   <span className="text-[10px] font-normal lowercase font-mono text-slate-400">
@@ -12456,7 +12576,7 @@ export default function AdminPanel({
               </div>
 
               {/* Server Optimization Control Actions */}
-              <div className="bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4">
+              <div className="bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4">
                 <h4 className="text-xs font-black uppercase text-slate-450 tracking-wider">{isRtl ? 'محركات التحسين السريع:' : 'Optimization Engines:'}</h4>
                 
                 <div className="space-y-3">
@@ -12516,19 +12636,19 @@ export default function AdminPanel({
                 <h5 className="font-bold text-slate-700 dark:text-slate-300">⚡ {isRtl ? 'معايير الأداء لـ 100,000+ منتج:' : 'Performance stats for 100,000+ products:'}</h5>
                 
                 <div className="space-y-2 font-mono text-[10px]">
-                  <div className="flex justify-between p-2.5 rounded-xl bg-white dark:bg-[#11141D] border border-slate-150 dark:border-slate-800">
+                  <div className="flex justify-between p-2.5 rounded-xl bg-white dark:bg-[#121622] border border-slate-150 dark:border-slate-800">
                     <span className="text-slate-450">{isRtl ? 'هيكل فهرسة البيانات:' : 'Database indexing schema:'}</span>
                     <span className="font-bold text-slate-700 dark:text-slate-300">Composite Indexes (Firestore Core)</span>
                   </div>
-                  <div className="flex justify-between p-2.5 rounded-xl bg-white dark:bg-[#11141D] border border-slate-150 dark:border-slate-800">
+                  <div className="flex justify-between p-2.5 rounded-xl bg-white dark:bg-[#121622] border border-slate-150 dark:border-slate-800">
                     <span className="text-slate-450">{isRtl ? 'وقت استعلام الصفحة (100K منتج):' : 'Page query speed (100K products):'}</span>
                     <span className="font-bold text-emerald-500">~12ms (Cursor Pagination)</span>
                   </div>
-                  <div className="flex justify-between p-2.5 rounded-xl bg-white dark:bg-[#11141D] border border-slate-150 dark:border-slate-800">
+                  <div className="flex justify-between p-2.5 rounded-xl bg-white dark:bg-[#121622] border border-slate-150 dark:border-slate-800">
                     <span className="text-slate-450">{isRtl ? 'نظام العرض وتخفيف الأثر:' : 'List virtualization engine:'}</span>
                     <span className="font-bold text-slate-700 dark:text-slate-300">React Virtual Window / DOM Pool</span>
                   </div>
-                  <div className="flex justify-between p-2.5 rounded-xl bg-white dark:bg-[#11141D] border border-slate-150 dark:border-slate-800">
+                  <div className="flex justify-between p-2.5 rounded-xl bg-white dark:bg-[#121622] border border-slate-150 dark:border-slate-800">
                     <span className="text-slate-450">{isRtl ? 'معدل تزامن الـ API اليومي:' : 'API Sync rate limit:'}</span>
                     <span className="font-bold text-violet-500">1,000,000 calls/day (CJ dropshipping)</span>
                   </div>
@@ -12594,7 +12714,7 @@ export default function AdminPanel({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             {/* Developer tokens list */}
-            <div className="bg-slate-50 dark:bg-[#11141D] p-6 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4">
+            <div className="bg-slate-50 dark:bg-[#121622] p-6 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4">
               <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2">
                 <h4 className="text-xs font-black uppercase text-slate-800 dark:text-white tracking-wider flex items-center gap-1">
                   <span>🔑</span>
@@ -12628,7 +12748,7 @@ export default function AdminPanel({
             </div>
 
             {/* JSON-RPC / REST Endpoint explorer */}
-            <div className="bg-slate-50 dark:bg-[#11141D] p-6 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4">
+            <div className="bg-slate-50 dark:bg-[#121622] p-6 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-4">
               <h4 className="text-xs font-black uppercase text-slate-850 dark:text-white tracking-wider">
                 {isRtl ? 'مستعرض استجابة واجهات البرمجة (Live Response Explorer)' : 'JSON-RPC Endpoint Tester'}
               </h4>
@@ -12697,7 +12817,7 @@ export default function AdminPanel({
             <div className="lg:col-span-5 space-y-6 col-span-1">
               
               {/* PAYMENT SECTION */}
-              <div className="space-y-3 bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800">
+              <div className="space-y-3 bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
                   <span>💳</span>
                   <span>{isRtl ? 'بوابات الدفع الإلكتروني' : 'Payment Providers'}</span>
@@ -12783,7 +12903,7 @@ export default function AdminPanel({
               </div>
 
               {/* SHIPPING SECTION */}
-              <div className="space-y-3 bg-slate-50 dark:bg-[#11141D] p-5 rounded-2xl border border-slate-150 dark:border-slate-800">
+              <div className="space-y-3 bg-slate-50 dark:bg-[#121622] p-5 rounded-2xl border border-slate-150 dark:border-slate-800">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
                   <span>🚚</span>
                   <span>{isRtl ? 'شركات الشحن وتتبع الطرود' : 'Courier & Logistics Services'}</span>
@@ -12845,7 +12965,7 @@ export default function AdminPanel({
             </div>
 
             {/* Right Side: Key config settings panel form */}
-            <div className="lg:col-span-7 col-span-1 bg-slate-50 dark:bg-[#11141D] p-6 rounded-3xl border border-slate-150 dark:border-slate-800 space-y-6">
+            <div className="lg:col-span-7 col-span-1 bg-slate-50 dark:bg-[#121622] p-6 rounded-3xl border border-slate-150 dark:border-slate-800 space-y-6">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-2 flex items-center gap-1.5">
                 <span>⚙️</span>
                 <span>{isRtl ? 'لوحة إدخال وتحديث مفاتيح الربط (آمنة بالكامل)' : 'API Key Management Panel (Highly Secure)'}</span>
@@ -14304,7 +14424,7 @@ export default function AdminPanel({
                 <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">{isRtl ? 'المنتجات المطلوبة وكمياتها' : 'Delivered Items Summary'}</h4>
                 <div className="border border-slate-100 rounded-2xl overflow-hidden text-[11px]">
                   <table className="w-full">
-                    <thead className="bg-[#11141D] text-white font-black text-[10px] uppercase">
+                    <thead className="bg-[#121622] text-white font-black text-[10px] uppercase">
                       <tr>
                         <th className="p-3 text-left" style={{ textAlign: isRtl ? 'right' : 'left' }}>{isRtl ? 'المنتج الفاخر واللون' : 'Product name & selected color'}</th>
                         <th className="p-3 text-center">{isRtl ? 'الكمية' : 'Qty'}</th>
@@ -14369,7 +14489,7 @@ export default function AdminPanel({
                 <select
                   value={qrCategory}
                   onChange={(e) => setQrCategory(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
                 >
                   <option value="عام">عام (General)</option>
                   <option value="طلبات">طلبات (Orders)</option>
@@ -14388,7 +14508,7 @@ export default function AdminPanel({
                     value={qrTitleAr}
                     onChange={(e) => setQrTitleAr(e.target.value)}
                     placeholder="مثال: 👋 مرحبًا بك"
-                    className="w-full p-2.5 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
                   />
                 </div>
                 <div>
@@ -14398,7 +14518,7 @@ export default function AdminPanel({
                     value={qrTitleEn}
                     onChange={(e) => setQrTitleEn(e.target.value)}
                     placeholder="e.g., 👋 Welcome"
-                    className="w-full p-2.5 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-left"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-left"
                   />
                 </div>
               </div>
@@ -14410,7 +14530,7 @@ export default function AdminPanel({
                   onChange={(e) => setQrTextAr(e.target.value)}
                   rows={3}
                   placeholder="اكتب صيغة الرد التي سيتم إرسالها للعميل..."
-                  className="w-full p-2.5 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -14421,7 +14541,7 @@ export default function AdminPanel({
                   onChange={(e) => setQrTextEn(e.target.value)}
                   rows={2}
                   placeholder="Type the response in English..."
-                  className="w-full p-2.5 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-left"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-left"
                 />
               </div>
 
@@ -14432,7 +14552,7 @@ export default function AdminPanel({
                   value={qrKeywords}
                   onChange={(e) => setQrKeywords(e.target.value)}
                   placeholder="مثال: طلب, حالة, شحن, تتبع, دفع, visa"
-                  className="w-full p-2.5 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -14442,7 +14562,7 @@ export default function AdminPanel({
                   <select
                     value={qrScope}
                     onChange={(e: any) => setQrScope(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
                   >
                     <option value="shared">عام لجميع الموظفين (Shared)</option>
                     <option value="agent">خاص بملفي الشخصي فقط (Private)</option>
@@ -14557,7 +14677,7 @@ export default function AdminPanel({
                   value={sugIcon}
                   onChange={(e) => setSugIcon(e.target.value)}
                   placeholder="📦"
-                  className="w-full p-2.5 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -14568,7 +14688,7 @@ export default function AdminPanel({
                   value={sugTextAr}
                   onChange={(e) => setSugTextAr(e.target.value)}
                   placeholder="مثال: 📦 متابعة طلبي"
-                  className="w-full p-2.5 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -14579,7 +14699,7 @@ export default function AdminPanel({
                   value={sugTextEn}
                   onChange={(e) => setSugTextEn(e.target.value)}
                   placeholder="e.g., 📦 Track my order"
-                  className="w-full p-2.5 bg-slate-50 dark:bg-[#0A0C10] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-left"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white outline-none focus:border-emerald-500 text-left"
                 />
               </div>
 

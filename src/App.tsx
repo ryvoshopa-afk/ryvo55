@@ -9,6 +9,7 @@ import { formatPrice } from './utils/price';
 import { ConfirmationProvider } from './components/ConfirmationDialog';
 import socket from './utils/socket';
 import { smartFetch } from './utils/smartFetch';
+import { checkOAuthRedirectResult } from './lib/firebase';
 
 // Components (Critical Render Path - Loaded synchronously)
 import Navbar from './components/Navbar';
@@ -149,6 +150,17 @@ export default function App() {
 
   // Verify and sync active session role with backend /api/auth/me on mount
   useEffect(() => {
+    // Check if user is returning from OAuth redirect
+    checkOAuthRedirectResult().then(redirectRes => {
+      if (redirectRes && redirectRes.success && redirectRes.user) {
+        console.log("==========================================");
+        console.log("🎉 [APP MOUNT] Successfully signed in from OAuth Redirect:", redirectRes.user.email);
+        console.log("==========================================");
+        setCurrentUser(redirectRes.user);
+        localStorage.setItem('ryvo_user', JSON.stringify(redirectRes.user));
+      }
+    }).catch(() => {});
+
     const token = localStorage.getItem('ryvo_session_token');
     if (token) {
       fetch('/api/auth/me', {
@@ -265,7 +277,8 @@ export default function App() {
 
   // Fetch & sync Welcome Coupon Session on start or user changed
   useEffect(() => {
-    const fetchWelcomeSession = async () => {
+    let isSubscribed = true;
+    const fetchWelcomeSession = async (retries = 2) => {
       try {
         const storedSessionId = localStorage.getItem('welcome_coupon_session_id') || '';
         const res = await fetch('/api/welcome-coupon/session', {
@@ -276,6 +289,7 @@ export default function App() {
             email: currentUser?.email || ''
           }),
         });
+        if (!isSubscribed) return;
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.session) {
@@ -298,11 +312,18 @@ export default function App() {
           }
         }
       } catch (err) {
-        console.error('Error fetching welcome coupon session:', err);
+        if (isSubscribed && retries > 0) {
+          setTimeout(() => fetchWelcomeSession(retries - 1), 1200);
+        } else {
+          console.warn('Welcome coupon session fetch currently unavailable:', err);
+        }
       }
     };
     
     fetchWelcomeSession();
+    return () => {
+      isSubscribed = false;
+    };
   }, [currentUser]);
 
   // Dynamic Language Detection Hierarchy (Country via Geolocation -> Browser Lang -> Default Settings)
@@ -488,7 +509,7 @@ export default function App() {
 
   // Customizable accent brand color state
   const [brandColor, setBrandColor] = useState<string>(() => {
-    return localStorage.getItem('ryvo_brand_color') || '#38bdf8';
+    return localStorage.getItem('ryvo_brand_color') || '#E53E3E';
   });
 
   // Social media links state
@@ -911,13 +932,43 @@ export default function App() {
   const handleUpdateLogo = async (logo: string) => {
     setShopLogo(logo);
     try {
-      await fetch('/api/global-settings', {
+      const res = await fetch('/api/settings/logo', {
         method: 'POST',
         headers: getAdminHeaders(),
         body: JSON.stringify({ shopLogo: logo, adminEmail: currentUser?.email || 'ryvo.shopa@gmail.com' }),
       });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.shopLogo) {
+          setShopLogo(data.shopLogo);
+          localStorage.setItem('ryvo_shop_logo', data.shopLogo);
+        }
+      } else {
+        await fetch('/api/global-settings', {
+          method: 'POST',
+          headers: getAdminHeaders(),
+          body: JSON.stringify({ shopLogo: logo, adminEmail: currentUser?.email || 'ryvo.shopa@gmail.com' }),
+        });
+      }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+    try {
+      const res = await fetch('/api/settings/logo', {
+        method: 'DELETE',
+        headers: getAdminHeaders(),
+      });
+      if (res.ok) {
+        setShopLogo('RYVO');
+        localStorage.setItem('ryvo_shop_logo', 'RYVO');
+      }
+    } catch (e) {
+      console.error(e);
+      setShopLogo('RYVO');
+      localStorage.setItem('ryvo_shop_logo', 'RYVO');
     }
   };
 
@@ -1050,9 +1101,39 @@ export default function App() {
   // SEO modal viewer
   const [seoModalType, setSeoModalType] = useState<'sitemap' | 'robots' | null>(null);
 
-  // Sync Storage
+  // Sync Storage & DOM Brand Favicons
   useEffect(() => {
     localStorage.setItem('ryvo_shop_logo', shopLogo);
+
+    if (typeof window !== 'undefined') {
+      const timestamp = Date.now();
+
+      // Dynamic favicon & icon cache-busting updates
+      const favIco = document.querySelector('link[rel="icon"][type="image/x-icon"]') || document.querySelector('link[rel="shortcut icon"]');
+      if (favIco) favIco.setAttribute('href', `/favicon.ico?v=${timestamp}`);
+
+      const fav16 = document.querySelector('link[rel="icon"][sizes="16x16"]');
+      if (fav16) fav16.setAttribute('href', `/favicon-16x16.png?v=${timestamp}`);
+
+      const fav32 = document.querySelector('link[rel="icon"][sizes="32x32"]');
+      if (fav32) fav32.setAttribute('href', `/favicon-32x32.png?v=${timestamp}`);
+
+      const appleTouch = document.querySelector('link[rel="apple-touch-icon"]');
+      if (appleTouch) appleTouch.setAttribute('href', `/apple-touch-icon.png?v=${timestamp}`);
+
+      const manifest = document.querySelector('link[rel="manifest"]');
+      if (manifest) manifest.setAttribute('href', `/manifest.webmanifest?v=${timestamp}`);
+
+      // Social & OpenGraph Meta
+      const ogImg = document.querySelector('meta[property="og:image"]');
+      const twImg = document.querySelector('meta[name="twitter:image"]');
+      const absoluteLogo = shopLogo.startsWith('data:image') || shopLogo.startsWith('http')
+        ? shopLogo
+        : `${window.location.origin}${shopLogo.startsWith('/') ? shopLogo : `/${shopLogo}`}`;
+
+      if (ogImg) ogImg.setAttribute('content', absoluteLogo);
+      if (twImg) twImg.setAttribute('content', absoluteLogo);
+    }
   }, [shopLogo]);
 
   useEffect(() => {
@@ -1658,7 +1739,7 @@ export default function App() {
   return (
     <ConfirmationProvider language={language}>
       <div className={`min-h-screen transition-colors duration-300 font-sans ${
-        theme === 'dark' ? 'bg-[#0A0C10] text-slate-100' : 'bg-slate-50 text-slate-800'
+        theme === 'dark' ? 'bg-[#090B0E] text-[#F8FAFC]' : 'bg-[#F8F9FA] text-[#0F172A]'
       }`}>
       
       {/* Pre-Launch Top Announcement Banner */}
@@ -1720,7 +1801,7 @@ export default function App() {
       />
 
       {/* Main Container Body */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-3 py-3 md:py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-[calc(80px+env(safe-area-inset-bottom))] lg:pb-12 min-h-[80vh]">
         <Suspense fallback={
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
             <RefreshCw className="animate-spin text-emerald-500 w-8 h-8" />
@@ -1745,6 +1826,7 @@ export default function App() {
             onDeleteReview={handleDeleteReview}
             shopLogo={shopLogo}
             onUpdateLogo={handleUpdateLogo}
+            onDeleteLogo={handleDeleteLogo}
             brandColor={brandColor}
             onUpdateBrandColor={handleUpdateBrandColor}
             socialLinks={socialLinks}
@@ -1828,7 +1910,7 @@ export default function App() {
 
                 {/* Categories tab pills list & Advanced Filters Trigger */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex flex-wrap items-center gap-1.5 bg-slate-150/10 dark:bg-[#11141D] p-1.5 rounded-2xl border border-slate-100 dark:border-[#1E293B]">
+                  <div className="flex flex-wrap items-center gap-1.5 bg-slate-150/10 dark:bg-[#121622] p-1.5 rounded-2xl border border-slate-100 dark:border-[var(--border-dark)]">
                     {[
                       { id: 'all', label: t.all },
                       { id: 'bikes', label: t.bikes },
@@ -1846,7 +1928,7 @@ export default function App() {
                         }}
                         className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-tight transition-all cursor-pointer ${
                           activeCategory === cat.id
-                            ? 'bg-slate-900 text-white dark:bg-[var(--primary-color, #38bdf8)] dark:text-[#0A0C10] shadow-md'
+                            ? 'bg-[var(--primary-color)] text-white shadow-md'
                             : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                         }`}
                       >
@@ -1860,8 +1942,8 @@ export default function App() {
                     onClick={() => setIsFilterOpen(!isFilterOpen)}
                     className={`px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-1.5 transition-all border cursor-pointer ${
                       isFilterOpen
-                        ? 'bg-amber-500/15 border-amber-500 text-amber-500 shadow-md'
-                        : 'bg-white dark:bg-[#11141D] border-slate-200 dark:border-[#1E293B] text-slate-700 dark:text-slate-300 hover:border-slate-350'
+                        ? 'bg-[var(--primary-color)]/15 border-[var(--primary-color)] text-[var(--primary-color)] shadow-md'
+                        : 'bg-white dark:bg-[#121622] border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 hover:border-slate-350'
                     }`}
                   >
                     <SlidersHorizontal className="w-4 h-4" />
@@ -1872,7 +1954,7 @@ export default function App() {
 
               {/* Collapsible Advanced Filters Panel */}
               {isFilterOpen && (
-                <div className="bg-slate-50/50 dark:bg-[#11141D]/50 border border-slate-150 dark:border-[#1E293B] rounded-3xl p-6 sm:p-8 animate-in slide-in-from-top-4 duration-300 space-y-6">
+                <div className="bg-slate-50/50 dark:bg-[#121622]/80 border border-slate-150 dark:border-[var(--border-dark)] rounded-3xl p-6 sm:p-8 animate-in slide-in-from-top-4 duration-300 space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Filter Col 1: Brand/Manufacturer */}
                     <div className="space-y-2">
@@ -1882,7 +1964,7 @@ export default function App() {
                       <select
                         value={filterBrand}
                         onChange={(e) => setFilterBrand(e.target.value)}
-                        className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-850 dark:text-white border-slate-200 dark:border-[#1E293B] outline-none"
+                        className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-850 dark:text-white border-slate-200 dark:border-[var(--border-dark)] outline-none"
                       >
                         <option value="all">{language === 'ar' ? 'جميع الماركات 🏍️' : 'All Brands 🏍️'}</option>
                         <option value="Yamaha">Yamaha</option>
@@ -1926,7 +2008,7 @@ export default function App() {
                       <select
                         value={filterRating}
                         onChange={(e) => setFilterRating(Number(e.target.value))}
-                        className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-850 dark:text-white border-slate-200 dark:border-[#1E293B] outline-none"
+                        className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-850 dark:text-white border-slate-200 dark:border-[var(--border-dark)] outline-none"
                       >
                         <option value="0">{language === 'ar' ? 'أي تقييم ⭐' : 'Any Rating ⭐'}</option>
                         <option value="5">5 {language === 'ar' ? 'نجوم كاملة ⭐' : 'Stars Only ⭐'}</option>
@@ -1943,7 +2025,7 @@ export default function App() {
                       <select
                         value={filterAvailability}
                         onChange={(e) => setFilterAvailability(e.target.value)}
-                        className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#0A0C10] text-slate-850 dark:text-white border-slate-200 dark:border-[#1E293B] outline-none"
+                        className="w-full text-xs p-3 rounded-xl border bg-white dark:bg-[#090B0E] text-slate-850 dark:text-white border-slate-200 dark:border-[var(--border-dark)] outline-none"
                       >
                         <option value="all">{language === 'ar' ? 'الكل 🛍️' : 'All 🛍_'}</option>
                         <option value="instock">{language === 'ar' ? 'متوفر بالمخزن فقط ✅' : 'In Stock Only ✅'}</option>
@@ -1953,7 +2035,7 @@ export default function App() {
                   </div>
 
                   {/* Reset Actions Row */}
-                  <div className={`flex justify-between items-center border-t border-slate-200/55 dark:border-[#1E293B] pt-4 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
+                  <div className={`flex justify-between items-center border-t border-slate-200/55 dark:border-[var(--border-dark)] pt-4 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
                     <span className="text-xs text-slate-450 font-bold">
                       {language === 'ar' 
                         ? `تم العثور على ${searchFilteredProducts.length} منتج مطابق لفلاترك.` 
@@ -2030,7 +2112,7 @@ export default function App() {
                         <div 
                           key={`${prod.id}-recent-${idx}`} 
                           onClick={() => handleViewProduct(prod)}
-                          className="group bg-white dark:bg-[#11141D] rounded-2xl p-4 border border-slate-150 dark:border-[#1E293B] hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer text-center flex flex-col justify-between"
+                          className="group bg-white dark:bg-[#121622] rounded-2xl p-4 border border-slate-150 dark:border-[var(--border-dark)] hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer text-center flex flex-col justify-between"
                         >
                           <div className="aspect-square w-full rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/60 p-1 mb-3">
                             <img 
@@ -2044,8 +2126,8 @@ export default function App() {
                             />
                           </div>
                           <div className="space-y-1">
-                            <h4 className="text-xs font-black text-slate-800 dark:text-slate-205 line-clamp-1 group-hover:text-amber-500 dark:group-hover:text-[var(--primary-color, #38bdf8)] transition-colors">{name}</h4>
-                            <span className="text-[10px] font-black text-amber-500 dark:text-[var(--primary-color, #38bdf8)] font-sans block">{formatPrice(prod.price, language)}</span>
+                            <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 line-clamp-1 group-hover:text-[var(--primary-color)] transition-colors">{name}</h4>
+                            <span className="text-[10px] font-black text-[var(--primary-color)] font-sans block">{formatPrice(prod.price, language)}</span>
                           </div>
                         </div>
                       );
@@ -2055,11 +2137,11 @@ export default function App() {
             )}
 
             {/* About & Trust indicators banner */}
-            <div className="bg-[#11141D] rounded-3xl p-3 sm:p-12 text-white relative overflow-hidden border border-slate-150 dark:border-[#1E293B] shadow-sm mt-12">
-              <div className="absolute right-0 top-0 w-96 h-96 bg-gradient-to-br from-[var(--primary-color, #38bdf8)]/10 to-transparent rounded-full blur-3xl -mr-32 -mt-32"></div>
+            <div className="bg-[#121622] rounded-3xl p-3 sm:p-12 text-white relative overflow-hidden border border-slate-150 dark:border-[var(--border-dark)] shadow-xs mt-12">
+              <div className="absolute right-0 top-0 w-96 h-96 bg-gradient-to-br from-[var(--primary-color)]/10 to-transparent rounded-full blur-3xl -mr-32 -mt-32"></div>
               
               <div className="relative max-w-2xl space-y-4">
-                <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[var(--primary-color, #38bdf8)]/10 text-[var(--primary-color, #38bdf8)] border border-[var(--primary-color, #38bdf8)]/20 rounded-full text-[10px] font-black uppercase tracking-wider">
+                <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20 rounded-full text-[10px] font-black uppercase tracking-wider">
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>{t.store_name}</span>
                 </div>
@@ -2081,7 +2163,7 @@ export default function App() {
       </main>
 
       {/* Footer Area */}
-      <footer className="bg-slate-50 dark:bg-[#0A0C10] border-t border-slate-150 dark:border-[#1E293B] py-16 mt-20 transition-colors">
+      <footer className="bg-slate-50 dark:bg-[#090B0E] border-t border-slate-150 dark:border-[var(--border-dark)] py-16 mt-20 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 text-right">
@@ -2235,7 +2317,7 @@ export default function App() {
                   value={newsletterEmail}
                   onChange={(e) => setNewsletterEmail(e.target.value)}
                   placeholder={language === 'ar' ? 'بريدك الإلكتروني...' : 'your.email@example.com'}
-                  className="flex-1 text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#11141D] text-slate-850 dark:text-white outline-none focus:border-amber-500 transition-colors"
+                  className="flex-1 text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121622] text-slate-850 dark:text-white outline-none focus:border-amber-500 transition-colors"
                 />
                 <button
                   onClick={() => {
@@ -2251,7 +2333,7 @@ export default function App() {
                       setTimeout(() => setNewsletterSubscribed(false), 4000);
                     }
                   }}
-                  className="px-4 py-3 bg-slate-900 text-white hover:bg-slate-800 dark:bg-amber-500 dark:text-[#0A0C10] text-xs font-black rounded-xl transition-all cursor-pointer"
+                  className="px-4 py-3 bg-slate-900 text-white hover:bg-slate-800 dark:bg-amber-500 dark:text-white text-xs font-black rounded-xl transition-all cursor-pointer"
                 >
                   {newsletterSubscribed 
                     ? (language === 'ar' ? 'تم الاشتراك بنجاح! 🚀' : 'Subscribed! 🚀') 
@@ -2263,7 +2345,7 @@ export default function App() {
           </div>
 
           {/* Bottom Copyright and apple copyright statement */}
-          <div className="pt-8 border-t border-slate-200/55 dark:border-[#1E293B] text-center space-y-4">
+          <div className="pt-8 border-t border-slate-200/55 dark:border-[var(--border-dark)] text-center space-y-4">
             
             {/* Exact required statement of copyright */}
             <div className="text-xs text-slate-500 dark:text-slate-400 font-bold leading-relaxed space-y-1.5">
@@ -2395,11 +2477,11 @@ export default function App() {
         <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
           <div onClick={() => setSeoModalType(null)} className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
           
-          <div className="bg-white dark:bg-[#11141D] rounded-3xl p-6 sm:p-8 w-full max-w-2xl border border-slate-150 dark:border-[#1E293B] text-left font-sans text-xs relative select-all flex flex-col justify-between">
+          <div className="bg-white dark:bg-[#121622] rounded-3xl p-6 sm:p-8 w-full max-w-2xl border border-slate-150 dark:border-[var(--border-dark)] text-left font-sans text-xs relative select-all flex flex-col justify-between">
             <button onClick={() => setSeoModalType(null)} className="absolute top-4 right-4 p-2.5 rounded-full bg-slate-50 dark:bg-slate-800"><XIcon /></button>
             
             <div className="space-y-4">
-              <h3 className="font-extrabold text-sm uppercase text-[var(--primary-color, #38bdf8)] tracking-wider flex items-center gap-1.5 border-b pb-3 border-slate-100 dark:border-[#1E293B]">
+              <h3 className="font-extrabold text-sm uppercase text-[var(--primary-color)] tracking-wider flex items-center gap-1.5 border-b pb-3 border-slate-100 dark:border-[var(--border-dark)]">
                 <FileCode className="w-4 h-4" />
                 <span>Google Search Console Metadata Parser Tool</span>
               </h3>
@@ -2443,7 +2525,7 @@ export default function App() {
             className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm transition-opacity"
           ></div>
           
-          <div className="bg-white dark:bg-[#11141D] rounded-3xl overflow-hidden shadow-2xl w-full max-w-lg border border-slate-150 dark:border-[#1E293B] relative animate-in fade-in zoom-in-95 duration-300 flex flex-col">
+          <div className="bg-white dark:bg-[#121622] rounded-3xl overflow-hidden shadow-2xl w-full max-w-lg border border-slate-150 dark:border-[var(--border-dark)] relative animate-in fade-in zoom-in-95 duration-300 flex flex-col">
             
             {/* Countdown / Status Indicator Badge */}
             {!canCloseAd && adCloseSecondsLeft > 0 && (
@@ -2727,7 +2809,7 @@ export default function App() {
       })()}
 
       {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 px-6 py-3.5 rounded-2xl shadow-xl font-bold text-xs flex items-center gap-2 border border-slate-700/50 dark:border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 px-6 py-3.5 rounded-2xl shadow-xl font-bold text-xs flex items-center gap-2 border border-slate-700/50 dark:border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <span>🔔</span>
           <span>{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="ml-2 hover:opacity-75 font-bold cursor-pointer">✕</button>

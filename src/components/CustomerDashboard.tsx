@@ -424,7 +424,7 @@ Track or check history anytime at our verified portal.
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-slate-800 dark:text-gray-100">
         {/* Welcome Board */}
-        <div className="bg-[#11141D] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden mb-6 shadow-sm">
+        <div className="bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden mb-6 shadow-sm">
           <div className="absolute right-0 top-0 w-80 h-80 bg-gradient-to-br from-rose-500/10 to-transparent rounded-full blur-3xl -mr-12 -mt-12"></div>
           
           <div className={`relative ${isRtl ? 'text-right' : 'text-left'} space-y-2`}>
@@ -442,12 +442,12 @@ Track or check history anytime at our verified portal.
         </div>
 
         {/* Tab Switch Headers */}
-        <div className="flex bg-slate-100 dark:bg-[#0A0C10] border dark:border-[#1E293B] rounded-2xl p-1 gap-1 mb-6 max-w-md mx-auto">
+        <div className="flex bg-slate-100 dark:bg-[#090B0E] border dark:border-[var(--border-dark)] rounded-2xl p-1 gap-1 mb-6 max-w-md mx-auto">
           <button
             onClick={() => setAffiliateTab('overview')}
             className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               affiliateTab === 'overview'
-                ? 'bg-white dark:bg-[#11141D] text-rose-500 shadow-sm'
+                ? 'bg-white dark:bg-[#121622] text-rose-500 shadow-sm'
                 : 'text-slate-500 hover:text-rose-500'
             }`}
           >
@@ -459,7 +459,7 @@ Track or check history anytime at our verified portal.
             onClick={() => setAffiliateTab('settings')}
             className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               affiliateTab === 'settings'
-                ? 'bg-white dark:bg-[#11141D] text-rose-500 shadow-sm'
+                ? 'bg-white dark:bg-[#121622] text-rose-500 shadow-sm'
                 : 'text-slate-500 hover:text-rose-500'
             }`}
           >
@@ -513,7 +513,7 @@ Track or check history anytime at our verified portal.
               </div>
 
               {/* Current Earnings Card */}
-              <div className="bg-white dark:bg-[#11141D] border border-slate-150 dark:border-[#1E293B] rounded-3xl p-6 flex flex-col justify-between shadow-sm">
+              <div className="bg-white dark:bg-[#121622] border border-slate-150 dark:border-[var(--border-dark)] rounded-3xl p-6 flex flex-col justify-between shadow-sm">
                 <div>
                   <div className="flex justify-between items-start">
                     <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">{isRtl ? 'الأرباح الحالية القابلة للسحب' : 'CURRENT UNPAID BALANCE'}</p>
@@ -531,7 +531,7 @@ Track or check history anytime at our verified portal.
               </div>
 
               {/* Total Commissions / Code Uses Card */}
-              <div className="bg-white dark:bg-[#11141D] border border-slate-150 dark:border-[#1E293B] rounded-3xl p-6 flex flex-col justify-between shadow-sm">
+              <div className="bg-white dark:bg-[#121622] border border-slate-150 dark:border-[var(--border-dark)] rounded-3xl p-6 flex flex-col justify-between shadow-sm">
                 <div>
                   <div className="flex justify-between items-start">
                     <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">{isRtl ? 'مرات استخدام الكود' : 'PROMO CODE USAGES'}</p>
@@ -551,7 +551,7 @@ Track or check history anytime at our verified portal.
             </div>
 
             {/* Withdrawal request card */}
-            <div className="bg-white dark:bg-[#11141D] border border-slate-150 dark:border-[#1E293B] rounded-3xl p-6 sm:p-8 shadow-sm text-right space-y-6">
+            <div className="bg-white dark:bg-[#121622] border border-slate-150 dark:border-[var(--border-dark)] rounded-3xl p-6 sm:p-8 shadow-sm text-right space-y-6">
               <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
                 <h4 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-1.5 justify-start">
                   <CreditCard className="w-5 h-5 text-rose-500" />
@@ -576,7 +576,7 @@ Track or check history anytime at our verified portal.
                   </p>
                 </div>
               ) : (affiliateStats?.current_balance || 0) === 0 ? (
-                <div className="p-5 bg-slate-50 dark:bg-[#0A0C10] border border-slate-100 dark:border-slate-800 rounded-2xl text-xs text-slate-450 text-center font-bold">
+                <div className="p-5 bg-slate-50 dark:bg-[#090B0E] border border-slate-100 dark:border-slate-800 rounded-2xl text-xs text-slate-450 text-center font-bold">
                   {isRtl ? '💡 لا توجد أرباح قابلة للسحب حالياً. شارك كود الخصم الخاص بك مع عملائك لتكسب العمولات على كل عملية شراء!' : '💡 No withdrawable balance available yet. Share your code with customers to earn payouts!'}
                 </div>
               ) : null}
@@ -618,7 +618,7 @@ Track or check history anytime at our verified portal.
                     onChange={(e) => setAffiliateIban(e.target.value)}
                     placeholder="SA00 0000 0000 0000 0000 0000"
                     disabled={affiliateStats?.withdrawal_requested}
-                    className="w-full text-center text-xs font-mono py-3 px-4 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-rose-500 focus:bg-white text-slate-850 dark:text-white outline-none transition-all text-left font-sans"
+                    className="w-full text-center text-xs font-mono py-3 px-4 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-rose-500 focus:bg-white text-slate-850 dark:text-white outline-none transition-all text-left font-sans"
                   />
                 </div>
 
@@ -634,9 +634,9 @@ Track or check history anytime at our verified portal.
           </div>
         ) : (
           /* Affiliate settings tab */
-          <div className="bg-white dark:bg-[#11141D] rounded-3xl p-6 sm:p-8 border border-slate-150 dark:border-[#1E293B] max-w-xl mx-auto shadow-sm text-right space-y-6">
+          <div className="bg-white dark:bg-[#121622] rounded-3xl p-6 sm:p-8 border border-slate-150 dark:border-[var(--border-dark)] max-w-xl mx-auto shadow-sm text-right space-y-6">
             <form onSubmit={handleAffiliateSave} className="space-y-4">
-              <h3 className="text-base font-black border-b border-slate-100 dark:border-[#1E293B] pb-3 text-slate-800 dark:text-white flex items-center gap-1.5 justify-end">
+              <h3 className="text-base font-black border-b border-slate-100 dark:border-[var(--border-dark)] pb-3 text-slate-800 dark:text-white flex items-center gap-1.5 justify-end">
                 <Settings className="w-5 h-5 text-rose-500" />
                 <span>{isRtl ? 'تعديل بيانات الحساب الشخصي' : 'Update Personal Affiliate Account'}</span>
               </h3>
@@ -648,7 +648,7 @@ Track or check history anytime at our verified portal.
                   required
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-rose-500 text-slate-850 dark:text-white outline-none transition-all text-right"
+                  className="w-full text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-rose-500 text-slate-850 dark:text-white outline-none transition-all text-right"
                 />
               </div>
 
@@ -658,7 +658,7 @@ Track or check history anytime at our verified portal.
                   type="email"
                   disabled
                   value={currentUser.email}
-                  className="w-full text-xs py-3 px-3.5 rounded-xl bg-slate-100 dark:bg-[#0A0C10] text-slate-400 border border-transparent cursor-not-allowed text-left font-sans"
+                  className="w-full text-xs py-3 px-3.5 rounded-xl bg-slate-100 dark:bg-[#090B0E] text-slate-400 border border-transparent cursor-not-allowed text-left font-sans"
                 />
               </div>
 
@@ -669,7 +669,7 @@ Track or check history anytime at our verified portal.
                   value={profilePhone}
                   onChange={(e) => setProfilePhone(e.target.value)}
                   placeholder="05xxxxxxxx"
-                  className="w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-rose-500 text-slate-850 dark:text-white outline-none transition-all text-left font-sans"
+                  className="w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-rose-500 text-slate-850 dark:text-white outline-none transition-all text-left font-sans"
                 />
               </div>
 
@@ -680,7 +680,7 @@ Track or check history anytime at our verified portal.
                   required
                   value={profilePassword}
                   onChange={(e) => setProfilePassword(e.target.value)}
-                  className="w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-rose-500 text-slate-850 dark:text-white outline-none transition-all text-left font-sans"
+                  className="w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-rose-500 text-slate-850 dark:text-white outline-none transition-all text-left font-sans"
                 />
               </div>
 
@@ -701,11 +701,11 @@ Track or check history anytime at our verified portal.
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-3 py-6 text-slate-800 dark:text-gray-100">
       
       {/* Welcome Board */}
-      <div className="bg-[#11141D] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden mb-3 shadow-sm">
-        <div className="absolute right-0 top-0 w-80 h-80 bg-gradient-to-br from-[var(--primary-color, #38bdf8)]/10 to-transparent rounded-full blur-3xl -mr-12 -mt-12"></div>
+      <div className="bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden mb-3 shadow-sm">
+        <div className="absolute right-0 top-0 w-80 h-80 bg-gradient-to-br from-[var(--primary-color)]/10 to-transparent rounded-full blur-3xl -mr-12 -mt-12"></div>
         
         <div className={`relative ${isRtl ? 'text-right' : 'text-left'} space-y-2`}>
-          <h2 className="text-2xl sm:text-3xl font-black font-sans bg-gradient-to-r from-white to-[var(--primary-color, #38bdf8)] bg-clip-text text-transparent">
+          <h2 className="text-2xl sm:text-3xl font-black font-sans bg-gradient-to-r from-white to-[var(--primary-color)] bg-clip-text text-transparent">
             {t.dashboard_welcome}
           </h2>
           <p className="text-xs text-slate-400">
@@ -715,13 +715,13 @@ Track or check history anytime at our verified portal.
       </div>
 
       {/* Tab Switch Headers */}
-      <div className="flex bg-slate-100 dark:bg-[#0A0C10] border dark:border-[#1E293B] rounded-2xl p-1 gap-1 mb-3 max-w-2xl mx-auto flex-wrap sm:flex-nowrap">
+      <div className="flex bg-slate-100 dark:bg-[#090B0E] border dark:border-[var(--border-dark)] rounded-2xl p-1 gap-1 mb-3 max-w-2xl mx-auto flex-wrap sm:flex-nowrap">
         <button
           id="btn-dash-tab-orders"
           onClick={() => setActiveTab('orders')}
           className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'orders'
-              ? 'bg-white dark:bg-[#11141D] text-[var(--primary-color)] shadow-sm'
+              ? 'bg-white dark:bg-[#121622] text-[var(--primary-color)] shadow-sm'
               : 'text-slate-500 hover:text-[var(--primary-color)]'
           }`}
         >
@@ -734,14 +734,14 @@ Track or check history anytime at our verified portal.
           onClick={() => setActiveTab('favorites')}
           className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'favorites'
-              ? 'bg-white dark:bg-[#11141D] text-[var(--primary-color)] shadow-sm'
+              ? 'bg-white dark:bg-[#121622] text-[var(--primary-color)] shadow-sm'
               : 'text-slate-500 hover:text-[var(--primary-color)]'
           }`}
         >
           <Heart className="w-4 h-4" />
           <span>{t.favorites}</span>
           {favorites.length > 0 && (
-            <span className="bg-[var(--primary-color, #38bdf8)]/10 text-[var(--primary-color, #38bdf8)] text-[10px] px-2 py-0.5 rounded-full font-black">
+            <span className="bg-[var(--primary-color)]/10 text-[var(--primary-color)] text-[10px] px-2 py-0.5 rounded-full font-black">
               {favorites.length}
             </span>
           )}
@@ -752,7 +752,7 @@ Track or check history anytime at our verified portal.
           onClick={() => setActiveTab('inbox')}
           className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'inbox'
-              ? 'bg-white dark:bg-[#11141D] text-[var(--primary-color)] shadow-sm'
+              ? 'bg-white dark:bg-[#121622] text-[var(--primary-color)] shadow-sm'
               : 'text-slate-500 hover:text-[var(--primary-color)]'
           }`}
         >
@@ -770,7 +770,7 @@ Track or check history anytime at our verified portal.
           onClick={() => setActiveTab('wallet')}
           className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'wallet'
-              ? 'bg-white dark:bg-[#11141D] text-amber-505 shadow-sm'
+              ? 'bg-white dark:bg-[#121622] text-amber-505 shadow-sm'
               : 'text-slate-500 hover:text-amber-505'
           }`}
         >
@@ -788,7 +788,7 @@ Track or check history anytime at our verified portal.
           onClick={() => setActiveTab('settings')}
           className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'settings'
-              ? 'bg-white dark:bg-[#11141D] text-[var(--primary-color)] shadow-sm'
+              ? 'bg-white dark:bg-[#121622] text-[var(--primary-color)] shadow-sm'
               : 'text-slate-500 hover:text-[var(--primary-color)]'
           }`}
         >
@@ -903,7 +903,7 @@ Track or check history anytime at our verified portal.
                     {/* Log Footer Total */}
                     <div className="border-t border-slate-100 dark:border-slate-800 pt-3 flex justify-between font-black text-sm">
                       <span className="text-slate-400">{t.total}</span>
-                      <span className="text-[var(--primary-color, #38bdf8)] text-base font-mono">{ord.total} {t.currency}</span>
+                      <span className="text-[var(--primary-color)] text-base font-mono">{ord.total} {t.currency}</span>
                     </div>
 
                     {/* Invoice interactive controls */}
@@ -963,7 +963,7 @@ Track or check history anytime at our verified portal.
         {activeTab === 'favorites' && (
           <div>
             {favoriteProducts.length === 0 ? (
-              <div className="bg-white dark:bg-[#11141D] rounded-3xl p-12 text-center border border-slate-150 dark:border-[#1E293B] space-y-4 max-w-xl mx-auto">
+              <div className="bg-white dark:bg-[#121622] rounded-3xl p-12 text-center border border-slate-150 dark:border-[var(--border-dark)] space-y-4 max-w-xl mx-auto">
                 <Heart className="w-12 h-12 text-slate-800 dark:text-slate-750 mx-auto" />
                 <p className="text-xs font-bold text-slate-450 leading-relaxed">{t.empty_cart}</p>
               </div>
@@ -974,13 +974,13 @@ Track or check history anytime at our verified portal.
                   return (
                     <div
                       key={prod.id}
-                      className="bg-white dark:bg-[#11141D] rounded-2xl p-4 border border-slate-150 dark:border-[#1E293B] flex items-center justify-between gap-4 shadow-sm"
+                      className="bg-white dark:bg-[#121622] rounded-2xl p-4 border border-slate-150 dark:border-[var(--border-dark)] flex items-center justify-between gap-4 shadow-sm"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <img src={prod.image} className="w-12 h-12 object-cover rounded-xl bg-slate-900 p-1 flex-shrink-0" referrerPolicy="no-referrer" />
                         <div className="text-left truncate">
                           <h4 className="text-xs font-bold text-slate-800 dark:text-gray-100 truncate">{pName}</h4>
-                          <span className="text-[10px] font-black text-[var(--primary-color, #38bdf8)]">{prod.price} {t.currency}</span>
+                          <span className="text-[10px] font-black text-[var(--primary-color)]">{prod.price} {t.currency}</span>
                         </div>
                       </div>
 
@@ -1009,10 +1009,10 @@ Track or check history anytime at our verified portal.
           </div>
         )}        {/* TAB 3: SETTINGS PROFILE FORM */}
         {activeTab === 'settings' && (
-          <div className="bg-white dark:bg-[#11141D] rounded-3xl p-6 sm:p-8 border border-slate-150 dark:border-[#1E293B] max-w-xl mx-auto shadow-sm">
+          <div className="bg-white dark:bg-[#121622] rounded-3xl p-6 sm:p-8 border border-slate-150 dark:border-[var(--border-dark)] max-w-xl mx-auto shadow-sm">
             
             <form onSubmit={handleProfileSave} className="space-y-4">
-              <h3 className="text-base font-black border-b border-slate-100 dark:border-[#1E293B] pb-3">{t.personal_info}</h3>
+              <h3 className="text-base font-black border-b border-slate-100 dark:border-[var(--border-dark)] pb-3">{t.personal_info}</h3>
 
               {/* Save change success message */}
               {saveSuccess && (
@@ -1030,7 +1030,7 @@ Track or check history anytime at our verified portal.
                   required
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
+                  className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
                     isRtl ? 'text-right' : 'text-left'
                   }`}
                 />
@@ -1046,7 +1046,7 @@ Track or check history anytime at our verified portal.
                     type="email"
                     disabled
                     value={currentUser.email}
-                    className="w-full text-xs py-3 px-3.5 pr-10 rounded-xl bg-slate-100 dark:bg-[#0A0C10] text-slate-400 dark:text-slate-550 border border-transparent cursor-not-allowed text-left font-sans"
+                    className="w-full text-xs py-3 px-3.5 pr-10 rounded-xl bg-slate-100 dark:bg-[#090B0E] text-slate-400 dark:text-slate-550 border border-transparent cursor-not-allowed text-left font-sans"
                   />
                 </div>
               </div>
@@ -1063,7 +1063,7 @@ Track or check history anytime at our verified portal.
                     value={profilePhone}
                     placeholder="05xxxxxxx"
                     onChange={(e) => setProfilePhone(e.target.value)}
-                    className={`w-full text-xs py-3 px-10 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
+                    className={`w-full text-xs py-3 px-10 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
                       isRtl ? 'text-right' : 'text-left'
                     }`}
                   />
@@ -1072,7 +1072,7 @@ Track or check history anytime at our verified portal.
 
               {/* Structured Address Sections */}
               <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <h4 className="text-xs font-black uppercase tracking-wider text-[var(--primary-color,#38bdf8)] flex items-center gap-1 font-sans">
+                <h4 className="text-xs font-black uppercase tracking-wider text-[var(--primary-color)] flex items-center gap-1 font-sans">
                   <MapPin className="w-4 h-4" />
                   <span>{isRtl ? 'تفاصيل عنوان الشحن والتوصيل 📍' : 'Shipping Address Details 📍'}</span>
                 </h4>
@@ -1086,7 +1086,7 @@ Track or check history anytime at our verified portal.
                       value={profileCity}
                       placeholder={isRtl ? 'الرياض، جدة...' : 'Riyadh, Jeddah...'}
                       onChange={(e) => setProfileCity(e.target.value)}
-                      className={`w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
+                      className={`w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
                         isRtl ? 'text-right' : 'text-left'
                       }`}
                     />
@@ -1100,7 +1100,7 @@ Track or check history anytime at our verified portal.
                       value={profileDistrict}
                       placeholder={isRtl ? 'الياسمين، الملقا...' : 'Al-Yasmin, Al-Malqa...'}
                       onChange={(e) => setProfileDistrict(e.target.value)}
-                      className={`w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
+                      className={`w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
                         isRtl ? 'text-right' : 'text-left'
                       }`}
                     />
@@ -1116,7 +1116,7 @@ Track or check history anytime at our verified portal.
                       value={profileStreet}
                       placeholder={isRtl ? 'شارع الملك فهد...' : 'Olaya Street...'}
                       onChange={(e) => setProfileStreet(e.target.value)}
-                      className={`w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
+                      className={`w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
                         isRtl ? 'text-right' : 'text-left'
                       }`}
                     />
@@ -1129,7 +1129,7 @@ Track or check history anytime at our verified portal.
                       value={profilePostalCode}
                       placeholder="12345"
                       onChange={(e) => setProfilePostalCode(e.target.value)}
-                      className={`w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-200 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
+                      className={`w-full text-xs py-3 px-3.5 rounded-xl border bg-slate-200 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
                         isRtl ? 'text-right' : 'text-left'
                       }`}
                     />
@@ -1157,7 +1157,7 @@ Track or check history anytime at our verified portal.
         {/* TAB 4: INBOX / EMAILS */}
         {activeTab === 'inbox' && (
           <div className="space-y-6 max-w-3xl mx-auto">
-            <div className="bg-white dark:bg-[#11141D] rounded-3xl p-6 border border-slate-150 dark:border-[#1E293B] shadow-sm">
+            <div className="bg-white dark:bg-[#121622] rounded-3xl p-6 border border-slate-150 dark:border-[var(--border-dark)] shadow-sm">
               <h3 className="text-base font-black border-b border-slate-100 dark:border-slate-200 pb-3 flex items-center gap-1.5 justify-between">
                 <span>{isRtl ? 'صندوق الوارد الافتراضي 📬' : 'Your Virtual Inbox 📬'}</span>
                 <span className="text-[10px] font-bold text-slate-400">({currentUser.email})</span>
@@ -1177,11 +1177,11 @@ Track or check history anytime at our verified portal.
                           <h4 className="text-xs font-extrabold text-slate-900 dark:text-amber-400 font-sans">{email.subject}</h4>
                           <span className="text-[10px] text-slate-400 font-medium block mt-0.5">{email.date} • {email.time}</span>
                         </div>
-                        <span className="text-[9px] bg-[var(--primary-color, #38bdf8)]/10 text-[var(--primary-color, #38bdf8)] px-2.5 py-1 rounded-full font-black uppercase tracking-wider">
+                        <span className="text-[9px] bg-[var(--primary-color)]/10 text-[var(--primary-color)] px-2.5 py-1 rounded-full font-black uppercase tracking-wider">
                           {isRtl ? 'مستلم' : 'Received'}
                         </span>
                       </div>
-                      <div className="p-4 bg-slate-50 dark:bg-[#0A0C10] rounded-2xl border border-slate-100 dark:border-slate-800/80 text-[11.5px] leading-relaxed font-sans whitespace-pre-wrap text-slate-700 dark:text-slate-300 text-left">
+                      <div className="p-4 bg-slate-50 dark:bg-[#090B0E] rounded-2xl border border-slate-100 dark:border-slate-800/80 text-[11.5px] leading-relaxed font-sans whitespace-pre-wrap text-slate-700 dark:text-slate-300 text-left">
                         {email.body}
                       </div>
                     </div>
@@ -1200,12 +1200,12 @@ Track or check history anytime at our verified portal.
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* FINANCIAL CASH WALLET CARD */}
-              <div id="financial-cash-wallet-card" className="bg-[#11141D] border border-slate-800 rounded-3xl p-6 relative overflow-hidden shadow-xl flex flex-col justify-between min-h-[220px]">
-                <div className="absolute right-0 top-0 w-64 h-64 bg-gradient-to-br from-[var(--primary-color, #38bdf8)]/10 to-transparent rounded-full blur-3xl -mr-16 -mt-16"></div>
+              <div id="financial-cash-wallet-card" className="bg-[#121622] border border-slate-800 rounded-3xl p-6 relative overflow-hidden shadow-xl flex flex-col justify-between min-h-[220px]">
+                <div className="absolute right-0 top-0 w-64 h-64 bg-gradient-to-br from-[var(--primary-color)]/10 to-transparent rounded-full blur-3xl -mr-16 -mt-16"></div>
                 
                 <div className="space-y-4 relative">
                   <div className="flex justify-between items-center">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--primary-color, #38bdf8)]/10 text-[var(--primary-color, #38bdf8)] rounded-full text-[10px] font-black uppercase tracking-wider">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--primary-color)]/10 text-[var(--primary-color)] rounded-full text-[10px] font-black uppercase tracking-wider">
                       <Wallet className="w-3.5 h-3.5" />
                       <span>{isRtl ? 'المحفظة المالية الرصيدية' : 'Financial Wallet'}</span>
                     </span>
@@ -1218,7 +1218,7 @@ Track or check history anytime at our verified portal.
                       <strong className="text-4xl font-black text-white font-mono tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
                         {(currentUser.wallet_balance || 0).toFixed(2)}
                       </strong>
-                      <span className="text-sm text-[var(--primary-color, #38bdf8)] font-black">
+                      <span className="text-sm text-[var(--primary-color)] font-black">
                         {isRtl ? 'ر.س' : 'SAR'}
                       </span>
                     </div>
@@ -1237,7 +1237,7 @@ Track or check history anytime at our verified portal.
               </div>
 
               {/* LOYALTY POINTS WALLET CARD */}
-              <div id="loyalty-points-wallet-card" className="bg-[#11141D] border border-slate-800 rounded-3xl p-6 relative overflow-hidden shadow-xl flex flex-col justify-between min-h-[220px]">
+              <div id="loyalty-points-wallet-card" className="bg-[#121622] border border-slate-800 rounded-3xl p-6 relative overflow-hidden shadow-xl flex flex-col justify-between min-h-[220px]">
                 <div className="absolute right-0 top-0 w-64 h-64 bg-gradient-to-br from-amber-500/10 to-transparent rounded-full blur-3xl -mr-16 -mt-16"></div>
                 
                 <div className="space-y-4 relative">
@@ -1279,8 +1279,8 @@ Track or check history anytime at our verified portal.
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* ACTIONS: FINANCIAL CASH CHARGING PORTAL */}
-              <div className="bg-white dark:bg-[#11141D] border border-slate-150 dark:border-slate-800 rounded-3xl p-6 text-left space-y-4 font-sans">
-                <h4 className="text-xs font-black uppercase tracking-wider text-[var(--primary-color,#38bdf8)] flex items-center gap-1.5 font-sans border-b border-slate-100 dark:border-slate-800/80 pb-3">
+              <div className="bg-white dark:bg-[#121622] border border-slate-150 dark:border-slate-800 rounded-3xl p-6 text-left space-y-4 font-sans">
+                <h4 className="text-xs font-black uppercase tracking-wider text-[var(--primary-color)] flex items-center gap-1.5 font-sans border-b border-slate-100 dark:border-slate-800/80 pb-3">
                   <CreditCard className="w-4 h-4 text-[var(--primary-color)]" />
                   <span>{isRtl ? 'شحن رصيد المحفظة المالي (فيزا/مدى) 💳' : 'Charge Financial Wallet Balance 💳'}</span>
                 </h4>
@@ -1296,7 +1296,7 @@ Track or check history anytime at our verified portal.
                       value={chargeAmount}
                       onChange={(e) => setChargeAmount(e.target.value)}
                       placeholder={isRtl ? 'مثال: 100' : 'e.g., 100'}
-                      className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all"
+                      className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all"
                     />
                     <span className="text-[9px] text-slate-400 block">{isRtl ? 'الحد الأدنى للشحن هو 10 ريال سعودي' : 'Minimum recharge amount is 10 SAR'}</span>
                   </div>
@@ -1313,7 +1313,7 @@ Track or check history anytime at our verified portal.
                         setCardNumber(formatted);
                       }}
                       placeholder="4000 1234 5678 9010"
-                      className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all font-mono"
+                      className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all font-mono"
                     />
                   </div>
 
@@ -1333,7 +1333,7 @@ Track or check history anytime at our verified portal.
                           setCardExpiry(val);
                         }}
                         placeholder="MM/YY"
-                        className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all text-center font-mono"
+                        className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all text-center font-mono"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1345,7 +1345,7 @@ Track or check history anytime at our verified portal.
                         value={cardCvv}
                         onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
                         placeholder="123"
-                        className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all text-center font-mono"
+                        className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all text-center font-mono"
                       />
                     </div>
                   </div>
@@ -1358,7 +1358,7 @@ Track or check history anytime at our verified portal.
                       value={cardHolder}
                       onChange={(e) => setCardHolder(e.target.value)}
                       placeholder={isRtl ? 'الاسم الثلاثي المكتوب علئ البطاقة' : 'As written on card'}
-                      className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all font-sans"
+                      className="w-full text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all font-sans"
                     />
                   </div>
 
@@ -1368,7 +1368,7 @@ Track or check history anytime at our verified portal.
                     className={`w-full py-3.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer mt-4 ${
                       walletProcessing 
                         ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                        : 'bg-[var(--primary-color,#38bdf8)] text-slate-950 hover:bg-[var(--primary-color,#38bdf8)]/90 shadow-md hover:-translate-y-0.5'
+                        : 'bg-[var(--primary-color)] text-slate-950 hover:bg-[var(--primary-color)]/90 shadow-md hover:-translate-y-0.5'
                     }`}
                   >
                     {walletProcessing ? (
@@ -1387,7 +1387,7 @@ Track or check history anytime at our verified portal.
               </div>
 
               {/* ACTIONS: LOYALTY POINTS DIRECT EXCHANGE AND COUPOUN SWAPPER */}
-              <div className="bg-white dark:bg-[#11141D] border border-slate-150 dark:border-slate-800 rounded-3xl p-6 text-left space-y-4">
+              <div className="bg-white dark:bg-[#121622] border border-slate-150 dark:border-slate-800 rounded-3xl p-6 text-left space-y-4">
                 <h4 className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5 font-sans border-b border-slate-100 dark:border-slate-800/80 pb-3">
                   <ArrowRightLeft className="w-4 h-4 text-amber-500" />
                   <span>{isRtl ? 'تحويل واستبدال نقاط الولاء لكاش بالمحفظة 💸' : 'Convert Loyalty Points to Wallet Cash 💸'}</span>
@@ -1416,7 +1416,7 @@ Track or check history anytime at our verified portal.
                           value={convertPointsInput}
                           onChange={(e) => setConvertPointsInput(e.target.value)}
                           placeholder={isRtl ? 'مثال: 100 نقطة' : 'e.g. 100'}
-                          className="flex-1 text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-amber-500 focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all font-mono"
+                          className="flex-1 text-xs p-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-amber-500 focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all font-mono"
                         />
                         <button
                           type="button"
@@ -1452,7 +1452,7 @@ Track or check history anytime at our verified portal.
                   </div>
 
                   {/* Option B: Standard Points to Coupon Code */}
-                  <div className="bg-slate-50 dark:bg-[#0A0C10] border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4.5 space-y-3">
+                  <div className="bg-slate-50 dark:bg-[#090B0E] border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4.5 space-y-3">
                     <div>
                       <h5 className="text-xs font-black text-slate-800 dark:text-white">{isRtl ? 'ب. استبدال 150 نقطة بكوبون خصم متجر 🎟️' : 'B. standard Points-To-Coupon Exchange 🎟️'}</h5>
                       <p className="text-[10px] text-slate-400 leading-relaxed mt-0.5">
@@ -1486,7 +1486,7 @@ Track or check history anytime at our verified portal.
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* Point Earning Methods Guide */}
-              <div className="bg-white dark:bg-[#11141D] rounded-3xl p-6 border border-slate-150 dark:border-[#1E293B] shadow-sm text-left space-y-4 font-sans">
+              <div className="bg-white dark:bg-[#121622] rounded-3xl p-6 border border-slate-150 dark:border-[var(--border-dark)] shadow-sm text-left space-y-4 font-sans">
                 <h4 className="text-sm font-black border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2 text-slate-705 dark:text-white font-sans">
                   <span>🪙 {isRtl ? 'كيف يمكنك كسب المزيد من النقاط؟' : 'How to earn more points?'}</span>
                 </h4>
@@ -1531,7 +1531,7 @@ Track or check history anytime at our verified portal.
               </div>
 
               {/* CASH WALLET TRANSACTION HISTORY */}
-              <div className="bg-white dark:bg-[#11141D] rounded-3xl p-6 border border-slate-150 dark:border-[#1E293B] shadow-sm text-left flex flex-col space-y-4">
+              <div className="bg-white dark:bg-[#121622] rounded-3xl p-6 border border-slate-150 dark:border-[var(--border-dark)] shadow-sm text-left flex flex-col space-y-4">
                 <h4 className="text-sm font-black border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2 text-slate-705 dark:text-white">
                   <History className="w-4 h-4 text-[var(--primary-color)]" />
                   <span>{isRtl ? 'سجل عمليات المحفظة المالية' : 'Financial Ledger / Cash History'}</span>
@@ -1544,7 +1544,7 @@ Track or check history anytime at our verified portal.
                     </div>
                   ) : (
                     currentUser.wallet_history.map((hist: any, idx: number) => (
-                      <div key={hist.id || idx} className="p-3 bg-slate-50 dark:bg-[#0A0C10] rounded-xl border border-slate-100 dark:border-slate-800 flex justify-between items-center text-[11px] gap-2 font-sans">
+                      <div key={hist.id || idx} className="p-3 bg-slate-50 dark:bg-[#090B0E] rounded-xl border border-slate-100 dark:border-slate-800 flex justify-between items-center text-[11px] gap-2 font-sans">
                         <div className="text-left leading-normal font-sans">
                           <strong className="block text-slate-705 dark:text-slate-100 font-extrabold">{isRtl ? hist.description_ar : hist.description_en}</strong>
                           <span className="text-[9px] text-slate-400 block mt-0.5">{hist.date}</span>
@@ -1559,7 +1559,7 @@ Track or check history anytime at our verified portal.
               </div>
 
               {/* LOYALTY POINTS TRANSACTION LEDGER */}
-              <div className="bg-white dark:bg-[#11141D] rounded-3xl p-6 border border-slate-150 dark:border-[#1E293B] shadow-sm text-left flex flex-col space-y-4">
+              <div className="bg-white dark:bg-[#121622] rounded-3xl p-6 border border-slate-150 dark:border-[var(--border-dark)] shadow-sm text-left flex flex-col space-y-4">
                 <h4 className="text-sm font-black border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2 text-slate-705 dark:text-white">
                   <History className="w-4 h-4 text-amber-500" />
                   <span>{isRtl ? 'سجل حركات ونشاط النقاط الولائية' : 'Points Ledger & Activity Log'}</span>
@@ -1572,7 +1572,7 @@ Track or check history anytime at our verified portal.
                     </div>
                   ) : (
                     currentUser.points_history.map((hist: any, idx: number) => (
-                      <div key={hist.id || idx} className="p-3 bg-slate-50 dark:bg-[#0A0C10] rounded-xl border border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs gap-3">
+                      <div key={hist.id || idx} className="p-3 bg-slate-50 dark:bg-[#090B0E] rounded-xl border border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs gap-3">
                         <div className="text-left font-sans">
                           <strong className="block text-slate-705 dark:text-white leading-snug">{isRtl ? hist.reason_ar : hist.reason_en}</strong>
                           <span className="text-[9px] text-slate-405 block mt-0.5">{hist.date}</span>
@@ -1590,13 +1590,13 @@ Track or check history anytime at our verified portal.
 
             {/* Redeemed Points Coupons Sub-ledger */}
             {redeemedCoupons.length > 0 && (
-              <div className="bg-white dark:bg-[#11141D] rounded-3xl p-6 border border-slate-150 dark:border-[#1E293B] shadow-sm text-left space-y-4">
+              <div className="bg-white dark:bg-[#121622] rounded-3xl p-6 border border-slate-150 dark:border-[var(--border-dark)] shadow-sm text-left space-y-4">
                 <h4 className="text-sm font-black border-b border-slate-100 dark:border-slate-850 pb-3 flex items-center gap-2 text-amber-550 dark:text-white">
                   <span>🎟️ {isRtl ? 'كوبونات الخصم المستبدلة والنشطة' : 'Your Redeemed Points Coupons'}</span>
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-sans">
                   {redeemedCoupons.map((c, i) => (
-                    <div key={i} className={`p-3.5 rounded-2xl border flex justify-between items-center gap-2 ${c.used ? 'bg-slate-50 dark:bg-[#0A0C10] border-slate-100 dark:border-slate-800 opacity-60' : 'bg-emerald-500/5 dark:bg-emerald-950/10 border-emerald-500/15'}`}>
+                    <div key={i} className={`p-3.5 rounded-2xl border flex justify-between items-center gap-2 ${c.used ? 'bg-slate-50 dark:bg-[#090B0E] border-slate-100 dark:border-slate-800 opacity-60' : 'bg-emerald-500/5 dark:bg-emerald-950/10 border-emerald-500/15'}`}>
                       <div className="text-left">
                         <span className="font-mono font-black text-xs block text-slate-800 dark:text-white select-all">{c.code}</span>
                         <span className="text-[10px] text-slate-400 font-bold block">{isRtl ? 'قيمة الخصم: 15 ر.س' : 'Value: 15 SAR ($4)'}</span>

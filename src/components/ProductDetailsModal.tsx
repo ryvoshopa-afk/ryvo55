@@ -166,22 +166,22 @@ export default function ProductDetailsModal({
       {/* Modal Container */}
       <div
         id="product-details-dialog"
-        className="relative bg-white dark:bg-[#11141D] rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col md:flex-row border border-slate-150 dark:border-[#1E293B] animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-gray-100 max-h-[96vh] md:max-h-[85vh] overflow-y-auto md:overflow-hidden"
+        className="relative bg-white dark:bg-[#121622] rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col md:flex-row border border-slate-200 dark:border-[var(--border-dark)] animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-gray-100 max-h-[96vh] md:max-h-[85vh] overflow-y-auto md:overflow-hidden"
       >
         {/* Close Button */}
         <button
           id="btn-details-modal-close"
           onClick={onClose}
-          className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} z-10 p-3 rounded-full bg-slate-100/80 hover:bg-slate-900 hover:text-white dark:bg-slate-900/80 dark:hover:bg-[var(--primary-color, #38bdf8)] dark:hover:text-[#0A0C10] backdrop-blur-md transition-all cursor-pointer`}
+          className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} z-10 p-3 rounded-full bg-slate-100/80 hover:bg-slate-900 hover:text-white dark:bg-slate-800/80 dark:hover:bg-[var(--primary-color)] dark:hover:text-white backdrop-blur-md transition-all cursor-pointer`}
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Left Side: Images Gallery */}
-        <div className="flex-1 p-4 sm:p-6 md:p-3 bg-slate-50 dark:bg-[#0A0C10] flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#1E293B]">
+        <div className="flex-1 p-4 sm:p-6 md:p-3 bg-slate-50 dark:bg-[#090B0E] flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-200 dark:border-[var(--border-dark)]">
           <div className="flex-1 flex flex-col items-center justify-center">
             {/* Big Main Image or Video with Flip Arrows */}
-            <div className="relative aspect-square w-full max-w-full sm:max-w-sm rounded-2xl overflow-hidden bg-white dark:bg-[#11141D] border border-slate-150 dark:border-[#1E293B] p-2 mb-6 group flex items-center justify-center">
+            <div className="relative aspect-square w-full max-w-full sm:max-w-sm rounded-2xl overflow-hidden bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] p-2 mb-6 group flex items-center justify-center">
               
               {/* Media viewer */}
               {mediaList[activeMediaIndex]?.type === 'video' ? (
@@ -251,7 +251,7 @@ export default function ProductDetailsModal({
                       className="p-2 -m-1 flex items-center justify-center cursor-pointer focus:outline-none"
                     >
                       <span className={`w-1.5 h-1.5 rounded-full transition-all ${
-                        idx === activeMediaIndex ? 'bg-[var(--primary-color, #38bdf8)] w-3' : 'bg-white/50 hover:bg-white'
+                        idx === activeMediaIndex ? 'bg-[var(--primary-color)] w-3' : 'bg-white/50 hover:bg-white'
                       }`} />
                     </button>
                   ))}
@@ -268,7 +268,7 @@ export default function ProductDetailsModal({
                     id={`btn-details-media-${idx}`}
                     onClick={() => setActiveMediaIndex(idx)}
                     className={`w-12 h-12 rounded-xl overflow-hidden p-1 bg-white dark:bg-slate-900 border-2 transition-all relative ${
-                      idx === activeMediaIndex ? 'border-[var(--primary-color, #38bdf8)] scale-105' : 'border-transparent opacity-75 hover:opacity-100'
+                      idx === activeMediaIndex ? 'border-[var(--primary-color)] scale-105' : 'border-transparent opacity-75 hover:opacity-100'
                     }`}
                   >
                     {media.type === 'video' ? (
@@ -289,15 +289,15 @@ export default function ProductDetailsModal({
 
           {/* Secure Trust features badges */}
           <div className="grid grid-cols-3 gap-2 mt-3 text-[10px] text-center font-bold text-slate-500 dark:text-slate-400">
-            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#11141D] border dark:border-[#1E293B] rounded-xl">
+            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#121622] border dark:border-[var(--border-dark)] rounded-xl">
               <ShieldCheck className="w-5 h-5 text-emerald-500 animate-pulse" />
               <span>{t.features_certified.split('•')[1]?.trim() || 'إرجاع سهل'}</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#11141D] border dark:border-[#1E293B] rounded-xl">
-              <RefreshCw className="w-5 h-5 text-[var(--primary-color, #38bdf8)]" />
+            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#121622] border dark:border-[var(--border-dark)] rounded-xl">
+              <RefreshCw className="w-5 h-5 text-[var(--primary-color)]" />
               <span>{t.features_certified.split('•')[0]?.trim() || 'دعم متواصل'}</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#11141D] border dark:border-[#1E293B] rounded-xl">
+            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#121622] border dark:border-[var(--border-dark)] rounded-xl">
               <Star className="w-5 h-5 text-rose-500 fill-rose-500" />
               <span>{t.features_certified.split('•')[2]?.trim() || 'شحن سريع'}</span>
             </div>
@@ -311,7 +311,7 @@ export default function ProductDetailsModal({
             {/* Header: Title & Heart Favorite */}
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <span className="text-xs uppercase tracking-widest font-black text-[var(--primary-color, #38bdf8)]">
+                <span className="text-xs uppercase tracking-widest font-black text-[var(--primary-color)]">
                   {t[product.category] || product.category}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black leading-snug text-slate-900 dark:text-white">
@@ -326,7 +326,7 @@ export default function ProductDetailsModal({
                   className={`p-3 rounded-full shadow-md border hover:scale-105 active:scale-95 transition-all flex items-center justify-center ${
                     copied 
                       ? 'bg-emerald-500 border-emerald-500 text-white animate-bounce' 
-                      : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-[#1E293B] text-slate-700 dark:text-slate-300 hover:text-[var(--primary-color, #38bdf8)]'
+                      : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 hover:text-[var(--primary-color)]'
                   }`}
                   title={isRtl ? 'مشاركة ونسخ الرابط 🔗' : 'Share & Copy Product Link 🔗'}
                 >
@@ -340,7 +340,7 @@ export default function ProductDetailsModal({
                   className={`p-3 rounded-full shadow-md border hover:scale-105 active:scale-95 transition-all ${
                     isFavorite 
                       ? 'bg-rose-500 border-rose-500 text-white' 
-                      : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-[#1E293B] text-rose-500'
+                      : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-[var(--border-dark)] text-rose-500'
                   }`}
                 >
                   <Heart className="w-5 h-5" fill={isFavorite ? 'currentColor' : 'none'} />
@@ -352,7 +352,7 @@ export default function ProductDetailsModal({
             <div className="flex flex-col gap-1.5">
               <div className="flex items-baseline gap-2 font-mono">
                 <span className="text-xs uppercase font-extrabold text-slate-400">{t.price}:</span>
-                <span className="text-2xl sm:text-3xl font-black text-[var(--primary-color, #38bdf8)] dark:text-[var(--primary-color, #38bdf8)]">
+                <span className="text-2xl sm:text-3xl font-black text-[var(--primary-color)] dark:text-[var(--primary-color)]">
                   {formatPrice(product.price, currentLanguage)}
                 </span>
               </div>
@@ -388,7 +388,7 @@ export default function ProductDetailsModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-slate-600 dark:text-gray-800">
                   {featuresList.map((feat, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary-color, #38bdf8)] flex-shrink-0" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary-color)] flex-shrink-0" />
                       <span>{feat}</span>
                     </div>
                   ))}
@@ -411,8 +411,8 @@ export default function ProductDetailsModal({
                     onClick={() => setSelectedColor(col.label)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 transition-all text-xs font-black cursor-pointer ${
                       selectedColor === col.label
-                        ? 'border-[var(--primary-color, #38bdf8)] bg-[var(--primary-color, #38bdf8)]/10 text-[var(--primary-color, #38bdf8)] dark:text-[var(--primary-color, #38bdf8)]'
-                        : 'border-slate-200 dark:border-[#1E293B] hover:border-[var(--primary-color, #38bdf8)]/40 text-slate-500 dark:text-gray-400'
+                        ? 'border-[var(--primary-color)] bg-[var(--primary-color)]/10 text-[var(--primary-color)] dark:text-[var(--primary-color)]'
+                        : 'border-slate-200 dark:border-[var(--border-dark)] hover:border-[var(--primary-color)]/40 text-slate-500 dark:text-gray-400'
                     }`}
                   >
                     <span
@@ -430,7 +430,7 @@ export default function ProductDetailsModal({
               <div className="space-y-2.5">
                 <h4 className="text-xs uppercase font-black tracking-wider text-slate-400">{t.stock}</h4>
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-[#1E293B] rounded-xl p-1 text-sm font-bold">
+                  <div className="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-[var(--border-dark)] rounded-xl p-1 text-sm font-bold">
                     <button
                       id="btn-details-qty-decrease"
                       onClick={handleQtyDecrease}
@@ -462,10 +462,10 @@ export default function ProductDetailsModal({
                 id="btn-details-add-to-cart"
                 onClick={() => onAddToCart(qty, selectedColor)}
                 disabled={product.stock === 0}
-                className={`flex-1 px-6 py-4 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border shadow-md transition-all flex items-center justify-center gap-2 ${
+                className={`flex-1 px-6 py-4 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border shadow-xs transition-all flex items-center justify-center gap-2 ${
                   product.stock > 0
-                    ? 'bg-[var(--primary-color)]/10 border border-[var(--primary-color)]/25 text-[var(--primary-color)] hover:bg-[var(--primary-color)] hover:text-slate-950 active:scale-95'
-                    : 'bg-slate-100 dark:bg-slate-800 border-transparent text-slate-400 dark:text-slate-650 cursor-not-allowed'
+                    ? 'bg-[var(--primary-color)]/10 border-slate-200 dark:border-white/10 text-[var(--primary-color)] hover:bg-[var(--primary-color)] hover:text-white active:scale-95'
+                    : 'bg-slate-100 dark:bg-slate-800 border-transparent text-slate-400 dark:text-slate-600 cursor-not-allowed'
                 }`}
               >
                 {product.stock > 0 ? t.addToCart : t.out_of_stock}
@@ -477,8 +477,8 @@ export default function ProductDetailsModal({
                 disabled={product.stock === 0}
                 className={`flex-1 px-6 py-4 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer shadow-lg hover:scale-102 transition-all flex items-center justify-center gap-2 ${
                   product.stock > 0
-                    ? 'bg-[var(--primary-color)] hover:opacity-90 text-slate-950 hover:shadow-[0_0_15px_rgba(var(--primary-color-rgb,56,189,248),0.35)] active:scale-95'
-                    : 'bg-slate-100 dark:bg-[#11141D] text-slate-400 dark:text-slate-650 cursor-not-allowed'
+                    ? 'bg-[var(--primary-color)] hover:brightness-110 text-white shadow-red-500/20 active:scale-95'
+                    : 'bg-slate-100 dark:bg-[#121622] text-slate-400 dark:text-slate-600 cursor-not-allowed'
                 }`}
               >
                 {product.stock > 0 ? t.buyNow : t.out_of_stock}
@@ -486,12 +486,12 @@ export default function ProductDetailsModal({
             </div>
 
             {/* Reviews list & interactive review writer */}
-            <div className="border-t border-slate-150 dark:border-[#1E293B] pt-6 space-y-4">
+            <div className="border-t border-slate-150 dark:border-[var(--border-dark)] pt-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-black text-slate-900 dark:text-gray-100">
                   {t.reviews} ({productReviews.length})
                 </h3>
-                <div className="flex items-center gap-1 text-xs font-bold text-[var(--primary-color, #38bdf8)] bg-[var(--primary-color, #38bdf8)]/10 px-2.5 py-1 rounded-lg">
+                <div className="flex items-center gap-1 text-xs font-bold text-[var(--primary-color)] bg-[var(--primary-color)]/10 px-2.5 py-1 rounded-lg">
                   <Star className="w-3.5 h-3.5 fill-current" />
                   <span>{ratingAvg} / 5.0</span>
                 </div>
@@ -514,7 +514,7 @@ export default function ProductDetailsModal({
                               <div key={rev.id} className={`rounded-xl p-4 space-y-1.5 border transition-all ${
                                 isTopRating 
                                   ? 'bg-amber-500/[0.02] dark:bg-amber-500/[0.03] border-amber-500/25 dark:border-amber-500/20 shadow-[0_2px_8px_rgba(245,158,11,0.05)]' 
-                                  : 'bg-slate-50 dark:bg-[#0A0C10] border-slate-150 dark:border-[#1E293B]'
+                                  : 'bg-slate-50 dark:bg-[#090B0E] border-slate-150 dark:border-[var(--border-dark)]'
                               }`}>
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
@@ -550,7 +550,7 @@ export default function ProductDetailsModal({
                                       src={rev.attached_photo} 
                                       alt="Attached User Review"
                                       onClick={() => setZoomImg(rev.attached_photo || '')}
-                                      className="max-h-24 rounded-lg object-contain bg-[#11141D] p-1 border border-slate-200 dark:border-slate-850 cursor-zoom-in hover:opacity-90 hover:scale-[1.03] transition-all" 
+                                      className="max-h-24 rounded-lg object-contain bg-[#121622] p-1 border border-slate-200 dark:border-slate-850 cursor-zoom-in hover:opacity-90 hover:scale-[1.03] transition-all" 
                                       referrerPolicy="no-referrer" 
                                     />
                                   </div>
@@ -583,7 +583,7 @@ export default function ProductDetailsModal({
               </div>
 
               {/* New review input form */}
-              <div className="bg-slate-50 dark:bg-[#0A0C10] rounded-2xl p-4 border border-slate-150 dark:border-[#1E293B]">
+              <div className="bg-slate-50 dark:bg-[#090B0E] rounded-2xl p-4 border border-slate-150 dark:border-[var(--border-dark)]">
                 {reviewSent ? (
                   <p className="text-xs font-bold text-emerald-500 py-1 flex items-center gap-1.5 justify-center">
                     <span>{t.review_success}</span>
@@ -621,7 +621,7 @@ export default function ProductDetailsModal({
                         placeholder={currentLanguage === 'ar' ? 'الاسم الكريم' : 'Your name'}
                         value={reviewName}
                         onChange={(e) => setReviewName(e.target.value)}
-                        className={`text-base md:text-xs px-3 py-2 rounded-xl border bg-white dark:bg-slate-900 border-slate-150 dark:border-[#1E293B] focus:border-[var(--primary-color, #38bdf8)] text-slate-800 dark:text-white outline-none ${
+                        className={`text-base md:text-xs px-3 py-2 rounded-xl border bg-white dark:bg-slate-900 border-slate-150 dark:border-[var(--border-dark)] focus:border-[var(--primary-color)] text-slate-800 dark:text-white outline-none ${
                           isRtl ? 'text-right' : 'text-left'
                         }`}
                       />
@@ -632,7 +632,7 @@ export default function ProductDetailsModal({
                         placeholder={t.review_placeholder}
                         value={reviewText}
                         onChange={(e) => setReviewText(e.target.value)}
-                        className={`text-base md:text-xs px-3 py-2 rounded-xl border bg-white dark:bg-slate-900 border-slate-150 dark:border-[#1E293B] focus:border-[var(--primary-color, #38bdf8)] text-slate-800 dark:text-white outline-none ${
+                        className={`text-base md:text-xs px-3 py-2 rounded-xl border bg-white dark:bg-slate-900 border-slate-150 dark:border-[var(--border-dark)] focus:border-[var(--primary-color)] text-slate-800 dark:text-white outline-none ${
                           isRtl ? 'text-right' : 'text-left'
                         }`}
                       />
@@ -664,7 +664,7 @@ export default function ProductDetailsModal({
                         )}
                       </label>
                       <div className="flex gap-2 items-center">
-                        <label className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-[#1E293B] rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-[10px] font-bold text-slate-500 dark:text-slate-450 font-sans">
+                        <label className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-[var(--border-dark)] rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-[10px] font-bold text-slate-500 dark:text-slate-450 font-sans">
                           <Camera className="w-3.5 h-3.5 text-amber-500" />
                           <span>{reviewPhoto ? (isRtl ? '✅ تم إرفاق الصورة الفاخرة' : '✅ Photo Attached') : (isRtl ? 'اختر صورة من جهازك' : 'Choose local image')}</span>
                           <input

@@ -39,12 +39,12 @@ export default function LegalPagesModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
       <div 
         id="legal-modal-container"
-        className="relative w-full max-w-4xl bg-white dark:bg-[#11141D] rounded-3xl border border-slate-150 dark:border-[#1E293B] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-350"
+        className="relative w-full max-w-4xl bg-white dark:bg-[#121622] rounded-3xl border border-slate-150 dark:border-[var(--border-dark)] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-350"
       >
         {/* Header */}
-        <div className={`p-6 border-b border-slate-100 dark:border-[#1E293B] flex items-center justify-between ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
+        <div className={`p-6 border-b border-slate-100 dark:border-[var(--border-dark)] flex items-center justify-between ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[var(--primary-color,#38bdf8)]/10 flex items-center justify-center text-[var(--primary-color,#38bdf8)]">
+            <div className="w-8 h-8 rounded-full bg-[var(--primary-color)]/10 flex items-center justify-center text-[var(--primary-color)]">
               <Sparkles className="w-4 h-4 animate-spin-slow" />
             </div>
             <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
@@ -61,7 +61,7 @@ export default function LegalPagesModal({
         </div>
 
         {/* Tab triggers */}
-        <div className="bg-slate-50/50 dark:bg-[#0A0C10]/50 border-b border-slate-100 dark:border-[#1E293B] p-2 flex flex-wrap gap-1.5 overflow-x-auto">
+        <div className="bg-slate-50/50 dark:bg-[#090B0E]/50 border-b border-slate-100 dark:border-[var(--border-dark)] p-2 flex flex-wrap gap-1.5 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const label = currentLanguage === 'ar' ? tab.label_ar : currentLanguage === 'fr' ? tab.label_fr : tab.label_en;
@@ -73,11 +73,11 @@ export default function LegalPagesModal({
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                   active 
-                    ? 'bg-slate-900 text-white dark:bg-[var(--primary-color,#38bdf8)] dark:text-[#0A0C10] shadow-md' 
+                    ? 'bg-slate-900 text-white dark:bg-[var(--primary-color)] dark:text-white shadow-md' 
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${active ? 'text-amber-500 dark:text-[#0A0C10]' : 'text-slate-400'}`} />
+                <Icon className={`w-3.5 h-3.5 ${active ? 'text-amber-500 dark:text-white' : 'text-slate-400'}`} />
                 <span>{label}</span>
               </button>
             );
@@ -246,7 +246,7 @@ export default function LegalPagesModal({
                   </div>
                   <div>
                     <strong className="text-xs font-black uppercase text-slate-400 block">{currentLanguage === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}</strong>
-                    <a href="mailto:ryvo.shopa@gmail.com" className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-white hover:text-[var(--primary-color,#38bdf8)] transition-all">
+                    <a href="mailto:ryvo.shopa@gmail.com" className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-white hover:text-[var(--primary-color)] transition-all">
                       ryvo.shopa@gmail.com
                     </a>
                   </div>
@@ -265,7 +265,7 @@ export default function LegalPagesModal({
                 </div>
               </div>
 
-              <div className="p-5 bg-gradient-to-r from-emerald-500/10 to-[var(--primary-color,#38bdf8)]/10 border border-emerald-500/20 rounded-2xl text-center">
+              <div className="p-5 bg-gradient-to-r from-emerald-500/10 to-[var(--primary-color)]/10 border border-emerald-500/20 rounded-2xl text-center">
                 <p className="text-xs font-bold text-slate-700 dark:text-emerald-400">
                   {currentLanguage === 'ar' 
                     ? '⚡ هل تبحث عن إجابات فورية؟ استخدم دردشة الدعم المباشر المتاحة في القائمة العلوية للتحدث الفوري مع الذكاء الاصطناعي ووكيل الدعم !' 
@@ -277,7 +277,7 @@ export default function LegalPagesModal({
         </div>
 
         {/* Footer info bar */}
-        <div className="p-4 bg-slate-50 dark:bg-[#0A0C10] border-t border-slate-100 dark:border-[#1E293B] text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">
+        <div className="p-4 bg-slate-50 dark:bg-[#090B0E] border-t border-slate-100 dark:border-[var(--border-dark)] text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">
           {currentLanguage === 'ar' ? 'Ryvo Store © 2026 جميع الحقوق محفوظة لشركة رايفو المحدودة' : 'Ryvo Store © 2026 All Rights Reserved to Ryvo Co. Ltd'}
         </div>
       </div>

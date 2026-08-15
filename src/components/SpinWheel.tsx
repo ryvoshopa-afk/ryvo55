@@ -206,7 +206,7 @@ export default function SpinWheel({ isRtl, onWinPrize, settings }: SpinWheelProp
       {/* Spin Modal Overlay */}
       {isOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#11141D] w-full max-w-md rounded-3xl border border-slate-150 dark:border-[#1E293B] shadow-2xl p-6 relative flex flex-col items-center animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-[#121622] w-full max-w-md rounded-3xl border border-slate-150 dark:border-[var(--border-dark)] shadow-2xl p-6 relative flex flex-col items-center animate-in zoom-in-95 duration-200">
             {/* Close */}
             <button
               onClick={() => setIsOpen(false)}

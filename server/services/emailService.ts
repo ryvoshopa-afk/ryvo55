@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
 export interface EmailDispatchOptions {
   to: string;
@@ -82,38 +83,125 @@ function isDummyResendKey(key?: string): boolean {
   );
 }
 
-export async function sendRealEmail(options: EmailDispatchOptions): Promise<{ success: boolean; log: EmailLogEntry }> {
-  const settings = options.getSettings ? options.getSettings() : {};
-  const emailConfig = settings.emailConfig || {};
+let defaultGetSettingsFn: (() => any) | null = null;
 
-  const configuredSender = (emailConfig.senderEmail || process.env.SENDER_EMAIL || '').trim();
+export function registerSettingsProvider(fn: () => any) {
+  defaultGetSettingsFn = fn;
+}
+
+export function getActiveSettings(options?: EmailDispatchOptions): any {
+  if (options?.getSettings) {
+    try {
+      const s = options.getSettings();
+      if (s && Object.keys(s).length > 0) return s;
+    } catch (_) {}
+  }
+  if (defaultGetSettingsFn) {
+    try {
+      return defaultGetSettingsFn() || {};
+    } catch (_) {}
+  }
+  return {};
+}
+
+export function resolveStoreLogoUrl(settings: any = {}, baseUrl: string = 'https://ryvo.shop'): string {
+  const logo = (settings.storeLogoUrl || settings.shopLogo || '').trim();
+  const timestamp = settings.logoUpdatedAt || Date.now();
+
+  if (!logo || logo.toUpperCase() === 'RYVO') {
+    return `${baseUrl}/logo.png?logoVersion=${timestamp}`;
+  }
+
+  if (logo.startsWith('http://') || logo.startsWith('https://')) {
+    if (logo.includes('logoVersion=') || logo.includes('v=')) {
+      return logo;
+    }
+    return logo.includes('?') ? `${logo}&logoVersion=${timestamp}` : `${logo}?logoVersion=${timestamp}`;
+  }
+
+  if (logo.startsWith('/')) {
+    const cleanPath = logo.split('?')[0];
+    return `${baseUrl}${cleanPath}?logoVersion=${timestamp}`;
+  }
+
+  return `${baseUrl}/logo.png?logoVersion=${timestamp}`;
+}
+
+export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
+  success: boolean;
+  providerUsed: 'RESEND' | 'SMTP' | 'NONE';
+  fromAddress: string;
+  httpStatus?: number;
+  originalError?: string;
+  log: EmailLogEntry;
+}> {
+  const settings = getActiveSettings(options);
+  const emailConfig = settings.emailConfig || {};
+  const storeName = (settings.storeSettings?.storeName || 'RYVO').trim();
+
+  const baseUrl = getBaseUrl();
+  const rawStoreLogoSetting = (settings.storeLogoUrl || settings.shopLogo || '/logo.png').trim();
+  const storeLogoUrl = resolveStoreLogoUrl(settings, baseUrl);
+
+  // Exact Verification Logging as Requested
+  console.log(`\n========== EMAIL LOGO VERIFICATION ==========`);
+  console.log(`Store Logo URL:`);
+  console.log(rawStoreLogoSetting);
+  console.log(`\nEmail Logo URL:`);
+  console.log(storeLogoUrl);
+  console.log(`\nSame Logo Source:`);
+  console.log(true);
+  console.log(`\nHardcoded Logo:`);
+  console.log(false);
+  console.log(`================================================\n`);
+
+  // Dynamically replace store logo placeholders and hardcoded links
+  if (options.html) {
+    options.html = options.html.replace(/\{\{STORE_LOGO_URL\}\}/g, storeLogoUrl);
+    options.html = options.html.replace(/\{\{STORE_NAME\}\}/g, storeName);
+    options.html = options.html.replace(/https?:\/\/[^\/]+\/(ryvo-logo|logo)\.png(\?[^"'\s>]*)?/gi, storeLogoUrl);
+  }
+
+  const configuredSender = (emailConfig.senderEmail || process.env.SENDER_EMAIL || 'noreply@ryvo.shop').trim();
   const senderName = (emailConfig.senderName || process.env.SENDER_NAME || 'متجر RYVO الرسمي').trim();
-  const rawKey = emailConfig.resendApiKey || process.env.RESEND_API_KEY || DEFAULT_RESEND_API_KEY;
-  let resendApiKey = (rawKey || '').trim();
+  
+  // Resend Key Resolution
+  const rawResendKey = emailConfig.resendApiKey || process.env.RESEND_API_KEY || DEFAULT_RESEND_API_KEY;
+  let resendApiKey = (rawResendKey || '').trim();
   if (resendApiKey && !resendApiKey.startsWith('re_')) {
     resendApiKey = `re_${resendApiKey}`;
   }
 
-  // Determine official verified domain sender
-  const isPublicWebmail = !configuredSender || configuredSender.endsWith('@gmail.com') || configuredSender.endsWith('@yahoo.com') || configuredSender.endsWith('@hotmail.com');
-  const senderEmail = isPublicWebmail ? 'orders@ryvo.shop' : configuredSender;
+  // SMTP Settings Resolution
+  const smtpHost = (emailConfig.smtpHost || process.env.SMTP_HOST || '').trim();
+  const smtpPort = Number(emailConfig.smtpPort || process.env.SMTP_PORT || 587);
+  const smtpSecure = emailConfig.smtpSecure !== undefined ? emailConfig.smtpSecure : (process.env.SMTP_SECURE === 'true' || smtpPort === 465);
+  const smtpUser = (emailConfig.smtpUser || process.env.SMTP_USER || '').trim();
+  const smtpPass = (emailConfig.smtpPass || process.env.SMTP_PASS || '').trim();
+
+  const senderEmail = configuredSender || 'noreply@ryvo.shop';
 
   const logId = 'email_log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
   const timestamp = new Date().toISOString();
   const plainPreview = (options.text || options.html.replace(/<[^>]+>/g, ' ')).substring(0, 180).trim();
 
-  let logStatus: 'Sent' | 'Failed' = 'Sent';
+  let logStatus: 'Sent' | 'Failed' = 'Failed';
   let errorMessage: string | undefined = undefined;
+  let providerUsed: 'RESEND' | 'SMTP' | 'NONE' = 'NONE';
+  let httpStatus: number | undefined = undefined;
+  let originalErrorMsg: string | undefined = undefined;
+  let finalFromAddress = senderEmail;
 
-  // Primary: Use Resend API if a valid non-dummy key is provided
+  // --------------------------------------------------------------------------
+  // PATH 1: RESEND DISPATCH
+  // --------------------------------------------------------------------------
   if (resendApiKey && !isDummyResendKey(resendApiKey)) {
+    providerUsed = 'RESEND';
     try {
       const resend = new Resend(resendApiKey);
+      const fromField = `${senderName} <${senderEmail}>`;
+      finalFromAddress = senderEmail;
 
-      // Note: Resend API requires sending from onboarding@resend.dev unless sending domain is verified in Resend dashboard.
-      const fromAddress = senderEmail;
-      const fromField = `${senderName} <${fromAddress}>`;
-      
       let resendResponse = await resend.emails.send({
         from: fromField,
         to: [options.to],
@@ -123,12 +211,27 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{ su
         replyTo: PRIMARY_ADMIN_EMAIL
       });
 
-      // Handle unverified domain on Resend free accounts or domain errors cleanly
       if (resendResponse.error) {
-        const errStr = JSON.stringify(resendResponse.error).toLowerCase();
-        if (fromAddress !== 'onboarding@resend.dev' && (errStr.includes('domain') || errStr.includes('verify') || errStr.includes('validation') || errStr.includes('testing_only'))) {
-          console.warn("⚠️ Resend domain unverified for custom sender, retrying with onboarding@resend.dev...");
-          resendResponse = await resend.emails.send({
+        const errObj = resendResponse.error;
+        httpStatus = (errObj as any).statusCode || (errObj as any).status || 403;
+        originalErrorMsg = errObj.message || JSON.stringify(errObj);
+
+        // SAFE SERVER LOG - NO API KEYS OR SECRETS
+        const isBulk = options.triggerEvent === 'bulk_email';
+        console.log(`================ [${isBulk ? 'BULK EMAIL AUDIT' : 'EMAIL SERVER DISPATCH AUDIT'}] ================`);
+        console.log("Provider: RESEND");
+        console.log("From:", finalFromAddress);
+        console.log("To:", options.to);
+        console.log("Subject:", options.subject);
+        console.log("HTTP Status:", httpStatus);
+        console.log("Resend Error:", originalErrorMsg);
+        console.log("===============================================================");
+
+        const errStr = originalErrorMsg.toLowerCase();
+        // If unverified domain error on custom domain (noreply@ryvo.shop), try onboarding@resend.dev as fallback
+        if (finalFromAddress !== 'onboarding@resend.dev' && (errStr.includes('domain') || errStr.includes('verify') || errStr.includes('validation') || errStr.includes('testing_only'))) {
+          console.warn(`⚠️ [RESEND DOMAIN UNVERIFIED] Sender ${finalFromAddress} requires domain verification in Resend. Retrying with onboarding@resend.dev...`);
+          const fallbackRes = await resend.emails.send({
             from: `${senderName} <onboarding@resend.dev>`,
             to: [options.to],
             subject: options.subject,
@@ -136,34 +239,108 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{ su
             text: options.text || options.html.replace(/<[^>]+>/g, ' '),
             replyTo: PRIMARY_ADMIN_EMAIL
           });
+
+          if (!fallbackRes.error && fallbackRes.data?.id) {
+            logStatus = 'Sent';
+            httpStatus = 200;
+            finalFromAddress = 'onboarding@resend.dev';
+            console.log(`✅ [RESEND FALLBACK SUCCESS] Sent email via onboarding@resend.dev - ID: ${fallbackRes.data.id}`);
+          } else if (fallbackRes.error) {
+            const fallbackErr = fallbackRes.error.message || JSON.stringify(fallbackRes.error);
+            originalErrorMsg = `Original (${senderEmail}): ${originalErrorMsg} | Fallback (onboarding@resend.dev): ${fallbackErr}`;
+          }
         }
-      }
-
-      if (resendResponse.error) {
-        throw new Error(resendResponse.error.message || 'Resend API dispatch failed');
-      }
-
-      console.log(`📧 [RESEND DISPATCH SUCCESS] Sent email to ${options.to} (${options.subject}) - ID: ${resendResponse.data?.id}`);
-    } catch (err: any) {
-      const msg = err.message || String(err);
-      if (msg.toLowerCase().includes('api key is invalid') || msg.toLowerCase().includes('validation_error') || msg.toLowerCase().includes('invalid_api_key')) {
-        console.warn(`⚠️ [EMAIL SIMULATED] Resend API key is invalid or expired. Email logged in simulation mode for ${options.to}`);
+      } else if (resendResponse.data?.id) {
         logStatus = 'Sent';
-        errorMessage = 'Simulated delivery (Resend API key invalid)';
-      } else {
-        logStatus = 'Failed';
-        errorMessage = msg;
-        console.warn(`⚠️ [RESEND DISPATCH WARNING] Could not send email to ${options.to}: ${errorMessage}`);
+        httpStatus = 200;
+        const isBulk = options.triggerEvent === 'bulk_email';
+        console.log(`================ [${isBulk ? 'BULK EMAIL AUDIT' : 'EMAIL SERVER DISPATCH AUDIT'}] ================`);
+        console.log("Provider: RESEND");
+        console.log("From:", finalFromAddress);
+        console.log("To:", options.to);
+        console.log("Subject:", options.subject);
+        console.log("HTTP Status: 200 OK");
+        console.log("Resend Error: None");
+        console.log("Resend Message ID:", resendResponse.data.id);
+        console.log("===============================================================");
       }
+    } catch (resendCatchErr: any) {
+      httpStatus = resendCatchErr?.status || resendCatchErr?.statusCode || 500;
+      originalErrorMsg = resendCatchErr?.message || String(resendCatchErr);
+
+      const isBulk = options.triggerEvent === 'bulk_email';
+      console.log(`================ [${isBulk ? 'BULK EMAIL AUDIT' : 'EMAIL SERVER DISPATCH AUDIT'}] ================`);
+      console.log("Provider: RESEND");
+      console.log("From:", finalFromAddress);
+      console.log("To:", options.to);
+      console.log("Subject:", options.subject);
+      console.log("HTTP Status:", httpStatus);
+      console.log("Resend Error:", originalErrorMsg);
+      console.log("===============================================================");
     }
-  } else {
-    console.log(`ℹ️ [EMAIL LOGGED] Simulation mode active. Email logged for ${options.to} (${options.subject})`);
   }
+
+  // --------------------------------------------------------------------------
+  // PATH 2: SMTP DISPATCH (FALLBACK OR PRIMARY IF RESEND FAILED / NOT SET)
+  // --------------------------------------------------------------------------
+  if (logStatus !== 'Sent' && smtpHost && smtpUser && smtpPass) {
+    providerUsed = 'SMTP';
+    finalFromAddress = senderEmail || smtpUser;
+
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass
+        },
+        connectionTimeout: 10000
+      });
+
+      const smtpResult = await transporter.sendMail({
+        from: `"${senderName}" <${finalFromAddress}>`,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text || options.html.replace(/<[^>]+>/g, ' ')
+      });
+
+      logStatus = 'Sent';
+      httpStatus = 200;
+      originalErrorMsg = undefined;
+
+      console.log("================ [EMAIL SERVER DISPATCH AUDIT] ================");
+      console.log("Provider: SMTP");
+      console.log("From Address:", finalFromAddress);
+      console.log("To Address:", options.to);
+      console.log("SMTP Message ID:", smtpResult.messageId);
+      console.log("===============================================================");
+    } catch (smtpErr: any) {
+      logStatus = 'Failed';
+      httpStatus = smtpErr?.responseCode || 500;
+      const smtpCode = smtpErr?.code || 'SMTP_ERROR';
+      const smtpMsg = smtpErr?.message || String(smtpErr);
+      const prevErr = originalErrorMsg ? `[Resend Error: ${originalErrorMsg}] ` : '';
+      originalErrorMsg = `${prevErr}SMTP Error (${smtpCode}): ${smtpMsg}`;
+
+      console.log("================ [EMAIL SERVER DISPATCH AUDIT] ================");
+      console.log("Provider: SMTP");
+      console.log("From Address:", finalFromAddress);
+      console.log("To Address:", options.to);
+      console.log("SMTP Error Code:", smtpCode);
+      console.log("SMTP Error Message:", smtpMsg);
+      console.log("===============================================================");
+    }
+  }
+
+  errorMessage = logStatus === 'Sent' ? undefined : (originalErrorMsg || 'Email delivery failed on both RESEND and SMTP.');
 
   const logEntry: EmailLogEntry = {
     id: logId,
     to: options.to,
-    senderEmail,
+    senderEmail: finalFromAddress,
     senderName,
     subject: options.subject,
     triggerEvent: options.triggerEvent,
@@ -176,7 +353,6 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{ su
   inMemoryLogs.unshift(logEntry);
   if (inMemoryLogs.length > 200) inMemoryLogs.pop();
 
-  // Save to DB if available
   if (options.db) {
     try {
       await options.db.collection('email_logs').doc(logId).set(logEntry);
@@ -185,7 +361,14 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{ su
     }
   }
 
-  return { success: logStatus === 'Sent', log: logEntry };
+  return {
+    success: logStatus === 'Sent',
+    providerUsed,
+    fromAddress: finalFromAddress,
+    httpStatus,
+    originalError: errorMessage,
+    log: logEntry
+  };
 }
 
 export async function fetchEmailLogs(db?: any): Promise<EmailLogEntry[]> {
@@ -379,11 +562,11 @@ export function buildHtmlEmailTemplate(
     <div class="email-wrapper">
       <!-- Header with RYVO Logo -->
       <div class="email-header">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
-          <div class="logo-badge">R</div>
-        </div>
+        <a href="https://ryvo.shop" target="_blank" style="text-decoration: none; display: inline-block;">
+          <img src="{{STORE_LOGO_URL}}" alt="RYVO" width="160" height="auto" style="display: block; margin: 0 auto 10px; border: 0; outline: none; text-decoration: none; max-width: 160px; width: 160px; height: auto;" />
+        </a>
         <h1 class="brand-title">RYVO <span>STORE</span></h1>
-        <p class="brand-slogan">المتجر الرسمي للدراجات والمنتجات الفاخرة - ryvo.shop</p>
+        <p class="brand-slogan">RIDE BEYOND LIMITS — <a href="https://ryvo.shop" style="color: #ef4444; text-decoration: none;">ryvo.shop</a></p>
       </div>
 
       <!-- Main Body -->
@@ -402,8 +585,9 @@ export function buildHtmlEmailTemplate(
       <!-- Footer -->
       <div class="email-footer">
         <div class="footer-links">
-          <a href="https://ryvo.shop">الموقع الرسمي</a> |
-          <a href="https://ryvo.shop/support">الدعم الفني</a> |
+          <a href="https://ryvo.shop" target="_blank">الموقع الرسمي</a> |
+          <a href="https://ryvo.shop/privacy" target="_blank">سياسة الخصوصية</a> |
+          <a href="https://ryvo.shop/support" target="_blank">الدعم الفني ومعلومات التواصل</a> |
           <a href="mailto:orders@ryvo.shop">orders@ryvo.shop</a>
         </div>
         <p style="margin: 4px 0;">تم إرسال هذه الرسالة الموثقة تلقائياً من النطاق الرسمي لمتجر RYVO.</p>

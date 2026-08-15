@@ -53,8 +53,11 @@ export default function ProductCard({
   const tag = currentLanguage === 'ar' ? product.tag_ar : currentLanguage === 'fr' ? product.tag_fr : product.tag_en;
   const categoryLabel = t[product.category] || product.category;
 
-  // Calculate rating average
+  // Calculate rating average and discount
   const ratingAvg = product.rating_count > 0 ? (product.rating_sum / product.rating_count).toFixed(1) : '5.0';
+  const hasDiscount = product.is_featured || (product.supplier_profit_margin && product.supplier_profit_margin > 20);
+  const originalPrice = hasDiscount ? Math.round(product.price * 1.22) : null;
+  const discountPercent = originalPrice ? Math.round(((originalPrice - product.price) / originalPrice) * 100) : 0;
 
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -89,14 +92,21 @@ export default function ProductCard({
   return (
     <div
       id={`product-card-${product.id}`}
-      className="group bg-white dark:bg-[#11141D] rounded-2xl overflow-hidden border border-slate-150 dark:border-[#1E293B] shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col relative dark:hover:border-[var(--primary-color, #38bdf8)]/50"
+      className="group bg-white dark:bg-[#121622] rounded-2xl overflow-hidden border border-slate-200 dark:border-[var(--border-dark)] shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col relative dark:hover:border-[var(--primary-color)]/50"
     >
-      {/* Corner Tag/Badge */}
-      {tag && (
-        <span className={`absolute top-3 ${isRtl ? 'left-3' : 'right-3'} z-10 px-2.5 py-1 text-[10px] font-black rounded-lg uppercase tracking-wider bg-gradient-to-r from-slate-900 to-slate-800 text-white dark:bg-[var(--primary-color, #38bdf8)]/10 dark:text-[var(--primary-color, #38bdf8)] dark:from-transparent dark:to-transparent dark:border dark:border-[var(--primary-color, #38bdf8)]/30 shadow-md`}>
-          {tag}
-        </span>
-      )}
+      {/* Corner Tag/Badge & Discount Tag */}
+      <div className={`absolute top-3 ${isRtl ? 'left-3' : 'right-3'} z-10 flex flex-col gap-1 items-end`}>
+        {discountPercent > 0 && (
+          <span className="px-2 py-0.5 text-[10px] font-black rounded-lg bg-[var(--primary-color)] text-white shadow-md">
+            -{discountPercent}%
+          </span>
+        )}
+        {tag && (
+          <span className="px-2.5 py-1 text-[10px] font-black rounded-lg uppercase tracking-wider bg-slate-900/90 text-white dark:bg-slate-800/90 border border-white/10 shadow-md">
+            {tag}
+          </span>
+        )}
+      </div>
 
       {/* Product Image & Hover Action Overlay */}
       <div 
@@ -168,12 +178,12 @@ export default function ProductCard({
       <div className={`p-5 flex-1 flex flex-col justify-between ${isRtl ? 'text-right' : 'text-left'}`}>
         <div>
           {/* Category label */}
-          <span className="text-[10px] uppercase tracking-widest font-black text-amber-500 dark:text-[var(--primary-color, #38bdf8)] mb-1.5 block">
+          <span className="text-[10px] uppercase tracking-widest font-black text-amber-500 dark:text-[var(--primary-color)] mb-1.5 block">
             {categoryLabel}
           </span>
 
           {/* Title */}
-          <h3 className="font-bold text-slate-850 dark:text-gray-150 text-sm sm:text-base line-clamp-2 leading-snug group-hover:text-amber-500 dark:group-hover:text-[var(--primary-color, #38bdf8)] transition-colors mb-2">
+          <h3 className="font-bold text-slate-850 dark:text-gray-150 text-sm sm:text-base line-clamp-2 leading-snug group-hover:text-amber-500 dark:group-hover:text-[var(--primary-color)] transition-colors mb-2">
             {name}
           </h3>
 
@@ -191,16 +201,23 @@ export default function ProductCard({
         </div>
 
         {/* Footer actions */}
-        <div className="border-t border-slate-100 dark:border-[#1E293B] pt-4 flex flex-col gap-2">
+        <div className="border-t border-slate-100 dark:border-white/10 pt-3 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <div className={`flex flex-col ${isRtl ? 'items-end' : 'items-start'}`}>
               <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{t.price}</span>
-              <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-baseline gap-0.5 font-sans">
-                <span>{formatPrice(product.price, currentLanguage)}</span>
-              </span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-sans">
+                  {formatPrice(product.price, currentLanguage)}
+                </span>
+                {originalPrice && (
+                  <span className="text-xs text-slate-400 line-through font-normal">
+                    {formatPrice(originalPrice, currentLanguage)}
+                  </span>
+                )}
+              </div>
             </div>
             
-            <span className={`text-[10px] font-bold px-2 py-1 rounded bg-slate-100 dark:bg-black/30 ${product.stock > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800/80 ${product.stock > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
               {product.stock > 0 ? `${product.stock} ${t.stock_count}` : t.out_of_stock}
             </span>
           </div>
@@ -213,8 +230,8 @@ export default function ProductCard({
               disabled={product.stock === 0}
               className={`py-2.5 px-1 rounded-xl text-[11px] font-black cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
                 product.stock > 0
-                  ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white border border-slate-205 dark:border-slate-800 active:scale-95'
-                  : 'bg-slate-50 dark:bg-[#0E1116] text-slate-400 dark:text-slate-655 border border-transparent cursor-not-allowed'
+                  ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 active:scale-95'
+                  : 'bg-slate-50 dark:bg-[#0E1116] text-slate-400 dark:text-slate-600 border border-transparent cursor-not-allowed'
               }`}
               title={t.quick_add}
             >
@@ -229,8 +246,8 @@ export default function ProductCard({
               disabled={product.stock === 0}
               className={`py-2.5 px-1 rounded-xl text-[11px] font-black cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
                 product.stock > 0
-                  ? 'bg-[var(--primary-color,#38bdf8)] hover:brightness-110 text-slate-950 font-black shadow-sm active:scale-95'
-                  : 'bg-slate-50 dark:bg-[#0E1116] text-slate-400 dark:text-slate-655 border border-transparent cursor-not-allowed'
+                  ? 'bg-[var(--primary-color)] hover:brightness-110 text-white font-black shadow-sm active:scale-95'
+                  : 'bg-slate-50 dark:bg-[#0E1116] text-slate-400 dark:text-slate-600 border border-transparent cursor-not-allowed'
               }`}
               title={t.buyNow || 'شراء الآن ⚡'}
             >

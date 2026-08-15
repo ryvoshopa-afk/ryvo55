@@ -441,13 +441,13 @@ export default function CheckoutModal({
       <div onClick={onClose} className="fixed inset-0 bg-slate-950/60 dark:bg-black/85 backdrop-blur-sm transition-opacity"></div>
 
       {/* Modal Dialog */}
-      <div id="checkout-form-dialog" className="relative bg-white dark:bg-[#11141D] rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col md:flex-row border border-slate-150 dark:border-[#1E293B] animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-gray-100 max-h-[96vh] md:max-h-[85vh] overflow-y-auto md:overflow-hidden">
+      <div id="checkout-form-dialog" className="relative bg-white dark:bg-[#121622] rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col md:flex-row border border-slate-200 dark:border-[var(--border-dark)] animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-gray-100 max-h-[96vh] md:max-h-[85vh] overflow-y-auto md:overflow-hidden">
         
         {/* Close Button */}
         <button
           id="btn-checkout-close"
           onClick={onClose}
-          className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} z-10 p-2.5 rounded-full bg-slate-50 hover:bg-[var(--primary-color)] hover:text-slate-950 dark:bg-slate-900 dark:hover:bg-[var(--primary-color)] dark:hover:text-[#0A0C10] transition-all cursor-pointer`}
+          className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} z-10 p-2.5 rounded-full bg-slate-100 hover:bg-[var(--primary-color)] hover:text-white dark:bg-slate-800 dark:hover:bg-[var(--primary-color)] dark:hover:text-white transition-all cursor-pointer`}
         >
           <X className="w-4 h-4" />
         </button>
@@ -498,7 +498,7 @@ export default function CheckoutModal({
             <button
               id="btn-checkout-success-close"
               onClick={onClose}
-              className="px-6 py-3 bg-[var(--primary-color)] hover:opacity-90 text-slate-950 font-bold rounded-xl text-xs uppercase cursor-pointer transition-all"
+              className="px-6 py-3 bg-[var(--primary-color)] hover:brightness-110 text-white font-bold rounded-xl text-xs uppercase cursor-pointer transition-all shadow-lg shadow-red-500/20"
             >
               {t.close_btn}
             </button>
@@ -507,21 +507,21 @@ export default function CheckoutModal({
           /* Form Screen */
           <>
             {/* Left Side: Receipt Items Breakdown */}
-            <div className="flex-1 p-4 sm:p-6 md:p-8 bg-slate-50 dark:bg-[#0A0C10] flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#1E293B] md:max-h-[85vh] md:overflow-y-auto">
+            <div className="flex-1 p-4 sm:p-6 md:p-8 bg-slate-50 dark:bg-[#090B0E] flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-200 dark:border-[var(--border-dark)] md:max-h-[85vh] md:overflow-y-auto">
               <div className="space-y-4">
                 {shopLogo && (
                   <div className="flex items-center gap-2 pb-3 mb-1 border-b border-slate-200 dark:border-slate-800/80">
                     {shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/') ? (
                       <img src={shopLogo} alt="Logo" className="h-8 max-w-[120px] object-contain rounded-lg" referrerPolicy="no-referrer" />
                     ) : (
-                      <span className="text-sm font-black tracking-widest bg-gradient-to-r from-[var(--primary-color, #38bdf8)] to-amber-500 bg-clip-text text-transparent uppercase font-sans">
+                      <span className="text-sm font-black tracking-widest bg-gradient-to-r from-[var(--primary-color)] to-amber-500 bg-clip-text text-transparent uppercase font-sans">
                         {shopLogo}
                       </span>
                     )}
                     <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">RECEIPT SUMMARY</span>
                   </div>
                 )}
-                <span className="text-xs font-black uppercase text-[var(--primary-color, #38bdf8)] tracking-wider flex items-center gap-1.5 mb-2">
+                <span className="text-xs font-black uppercase text-[var(--primary-color)] tracking-wider flex items-center gap-1.5 mb-2">
                   <ShoppingBag className="w-4 h-4" />
                   {t.cart_title}
                 </span>
@@ -530,7 +530,7 @@ export default function CheckoutModal({
                   {cart.map(item => {
                     const name = currentLanguage === 'ar' ? item.product.name_ar : currentLanguage === 'fr' ? item.product.name_fr : item.product.name_en;
                     return (
-                      <div key={`${item.product.id}-${item.color || 'default'}`} className="flex items-center gap-3 bg-white dark:bg-[#11141D] p-2.5 rounded-xl border border-slate-100 dark:border-[#1E293B]">
+                      <div key={`${item.product.id}-${item.color || 'default'}`} className="flex items-center gap-3 bg-white dark:bg-[#121622] p-2.5 rounded-xl border border-slate-100 dark:border-[var(--border-dark)]">
                         <img src={item.product.image} className="w-10 h-10 object-cover rounded-lg" referrerPolicy="no-referrer" />
                         <div className={`flex-1 min-w-0 ${isRtl ? 'text-right' : 'text-left'}`}>
                           <h4 className="text-xs font-bold truncate text-slate-800 dark:text-gray-200">{name}</h4>
@@ -694,7 +694,7 @@ export default function CheckoutModal({
                       value={fullname}
                       onChange={(e) => setFullname(e.target.value)}
                       // Fix sudden zoom: text-base on mobile, md:text-xs on desktop
-                      className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-[#0A0C10] text-slate-850 dark:text-white outline-none transition-all ${
+                      className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                         isRtl ? 'text-right' : 'text-left'
                       }`}
                     />
@@ -716,7 +716,7 @@ export default function CheckoutModal({
                           required
                           value={country}
                           onChange={(e) => setCountry(e.target.value)}
-                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-[#0A0C10] text-slate-850 dark:text-white outline-none transition-all ${
+                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                             isRtl ? 'text-right' : 'text-left'
                           }`}
                         />
@@ -732,7 +732,7 @@ export default function CheckoutModal({
                           placeholder={isRtl ? 'الرياض، جدة...' : 'e.g. Riyadh, Jeddah...'}
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-[#0A0C10] text-slate-850 dark:text-white outline-none transition-all ${
+                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                             isRtl ? 'text-right' : 'text-left'
                           }`}
                         />
@@ -751,7 +751,7 @@ export default function CheckoutModal({
                           placeholder={isRtl ? 'مثال: حي الياسمين' : 'e.g. Al Yasmin District'}
                           value={district}
                           onChange={(e) => setDistrict(e.target.value)}
-                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-[#0A0C10] text-slate-850 dark:text-white outline-none transition-all ${
+                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                             isRtl ? 'text-right' : 'text-left'
                           }`}
                         />
@@ -767,7 +767,7 @@ export default function CheckoutModal({
                           placeholder={isRtl ? 'مثال: شارع العليا، مبنى رقم...' : 'e.g. Olaya Street, Building...'}
                           value={street}
                           onChange={(e) => setStreet(e.target.value)}
-                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-[#0A0C10] text-slate-850 dark:text-white outline-none transition-all ${
+                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                             isRtl ? 'text-right' : 'text-left'
                           }`}
                         />
@@ -785,7 +785,7 @@ export default function CheckoutModal({
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         // Fix sudden zoom
-                        className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-[#0A0C10] text-slate-850 dark:text-white outline-none transition-all ${
+                        className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                           isRtl ? 'text-right' : 'text-left'
                         }`}
                       />
@@ -800,7 +800,7 @@ export default function CheckoutModal({
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         // Fix sudden zoom
-                        className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-[#0A0C10] text-slate-850 dark:text-white outline-none transition-all ${
+                        className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                           isRtl ? 'text-right' : 'text-left'
                         }`}
                       />
@@ -818,7 +818,7 @@ export default function CheckoutModal({
                       placeholder={isRtl ? 'مثال: يرجى الاتصال قبل التوصيل، أو أي تعليمات خاصة بتسليم الطلب...' : 'e.g., Please call before delivery, or any specific delivery details...'}
                       value={orderNotes}
                       onChange={(e) => setOrderNotes(e.target.value)}
-                      className={`w-full text-base md:text-xs px-3.5 py-2.5 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-[#0A0C10] text-slate-850 dark:text-white outline-none transition-all resize-none ${
+                      className={`w-full text-base md:text-xs px-3.5 py-2.5 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all resize-none ${
                         isRtl ? 'text-right' : 'text-left'
                       }`}
                     />
@@ -910,10 +910,10 @@ export default function CheckoutModal({
                               onClick={() => setPaymentMethod(meth.id)}
                               className={`p-3 rounded-xl border-2 text-center text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
                                 isCurrentlySelected
-                                  ? 'border-[var(--primary-color, #38bdf8)] bg-[var(--primary-color, #38bdf8)]/5 text-[var(--primary-color, #38bdf8)]'
+                                  ? 'border-[var(--primary-color)] bg-[var(--primary-color)]/5 text-[var(--primary-color)]'
                                   : meth.disabled
                                     ? 'border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-900/10 text-slate-300 dark:text-slate-755 cursor-not-allowed opacity-50'
-                                    : 'border-slate-100 dark:border-[#1E293B] hover:border-slate-200 dark:hover:border-slate-700 text-slate-500 dark:text-slate-400'
+                                    : 'border-slate-100 dark:border-[var(--border-dark)] hover:border-slate-200 dark:hover:border-slate-700 text-slate-500 dark:text-slate-400'
                               }`}
                             >
                               <CreditCard className="w-4 h-4 text-slate-450" />
@@ -961,14 +961,14 @@ export default function CheckoutModal({
                 {/* Submitting CSRF feedback */}
                 {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2 py-3 bg-slate-100 dark:bg-slate-900 rounded-xl text-base md:text-xs font-bold text-slate-600 dark:text-gray-305">
-                    <Loader2 className="w-4 h-4 animate-spin text-[var(--primary-color, #38bdf8)]" />
+                    <Loader2 className="w-4 h-4 animate-spin text-[var(--primary-color)]" />
                     <span>{t.processing_order}</span>
                   </div>
                 ) : (
                   <button
                     id="btn-checkout-submit"
                     type="submit"
-                    className="w-full py-4 mt-2 bg-[var(--primary-color)] hover:opacity-90 text-slate-950 font-black hover:scale-[1.01] rounded-xl transition-all cursor-pointer text-xs uppercase shadow-md hover:shadow-[0_0_15px_rgba(var(--primary-color-rgb,56,189,248),0.35)]"
+                    className="w-full py-4 mt-2 bg-[var(--primary-color)] hover:brightness-110 text-white font-black hover:scale-[1.01] rounded-xl transition-all cursor-pointer text-xs uppercase shadow-lg shadow-red-500/20"
                   >
                     {t.confirm_order_btn}
                   </button>

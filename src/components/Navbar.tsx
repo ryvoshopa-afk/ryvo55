@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useConfirm } from './ConfirmationDialog';
 import { Language, Theme, User } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
-import { ShoppingBag, Heart, User as UserIcon, Sun, Moon, Settings, ShieldAlert, Languages, Search, Sliders, MessageSquare, Truck, Home, Facebook, Twitter, Instagram, Youtube, Music, Ghost, Volume2, VolumeX, Coins, BookOpen, Bell, Menu, X } from 'lucide-react';
+import { ShoppingBag, Heart, User as UserIcon, Sun, Moon, Settings, ShieldAlert, Languages, Search, Sliders, MessageSquare, Truck, Home, Facebook, Twitter, Instagram, Youtube, Music, Ghost, Volume2, VolumeX, Coins, BookOpen, Bell, Menu, X, Grid } from 'lucide-react';
 import { formatPrice } from '../utils/price';
 import socket from '../utils/socket';
 import { smartFetch } from '../utils/smartFetch';
@@ -242,6 +242,18 @@ export default function Navbar({
     return () => clearInterval(interval);
   }, [isRtl, welcomeCouponSession]);
 
+  // NAVBAR LOGO VERIFICATION LOG
+  useEffect(() => {
+    console.log('NAVBAR LOGO VERIFICATION', {
+      'Logo source': shopLogo,
+      'Logo loaded': Boolean(shopLogo),
+      'Logo element dimensions': 'auto x 48px max',
+      'Object fit': 'contain',
+      'Circular wrapper': false,
+      'Hardcoded logo': false
+    });
+  }, [shopLogo]);
+
   // Real-time Socket.io and On-Demand Synchronization for system & support notifications
   useEffect(() => {
     const isGuest = !currentUser || !currentUser.email;
@@ -408,190 +420,244 @@ export default function Navbar({
   return (
     <>
       {/* Top Custom Announcement Bar */}
-      <div className="w-full bg-slate-900 text-slate-350 dark:bg-black text-[11px] py-1.5 border-b border-slate-200 dark:border-white/5 font-sans relative z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-3 flex items-center justify-center gap-3">
-          {announcementLink ? (
-            <a
-              href={announcementLink.startsWith('http') ? announcementLink : `https://${announcementLink}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 font-bold select-none text-slate-100 hover:text-[var(--primary-color,#38bdf8)] transition-all"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary-color,#38bdf8)]"></span>
-              <span>
-                {currentLanguage === 'ar' ? announcementTextAr : currentLanguage === 'fr' ? announcementTextFr : announcementTextEn}
-              </span>
-              <span className="underline text-[9.5px] opacity-85 hover:opacity-100 px-1.5 py-0.5 bg-white/10 rounded ml-1">
-                {currentLanguage === 'ar' ? 'عرض الرابط 🔗' : 'View Link 🔗'}
-              </span>
-            </a>
-          ) : (
-            <div className="flex items-center gap-2 font-bold select-none text-slate-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary-color,#38bdf8)] animate-pulse"></span>
-              <span>
-                {currentLanguage === 'ar' ? announcementTextAr : currentLanguage === 'fr' ? announcementTextFr : announcementTextEn}
-              </span>
-            </div>
-          )}
+      <div className="w-full bg-[#090B0E] text-white text-[11px] sm:text-xs py-2 border-b border-[#1E293B] font-sans relative z-40 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-center gap-2 text-center">
+          <span className="w-2 h-2 rounded-full bg-[#E53E3E] shrink-0 animate-pulse"></span>
+          <span className="font-bold tracking-tight text-white truncate max-w-[92vw]">
+            {currentLanguage === 'ar' 
+              ? (announcementTextAr || '🔒 تسوق بثقة تامة مع حماية وضمان متكامل لجميع المشتريات') 
+              : currentLanguage === 'fr' 
+              ? (announcementTextFr || '🔒 Achetez en toute confiance avec une protection complète') 
+              : (announcementTextEn || '🔒 Shop with confidence with complete purchase protection')}
+          </span>
+          <span className="w-2 h-2 rounded-full bg-[#E53E3E] shrink-0"></span>
         </div>
       </div>
 
-      <nav className="sticky top-0 z-40 w-full backdrop-blur-md bg-white/90 dark:bg-[#11141D] border-b border-slate-150 dark:border-[#1E293B] transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-3">
-          <div className={`flex items-center justify-between h-20 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
+      <nav className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#FFFFFF]/95 dark:bg-[#090B0E]/95 border-b border-[#E2E8F0] dark:border-[#1E293B] transition-colors duration-300">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+          
+          {/* Mobile Header View (lg:hidden) */}
+          <div className="lg:hidden w-full px-2 py-2.5 flex items-center justify-between gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar">
+            {/* 1. Menu Toggle ☰ */}
+            <button
+              id="mobile-menu-toggle"
+              data-testid="mobile-menu-btn"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#FFFFFF] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] flex items-center justify-center shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all"
+              aria-label={isRtl ? 'فتح القائمة الجانبية' : 'Open mobile menu'}
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5 text-[#E53E3E]" /> : <Menu className="w-5 h-5 text-[#0F172A] dark:text-[#F8FAFC]" />}
+            </button>
+
+            {/* 2. RYVO Logo Container */}
+            <button
+              id="ryvo-brand-mobile"
+              onClick={() => onNavigate('home')}
+              className="flex items-center justify-center bg-[#F8F9FA] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] rounded-2xl px-2.5 py-1 min-w-[90px] max-w-[125px] h-10 sm:h-11 shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all shadow-xs"
+              aria-label="RYVO Logo"
+            >
+              {shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/') ? (
+                <img 
+                  src={shopLogo} 
+                  alt="RYVO Logo" 
+                  className="h-7 sm:h-8 w-auto max-w-[105px] object-contain" 
+                  referrerPolicy="no-referrer" 
+                />
+              ) : (
+                <span className="text-[#E53E3E] font-black text-xs sm:text-sm tracking-wider uppercase truncate">
+                  {shopLogo}
+                </span>
+              )}
+            </button>
+
+            {/* 3. Settings ⚙ */}
+            <button
+              id="mobile-settings-button"
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#FFFFFF] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] flex items-center justify-center shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all"
+              title={isRtl ? 'الإعدادات والخيارات ⚙️' : 'Settings ⚙️'}
+            >
+              <Settings className={`w-5 h-5 ${isSettingsOpen ? 'animate-spin text-[#E53E3E]' : 'text-[#64748B] dark:text-[#94A3B8]'}`} />
+            </button>
+
+            {/* 4. Theme ☀️/🌙 */}
+            <button
+              id="mobile-theme-button"
+              onClick={onThemeToggle}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#FFFFFF] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] flex items-center justify-center shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all"
+              aria-label="Toggle Theme"
+            >
+              {currentTheme === 'light' ? <Moon className="w-5 h-5 text-[#64748B]" /> : <Sun className="w-5 h-5 text-[#E53E3E]" />}
+            </button>
+
+            {/* 5. Notifications 🔔 */}
+            <button
+              id="mobile-notifications-button"
+              onClick={() => setIsNotifOpen(!isNotifOpen)}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#FFFFFF] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all"
+              title={isRtl ? 'الإشعارات 🔔' : 'Notifications 🔔'}
+            >
+              <Bell className="w-5 h-5 text-[#64748B] dark:text-[#94A3B8]" />
+              {(() => {
+                const unread = notifications.filter((n: any) => !n.read).length;
+                return unread > 0 ? (
+                  <span className="absolute -top-1 -right-1 bg-[#E53E3E] text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                    {unread}
+                  </span>
+                ) : null;
+              })()}
+            </button>
+
+            {/* 6. Cart 🛍 */}
+            <button
+              id="mobile-cart-button"
+              onClick={onCartOpen}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#FFFFFF] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all"
+              aria-label="Shopping Cart"
+            >
+              <ShoppingBag className="w-5 h-5 text-[#64748B] dark:text-[#94A3B8]" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#E53E3E] text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+
+            {/* 7. Login / Account Button */}
+            <button
+              id="mobile-login-button"
+              onClick={() => {
+                if (currentUser) {
+                  onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard');
+                } else {
+                  onAuthOpen();
+                }
+              }}
+              className="h-10 sm:h-11 px-3 sm:px-4 rounded-2xl bg-[#E53E3E] hover:bg-[#d32f2f] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer transition-all shadow-sm shadow-red-500/20"
+            >
+              <UserIcon className="w-4 h-4 shrink-0" />
+              <span className="truncate max-w-[80px] sm:max-w-[100px]">
+                {currentUser ? currentUser.name : (isRtl ? 'تسجيل الدخول' : t.login)}
+              </span>
+            </button>
+          </div>
+
+          {/* Desktop Header View (hidden lg:flex) */}
+          <div className="hidden lg:flex items-center justify-between h-20 gap-3 sm:gap-4 lg:gap-6">
             
             {/* Logo */}
-            <div className="flex items-center gap-3">
-              {/* Mobile Hamburger Menu Toggle */}
-              <button
-                id="mobile-menu-toggle"
-                data-testid="mobile-menu-btn"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-[#1E293B] text-slate-700 dark:text-slate-300 hover:scale-105 transition-transform relative cursor-pointer"
-                aria-label={isRtl ? 'فتح القائمة الجانبية' : 'Open mobile menu'}
-              >
-                {isMobileMenuOpen ? <X className="w-5 h-5 text-[var(--primary-color)]" /> : <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200" />}
-              </button>
-
+            <div className="flex items-center gap-3 shrink-0">
               <button
                 id="ryvo-brand"
                 onClick={() => onNavigate('home')}
-                className="group flex items-center gap-1 transition-all duration-300 hover:scale-[1.03]"
+                className="group flex items-center transition-all duration-300 hover:opacity-90 cursor-pointer shrink-0"
               >
                 {shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/') ? (
-                  <div className={`transition-all duration-300 flex items-center justify-center ${currentTheme === 'light' ? 'bg-black rounded-full p-2.5 w-16 h-16 shadow-lg border border-slate-200' : 'h-16'}`}>
-                    <img 
-                      src={shopLogo} 
-                      alt="Shop Logo" 
-                      width={64}
-                      height={64}
-                      className={`object-contain transition-all duration-300 ${currentTheme === 'light' ? 'h-full w-full rounded-full' : 'h-14 max-w-[180px] sm:max-w-[210px]'}`} 
-                      referrerPolicy="no-referrer" 
-                    />
-                  </div>
+                  <img 
+                    src={shopLogo} 
+                    alt="RYVO Logo" 
+                    className="h-9 sm:h-11 md:h-12 w-auto max-w-[180px] sm:max-w-[220px] object-contain shrink-0" 
+                    referrerPolicy="no-referrer" 
+                  />
                 ) : shopLogo.toUpperCase().includes('RYVO') ? (
-                  <div className={`transition-all duration-300 flex items-center gap-1.5 text-xl font-black font-sans tracking-tight ${currentTheme === 'light' ? 'bg-black text-white px-5 py-2.5 rounded-full shadow-lg border border-slate-250' : 'text-lg sm:text-xl'}`}>
-                    <span className="text-[var(--primary-color,#38bdf8)] font-black">RYVO</span>
+                  <div className="flex items-center gap-1.5 text-xl sm:text-2xl font-black font-sans tracking-tight">
+                    <span className="text-[var(--primary-color)] font-black">RYVO</span>
                     {shopLogo.toUpperCase().replace('RYVO', '').trim() && (
-                      <span className={currentTheme === 'light' ? 'text-white' : 'text-slate-900 dark:text-white'}>
+                      <span className="text-slate-900 dark:text-white">
                         {shopLogo.toUpperCase().replace('RYVO', '').trim()}
                       </span>
                     )}
                   </div>
                 ) : (
-                  <div className={`transition-all duration-300 text-xl font-black font-sans tracking-tight ${currentTheme === 'light' ? 'bg-black text-white px-5 py-2.5 rounded-full shadow-lg border border-slate-250' : 'text-lg sm:text-xl'}`}>
-                    <span className="bg-gradient-to-r from-[var(--primary-color,#38bdf8)] to-amber-500 bg-clip-text text-transparent uppercase font-black">
+                  <div className="text-xl sm:text-2xl font-black font-sans tracking-tight text-slate-900 dark:text-white">
+                    <span className="text-[var(--primary-color)] font-black uppercase">
                       {shopLogo}
                     </span>
                   </div>
                 )}
               </button>
-
-              {/* Quick Navigation Links */}
-              <div className="hidden md:flex items-center gap-6">
-                <button
-                  id="nav-link-home"
-                  data-testid="nav-link-1"
-                  onClick={() => onNavigate('home')}
-                  className={`text-sm font-semibold transition-colors ${
-                    currentView === 'home'
-                      ? 'text-[var(--primary-color)] font-extrabold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  {t.home}
-                </button>
-
-                <button
-                  id="nav-link-track"
-                  data-testid="nav-link-2"
-                  onClick={() => onNavigate('track')}
-                  className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
-                    currentView === 'track'
-                      ? 'text-[var(--primary-color)] font-extrabold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-[var(--primary-color)]'
-                  }`}
-                >
-                  <Truck className="w-4 h-4 text-amber-500" />
-                  {t.track_tab || 'تتبع طلبك 🚚'}
-                </button>
-
-                <button
-                  id="nav-link-blog"
-                  data-testid="nav-link-3"
-                  onClick={() => onNavigate('blog')}
-                  className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
-                    currentView === 'blog'
-                      ? 'text-[var(--primary-color)] font-extrabold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-[var(--primary-color)]'
-                  }`}
-                >
-                  <BookOpen className="w-4 h-4 text-sky-500" />
-                  <span>{currentLanguage === 'ar' ? 'المدونة ✍️' : currentLanguage === 'fr' ? 'Blog ✍️' : 'Blog ✍️'}</span>
-                </button>
-
-                <button
-                  id="nav-link-chat"
-                  data-testid="nav-link-4"
-                  onClick={() => onNavigate('chat')}
-                  className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
-                    currentView === 'chat'
-                      ? 'text-[var(--primary-color)] font-extrabold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-[var(--primary-color)]'
-                  }`}
-                >
-                  <MessageSquare className="w-4 h-4 text-[var(--primary-color)]" />
-                  {t.support_tab || 'الدردشة 💬'}
-                </button>
-                
-                {currentUser && currentUser.role === 'admin' ? (
-                  <button
-                    id="nav-link-5"
-                    data-testid="nav-link-5"
-                    onClick={() => onNavigate('admin')}
-                    className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
-                      currentView === 'admin'
-                        ? 'text-[var(--primary-color)] font-extrabold'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-rose-500 dark:hover:text-red-400'
-                    }`}
-                  >
-                    <ShieldAlert className="w-4 h-4 text-rose-500" />
-                    {t.admin_panel}
-                  </button>
-                ) : currentUser ? (
-                  <button
-                    id="nav-link-5"
-                    data-testid="nav-link-5"
-                    onClick={() => onNavigate('dashboard')}
-                    className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
-                      currentView === 'dashboard'
-                        ? 'text-[var(--primary-color)] font-extrabold'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-[var(--primary-color)]'
-                    }`}
-                  >
-                    <Settings className="w-4 h-4 animate-spin-slow text-[var(--primary-color, #38bdf8)]" />
-                    {currentUser.role === 'affiliate' ? (isRtl ? 'حساب المسوق 💸' : 'Affiliate Portal 💸') : t.customer_panel}
-                  </button>
-                ) : (
-                  <button
-                    id="nav-link-5"
-                    data-testid="nav-link-5"
-                    onClick={onAuthOpen}
-                    className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
-                      currentView === 'auth'
-                        ? 'text-[var(--primary-color)] font-extrabold'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-[var(--primary-color)]'
-                    }`}
-                  >
-                    <UserIcon className="w-4 h-4 text-[var(--primary-color)]" />
-                    <span>{isRtl ? 'حسابي / التسجيل 👤' : 'Account / Login 👤'}</span>
-                  </button>
-                )}
-              </div>
             </div>
 
-            {/* Search bar inside header */}
-            <div className="hidden lg:block w-72 max-w-xs relative">
+            {/* Quick Navigation Links (Desktop lg+) */}
+            <div className="hidden lg:flex items-center gap-4 xl:gap-6 shrink-0">
+              <button
+                id="nav-link-home"
+                data-testid="nav-link-1"
+                onClick={() => onNavigate('home')}
+                className={`text-xs xl:text-sm font-extrabold whitespace-nowrap transition-colors cursor-pointer ${
+                  currentView === 'home'
+                    ? 'text-[var(--primary-color)] font-black'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-[var(--primary-color)] dark:hover:text-white'
+                }`}
+              >
+                {t.home}
+              </button>
+
+              <button
+                id="nav-link-shop"
+                data-testid="nav-link-shop"
+                onClick={() => {
+                  onNavigate('home');
+                  setTimeout(() => {
+                    document.getElementById('products-grid')?.scrollIntoView({ behavior: 'smooth' });
+                  }, 100);
+                }}
+                className={`flex items-center gap-1.5 text-xs xl:text-sm font-extrabold whitespace-nowrap transition-colors cursor-pointer ${
+                  currentView === 'home'
+                    ? 'text-slate-700 dark:text-slate-300 hover:text-[var(--primary-color)]'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-[var(--primary-color)]'
+                }`}
+              >
+                <ShoppingBag className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                <span>{isRtl ? 'تسوق' : currentLanguage === 'fr' ? 'Boutique' : 'Shop'}</span>
+              </button>
+
+              <button
+                id="nav-link-track"
+                data-testid="nav-link-2"
+                onClick={() => onNavigate('track')}
+                className={`flex items-center gap-1.5 text-xs xl:text-sm font-extrabold whitespace-nowrap transition-colors cursor-pointer ${
+                  currentView === 'track'
+                    ? 'text-[var(--primary-color)] font-black'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-[var(--primary-color)]'
+                }`}
+              >
+                <Truck className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                <span>{isRtl ? 'تتبع طلبك' : (t.track_tab ? t.track_tab.replace('🚚', '').trim() : 'Track Order')}</span>
+              </button>
+
+              <button
+                id="nav-link-blog"
+                data-testid="nav-link-3"
+                onClick={() => onNavigate('blog')}
+                className={`flex items-center gap-1.5 text-xs xl:text-sm font-extrabold whitespace-nowrap transition-colors cursor-pointer ${
+                  currentView === 'blog'
+                    ? 'text-[var(--primary-color)] font-black'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-[var(--primary-color)]'
+                }`}
+              >
+                <BookOpen className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                <span>{isRtl ? 'المدونة' : 'Blog'}</span>
+              </button>
+
+              <button
+                id="nav-link-chat"
+                data-testid="nav-link-4"
+                onClick={() => onNavigate('chat')}
+                className={`flex items-center gap-1.5 text-xs xl:text-sm font-extrabold whitespace-nowrap transition-colors cursor-pointer ${
+                  currentView === 'chat'
+                    ? 'text-[var(--primary-color)] font-black'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-[var(--primary-color)]'
+                }`}
+              >
+                <MessageSquare className="w-4 h-4 text-[var(--primary-color)] shrink-0" />
+                <span>{isRtl ? 'الدردشة والدعم' : 'Support'}</span>
+              </button>
+            </div>
+
+            {/* Global Search Bar (Takes remaining flex space on xl+) */}
+            <div className="hidden xl:block flex-1 max-w-xs relative">
               <div className={`absolute inset-y-0 ${isRtl ? 'left-3' : 'right-3'} flex items-center pointer-events-none text-gray-400`}>
                 <Search className="w-4 h-4" />
               </div>
@@ -601,14 +667,14 @@ export default function Navbar({
                 placeholder={t.search_placeholder}
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className={`w-full py-2 px-4 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-[#0A0C10] text-slate-800 dark:text-gray-100 outline-none transition-all ${
+                className={`w-full py-2 px-4 rounded-xl text-xs bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-[var(--border-dark)] focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-800 dark:text-gray-100 outline-none transition-all ${
                   isRtl ? 'pr-4 pl-10 text-right' : 'pl-4 pr-10 text-left'
                 }`}
               />
 
               {/* Suggestions Autocomplete List */}
               {searchQuery.trim().length > 0 && allProducts && (
-                <div className={`absolute left-0 right-0 mt-2 bg-white dark:bg-[#11141D] border border-slate-150 dark:border-[#1E293B] rounded-2xl shadow-xl z-50 max-h-80 overflow-y-auto ${isRtl ? 'text-right' : 'text-left'}`}>
+                <div className={`absolute left-0 right-0 mt-2 bg-white dark:bg-[#121622] border border-slate-150 dark:border-[var(--border-dark)] rounded-2xl shadow-xl z-50 max-h-80 overflow-y-auto ${isRtl ? 'text-right' : 'text-left'}`}>
                   {(() => {
                     const q = searchQuery.toLowerCase().trim();
                     const filtered = allProducts.filter(p => 
@@ -636,7 +702,7 @@ export default function Navbar({
                               <img src={prod.image} className="w-8 h-8 rounded-lg object-cover bg-slate-150 p-0.5 flex-shrink-0" referrerPolicy="no-referrer" />
                               <div className="flex-1 min-w-0 text-left">
                                 <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 truncate">{name}</h4>
-                                <span className="text-[10px] font-black text-amber-500 font-mono">{formatPrice(prod.price, currentLanguage)}</span>
+                                <span className="text-[10px] font-black text-[var(--primary-color)] font-mono">{formatPrice(prod.price, currentLanguage)}</span>
                               </div>
                             </button>
                           );
@@ -648,15 +714,15 @@ export default function Navbar({
               )}
             </div>
 
-            {/* Accessories (Lang, Theme, Cart, Fav, Auth) */}
-            <div className="flex items-center gap-1.5 sm:gap-3">
+            {/* Accessories & Action Controls */}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
               
-              {/* Settings Dropdown Button (Consolidating Language, Currency, Sound Toggle) */}
+              {/* Settings Dropdown Button */}
               <div className="relative">
                 <button
                   id="navbar-settings-button"
                   onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                  className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-[#1E293B] text-slate-700 dark:text-slate-300 hover:scale-105 transition-transform relative cursor-pointer flex items-center justify-center"
+                  className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 hover:scale-105 transition-transform relative cursor-pointer flex items-center justify-center"
                   title={isRtl ? 'الإعدادات والخيارات ⚙️' : 'Settings & Options ⚙️'}
                 >
                   <Settings className={`w-4 h-4 text-slate-600 dark:text-slate-400 ${isSettingsOpen ? 'animate-spin' : 'hover:rotate-45 transition-transform duration-300'}`} />
@@ -664,21 +730,18 @@ export default function Navbar({
 
                 {isSettingsOpen && (
                   <>
-                    {/* Backdrop with elegant blur */}
                     <div 
                       className="fixed inset-0 bg-black/40 dark:bg-black/70 z-40 backdrop-blur-xs"
                       onClick={() => setIsSettingsOpen(false)}
                     />
-                    
-                    {/* Centered Panel below the navbar */}
-                    <div className="fixed top-[84px] left-1/2 -translate-x-1/2 w-[92%] sm:w-full max-w-sm bg-white dark:bg-[#11141D] border border-slate-150 dark:border-[#1E293B] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
+                    <div className="fixed top-[84px] left-1/2 -translate-x-1/2 w-[92%] sm:w-full max-w-sm bg-white dark:bg-[#121622] border border-slate-150 dark:border-[var(--border-dark)] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
                       <div className="p-3 bg-slate-50 dark:bg-black/40 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
-                        <span className="text-xs font-black text-slate-800 dark:text-amber-400">
+                        <span className="text-xs font-black text-slate-800 dark:text-[var(--primary-color)]">
                           ⚙️ {isRtl ? 'تخصيص التجربة' : 'Customize Experience'}
                         </span>
                         <button 
                           onClick={() => setIsSettingsOpen(false)}
-                          className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold"
+                          className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold cursor-pointer"
                         >
                           {isRtl ? 'تم' : 'Done'}
                         </button>
@@ -690,7 +753,7 @@ export default function Navbar({
                           <label className={`block text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ${isRtl ? 'text-right' : 'text-left'}`}>
                             🌐 {isRtl ? 'اللغة المفضلة' : 'Preferred Language'}
                           </label>
-                          <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-[#0A0C10] rounded-xl p-1 border dark:border-[#1E293B]">
+                          <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-[#090B0E] rounded-xl p-1 border dark:border-[var(--border-dark)]">
                             {([
                               { code: 'ar', label: 'العربية' },
                               { code: 'en', label: 'English' },
@@ -703,7 +766,7 @@ export default function Navbar({
                                 }}
                                 className={`py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                                   currentLanguage === la.code
-                                    ? 'bg-[var(--primary-color)] text-slate-950 shadow-sm font-black'
+                                    ? 'bg-[var(--primary-color)] text-white shadow-sm font-black'
                                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                                 }`}
                               >
@@ -718,14 +781,14 @@ export default function Navbar({
                           <label className={`block text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ${isRtl ? 'text-right' : 'text-left'}`}>
                             🪙 {isRtl ? 'العملة المعروضة' : 'Display Currency'}
                           </label>
-                          <div className="grid grid-cols-4 gap-1 bg-slate-100 dark:bg-[#0A0C10] rounded-xl p-1 border dark:border-[#1E293B]">
+                          <div className="grid grid-cols-4 gap-1 bg-slate-100 dark:bg-[#090B0E] rounded-xl p-1 border dark:border-[var(--border-dark)]">
                             {(['SAR', 'USD', 'AED', 'EUR'] as const).map((curr) => (
                               <button
                                 key={curr}
                                 onClick={() => onCurrencyChange(curr)}
                                 className={`py-1.5 text-[10px] font-black rounded-lg transition-all cursor-pointer ${
                                   currentCurrency === curr
-                                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                                    ? 'bg-[var(--primary-color)] text-white shadow-sm'
                                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                                 }`}
                               >
@@ -745,7 +808,7 @@ export default function Navbar({
                             className={`w-full flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer ${
                               !isMuted 
                                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold' 
-                                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-[#1E293B] text-slate-500 dark:text-slate-400 font-medium'
+                                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-[var(--border-dark)] text-slate-500 dark:text-slate-400 font-medium'
                             }`}
                           >
                             <div className="flex items-center gap-2">
@@ -769,17 +832,17 @@ export default function Navbar({
               <button
                 id="theme-toggler"
                 onClick={onThemeToggle}
-                className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-[#1E293B] text-slate-700 dark:text-slate-800 hover:scale-105 transition-transform"
+                className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 hover:scale-105 transition-transform cursor-pointer"
                 aria-label={currentLanguage === 'ar' ? 'تغيير المظهر الداكن والفاتح' : 'Toggle Theme'}
               >
                 {currentTheme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
               </button>
 
-              {/* Favorites Heart (Visible on tablet/desktop, mobile uses bottom Nav) */}
+              {/* Favorites Heart */}
               <button
                 id="favorites-shortcut"
                 onClick={onFavoritesOpen}
-                className="hidden sm:block p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-[#1E293B] text-rose-500 hover:scale-105 transition-transform relative animate-in fade-in"
+                className="hidden sm:flex p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-[var(--border-dark)] text-rose-500 hover:scale-105 transition-transform relative cursor-pointer"
                 aria-label={currentLanguage === 'ar' ? 'عرض المنتجات المفضلة' : 'View favorite products'}
               >
                 <Heart className="w-4 h-4" />
@@ -790,7 +853,7 @@ export default function Navbar({
                 )}
               </button>
 
-              {/* Notification Bell with Dropdown */}
+              {/* Notification Bell */}
               <div className="relative">
                 <button
                   id="navbar-notification-bell"
@@ -811,14 +874,11 @@ export default function Navbar({
 
                 {isNotifOpen && (
                   <>
-                    {/* Centered Backdrop */}
                     <div 
                       className="fixed inset-0 bg-black/40 dark:bg-black/70 z-40 backdrop-blur-xs"
                       onClick={() => setIsNotifOpen(false)}
                     />
-                    
-                    {/* Floating Centered Dropdown right below the Navbar */}
-                    <div className="fixed top-[84px] left-1/2 -translate-x-1/2 w-[92%] sm:w-full max-w-lg md:max-w-xl bg-white dark:bg-[#11141D] border border-slate-150 dark:border-[#1E293B] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
+                    <div className="fixed top-[84px] left-1/2 -translate-x-1/2 w-[92%] sm:w-full max-w-lg md:max-w-xl bg-white dark:bg-[#121622] border border-slate-150 dark:border-[var(--border-dark)] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
                       <div className="p-4 bg-slate-50 dark:bg-black/40 border-b border-slate-100 dark:border-white/5 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-black text-slate-800 dark:text-amber-400">
@@ -852,7 +912,7 @@ export default function Navbar({
                           )}
                           <button 
                             onClick={() => setIsNotifOpen(false)}
-                            className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-lg transition-colors"
+                            className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                           >
                             {isRtl ? 'إغلاق' : 'Close'}
                           </button>
@@ -917,52 +977,61 @@ export default function Navbar({
                 )}
               </div>
 
-              {/* Local Notification Copied Toast */}
-              {copyToast && (
-                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 text-xs font-black py-3 px-5 rounded-xl shadow-2xl z-50 flex items-center gap-2 animate-in slide-in-from-bottom-3 duration-200">
-                  <svg className="w-4 h-4 shrink-0 text-emerald-400 dark:text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>
-                    {isRtl ? `تم النسخ بنجاح: ${copyToast}` : `Successfully copied: ${copyToast}`}
-                  </span>
-                </div>
-              )}
-
-              {/* Shopping Bag / Cart */}
+              {/* Shopping Bag / Cart Button */}
               <button
                 id="cart-trigger"
                 onClick={onCartOpen}
-                className="p-2.5 rounded-xl bg-[var(--primary-color)]/10 dark:bg-[var(--primary-color)]/10 border border-slate-200 dark:border-[var(--primary-color)]/30 text-[var(--primary-color)] hover:scale-105 transition-transform relative"
+                className="p-2.5 rounded-xl bg-[var(--primary-color)]/10 dark:bg-[var(--primary-color)]/10 border border-[var(--primary-color)]/20 text-[var(--primary-color)] hover:scale-105 transition-transform relative cursor-pointer"
                 aria-label={currentLanguage === 'ar' ? 'فتح سلة المشتريات' : 'Open shopping cart'}
               >
                 <ShoppingBag className="w-4 h-4" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-slate-900 text-white dark:bg-white dark:text-[#0A0C10] text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
+                  <span className="absolute -top-1.5 -right-1.5 bg-[var(--primary-color)] text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-bounce shadow-sm">
                     {cartCount}
                   </span>
                 )}
               </button>
 
-              {/* User credentials / Auth triggers */}
+              {/* Admin Panel Link - Guarded ONLY for currentUser.role === 'admin' */}
+              {currentUser && currentUser.role === 'admin' && (
+                <button
+                  id="admin-panel-shortcut"
+                  data-testid="nav-link-5"
+                  onClick={() => onNavigate('admin')}
+                  className={`hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all border cursor-pointer ${
+                    currentView === 'admin'
+                      ? 'bg-rose-500 text-white border-rose-500 shadow-md'
+                      : 'bg-rose-500/10 text-rose-500 border-rose-500/20 hover:bg-rose-500 hover:text-white'
+                  }`}
+                  aria-label={isRtl ? 'لوحة التحكم' : 'Admin Panel'}
+                >
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>{isRtl ? 'لوحة التحكم' : t.admin_panel}</span>
+                </button>
+              )}
+
+              {/* User / Auth trigger Button */}
               {currentUser ? (
                 <div className="flex items-center gap-1.5">
                   <button
                     id="user-profile-avatar"
                     onClick={() => onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard')}
-                    className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 text-sm font-semibold hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-gray-100 transition-colors border dark:border-[#1E293B]"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all border border-slate-200 dark:border-[var(--border-dark)] bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:border-[var(--primary-color)] hover:text-[var(--primary-color)] cursor-pointer"
                     aria-label={currentLanguage === 'ar' ? 'لوحة التحكم الشخصية' : 'Go to user profile dashboard'}
                   >
-                    <UserIcon className="w-4 h-4 text-[var(--primary-color)]" />
-                    <span className="max-w-[80px] truncate">{currentUser.name}</span>
+                    <UserIcon className="w-4 h-4 shrink-0 text-[var(--primary-color)]" />
+                    <span className="max-w-[85px] truncate hidden sm:inline">
+                      {currentUser.name}
+                    </span>
                   </button>
                   <button
                     id="auth-logout-btn"
                     onClick={handleLogoutClick}
-                    className="px-3 py-2 rounded-xl bg-rose-500/10 text-rose-500 text-xs font-bold hover:bg-rose-500 hover:text-white transition-all active:scale-95 cursor-pointer"
-                    aria-label={currentLanguage === 'ar' ? 'تسجيل الخروج من الحساب' : 'Logout of account'}
+                    className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-[var(--border-dark)] text-slate-500 hover:text-rose-500 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                    title={isRtl ? 'تسجيل الخروج' : 'Logout'}
                   >
-                    {t.logout}
+                    <span className="hidden sm:inline">{t.logout}</span>
+                    <X className="w-4 h-4 sm:hidden" />
                   </button>
                 </div>
               ) : (
@@ -970,11 +1039,11 @@ export default function Navbar({
                   id="auth-login-trigger"
                   data-testid="login-button"
                   onClick={onAuthOpen}
-                  className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 bg-[var(--primary-color)] text-slate-950 font-black hover:shadow-[0_0_15px_rgba(var(--primary-color-rgb, 56, 189, 248),0.3)] hover:scale-[1.02] active:scale-95 text-xs rounded-xl shadow-lg transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 bg-[var(--primary-color)] hover:brightness-110 text-white font-black text-xs rounded-xl shadow-lg shadow-red-500/20 transition-all cursor-pointer whitespace-nowrap"
                   aria-label={currentLanguage === 'ar' ? 'تسجيل الدخول أو إنشاء حساب' : 'Login or sign up'}
                 >
-                  <UserIcon className="w-4 h-4" />
-                  <span className="inline">{t.login}</span>
+                  <UserIcon className="w-4 h-4 shrink-0" />
+                  <span>{t.login}</span>
                 </button>
               )}
 
@@ -990,70 +1059,163 @@ export default function Navbar({
               className="fixed inset-0 bg-black/60 z-50 backdrop-blur-xs md:hidden"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className={`fixed inset-y-0 ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} z-50 w-80 bg-white dark:bg-[#11141D] border-slate-200 dark:border-[#1E293B] p-6 shadow-2xl flex flex-col justify-between md:hidden animate-in fade-in duration-200`}>
+            <div className={`fixed inset-y-0 ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} z-50 w-80 bg-white dark:bg-[#121622] border-slate-200 dark:border-[var(--border-dark)] p-6 shadow-2xl flex flex-col justify-between md:hidden animate-in fade-in duration-200 overflow-y-auto`}>
               <div className="space-y-6">
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-white/10">
-                  <span className="font-black text-sm text-slate-900 dark:text-white">
-                    {isRtl ? 'قائمة التنقل الرئيسية 📱' : 'Main Menu 📱'}
+                  <span className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[var(--primary-color)]"></span>
+                    <span>{isRtl ? 'قائمة RYVO الرئيسية' : 'RYVO Main Menu'}</span>
                   </span>
                   <button 
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors"
+                    aria-label={isRtl ? 'إغلاق القائمة' : 'Close menu'}
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
+                  {/* Home */}
                   <button
                     onClick={() => { onNavigate('home'); setIsMobileMenuOpen(false); }}
-                    className="flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors text-right"
+                    className={`flex items-center gap-3 py-3 px-4 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
+                      currentView === 'home'
+                        ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
+                        : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                    }`}
                   >
                     <Home className="w-4 h-4 text-[var(--primary-color)]" />
                     <span>{t.home}</span>
                   </button>
 
+                  {/* Store / Catalog */}
+                  <button
+                    onClick={() => {
+                      onNavigate('home');
+                      setIsMobileMenuOpen(false);
+                      setTimeout(() => {
+                        document.getElementById('products-grid')?.scrollIntoView({ behavior: 'smooth' });
+                      }, 100);
+                    }}
+                    className="flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors text-right"
+                  >
+                    <ShoppingBag className="w-4 h-4 text-[var(--primary-color)]" />
+                    <span>{isRtl ? 'المتجر والمنتجات' : 'Store & Products'}</span>
+                  </button>
+
+                  {/* Categories */}
+                  <button
+                    onClick={() => {
+                      onNavigate('home');
+                      setIsMobileMenuOpen(false);
+                      setTimeout(() => {
+                        document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' });
+                      }, 100);
+                    }}
+                    className="flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors text-right"
+                  >
+                    <Grid className="w-4 h-4 text-[var(--primary-color)]" />
+                    <span>{isRtl ? 'جميع الفئات' : 'All Categories'}</span>
+                  </button>
+
+                  {/* Track Order */}
                   <button
                     onClick={() => { onNavigate('track'); setIsMobileMenuOpen(false); }}
-                    className="flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors text-right"
+                    className={`flex items-center gap-3 py-3 px-4 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
+                      currentView === 'track'
+                        ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
+                        : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                    }`}
                   >
-                    <Truck className="w-4 h-4 text-amber-500" />
-                    <span>{t.track_tab || 'تتبع طلبك 🚚'}</span>
+                    <Truck className="w-4 h-4 text-[var(--primary-color)]" />
+                    <span>{t.track_tab || (isRtl ? 'تتبع الطلب 🚚' : 'Track Order 🚚')}</span>
                   </button>
 
+                  {/* Wishlist / Favorites */}
                   <button
-                    onClick={() => { onNavigate('blog'); setIsMobileMenuOpen(false); }}
-                    className="flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors text-right"
+                    onClick={() => { onFavoritesOpen(); setIsMobileMenuOpen(false); }}
+                    className="flex items-center justify-between py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors"
                   >
-                    <BookOpen className="w-4 h-4 text-sky-500" />
-                    <span>{isRtl ? 'المدونة ✍️' : 'Blog ✍️'}</span>
+                    <div className="flex items-center gap-3">
+                      <Heart className="w-4 h-4 text-[var(--primary-color)]" />
+                      <span>{t.favorites || (isRtl ? 'المفضلة' : 'Wishlist')}</span>
+                    </div>
+                    {favoritesCount > 0 && (
+                      <span className="px-2 py-0.5 text-[10px] bg-[var(--primary-color)] text-white rounded-full font-black">
+                        {favoritesCount}
+                      </span>
+                    )}
                   </button>
 
+                  {/* Support Chat */}
                   <button
                     onClick={() => { onNavigate('chat'); setIsMobileMenuOpen(false); }}
-                    className="flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold text-xs text-slate-800 dark:text-slate-200 transition-colors text-right"
+                    className={`flex items-center gap-3 py-3 px-4 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
+                      currentView === 'chat'
+                        ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
+                        : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                    }`}
                   >
                     <MessageSquare className="w-4 h-4 text-[var(--primary-color)]" />
-                    <span>{t.support_tab || 'الدردشة 💬'}</span>
+                    <span>{t.support_tab || (isRtl ? 'الدردشة والدعم 💬' : 'Chat & Support 💬')}</span>
                   </button>
+
+                  {/* Blog */}
+                  <button
+                    onClick={() => { onNavigate('blog'); setIsMobileMenuOpen(false); }}
+                    className={`flex items-center gap-3 py-3 px-4 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
+                      currentView === 'blog'
+                        ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
+                        : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4 text-[var(--primary-color)]" />
+                    <span>{isRtl ? 'المدونة المقالات ✍️' : 'Blog & Articles ✍️'}</span>
+                  </button>
+
+                  {/* Account / Dashboard */}
+                  {currentUser && (
+                    <button
+                      onClick={() => { onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard'); setIsMobileMenuOpen(false); }}
+                      className={`flex items-center gap-3 py-3 px-4 rounded-xl font-bold text-xs transition-colors ${isRtl ? 'text-right' : 'text-left'} ${
+                        currentView === 'dashboard' || currentView === 'admin'
+                          ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)] border border-[var(--primary-color)]/20'
+                          : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                      }`}
+                    >
+                      <UserIcon className="w-4 h-4 text-[var(--primary-color)]" />
+                      <span>{currentUser.role === 'admin' ? (isRtl ? 'لوحة تحكم المسؤول ⚙️' : 'Admin Panel ⚙️') : (isRtl ? 'حسابي الشخصي 👤' : 'My Account 👤')}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
               <div className="pt-4 border-t border-slate-100 dark:border-white/10 space-y-3">
                 {currentUser ? (
-                  <button
-                    onClick={() => { onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard'); setIsMobileMenuOpen(false); }}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-black text-xs rounded-xl"
-                  >
-                    <UserIcon className="w-4 h-4 text-[var(--primary-color)]" />
-                    <span>{currentUser.name}</span>
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between p-3 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="w-4 h-4 text-[var(--primary-color)]" />
+                        <span className="font-bold text-xs text-slate-900 dark:text-white truncate max-w-[140px]">{currentUser.name}</span>
+                      </div>
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[var(--primary-color)]/20 text-[var(--primary-color)]">
+                        {currentUser.role}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => { onLogout(); setIsMobileMenuOpen(false); }}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                    >
+                      <span>{isRtl ? 'تسجيل الخروج 🚪' : 'Logout 🚪'}</span>
+                    </button>
+                  </div>
                 ) : (
                   <button
                     id="mobile-drawer-login-btn"
                     data-testid="login-button"
                     onClick={() => { onAuthOpen(); setIsMobileMenuOpen(false); }}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 bg-[var(--primary-color)] text-slate-950 font-black text-xs rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 py-3.5 bg-[var(--primary-color)] text-white font-black text-xs rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
                   >
                     <UserIcon className="w-4 h-4" />
                     <span>{t.login}</span>
@@ -1066,21 +1228,21 @@ export default function Navbar({
       </nav>
 
       {/* Luxury Sticky Bottom Navigation Bar for Mobile screens */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0A0C10]/95 backdrop-blur-md border-t border-slate-200 dark:border-[#1E293B] shadow-[0_-3px_30px_rgba(0,0,0,0.08)] md:hidden pb-safe">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#090B0E]/95 backdrop-blur-md border-t border-slate-200 dark:border-[var(--border-dark)] shadow-[0_-4px_25px_rgba(0,0,0,0.15)] md:hidden pb-safe pointer-events-auto">
         <div className="grid grid-cols-5 h-16 items-center px-1">
           {/* Col 1: Home */}
           <button
             id="mobile-nav-home"
             onClick={() => onNavigate('home')}
             aria-label={currentLanguage === 'ar' ? 'الذهاب للرئيسية' : 'Go to Home'}
-            className={`flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] font-black transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] font-black transition-all cursor-pointer ${
               currentView === 'home'
-                ? 'text-[var(--primary-color, #38bdf8)] scale-105'
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-850'
+                ? 'text-[var(--primary-color)] scale-105 font-black'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Home className="w-5 h-5" />
-            <span>{t.home}</span>
+            <Home className="w-5 h-5 shrink-0" />
+            <span className="truncate max-w-full">{t.home}</span>
           </button>
 
           {/* Col 2: Track */}
@@ -1088,14 +1250,14 @@ export default function Navbar({
             id="mobile-nav-track"
             onClick={() => onNavigate('track')}
             aria-label={currentLanguage === 'ar' ? 'تتبع طلبك' : 'Track your order'}
-            className={`flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] font-black transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] font-black transition-all cursor-pointer ${
               currentView === 'track'
-                ? 'text-[var(--primary-color, #38bdf8)] scale-105'
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-850'
+                ? 'text-[var(--primary-color)] scale-105 font-black'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Truck className="w-5 h-5 text-amber-500" />
-            <span>{t.track_tab ? t.track_tab.replace('🚚', '').trim() : 'تتبع'}</span>
+            <Truck className="w-5 h-5 shrink-0" />
+            <span className="truncate max-w-full">{t.track_tab ? t.track_tab.replace('🚚', '').trim() : (isRtl ? 'تتبع طلبك' : 'Track')}</span>
           </button>
 
           {/* Col 3: Chat Support */}
@@ -1103,14 +1265,14 @@ export default function Navbar({
             id="mobile-nav-chat"
             onClick={() => onNavigate('chat')}
             aria-label={currentLanguage === 'ar' ? 'الدعم والمساعدة بالذكاء الاصطناعي' : 'AI chat support'}
-            className={`flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] font-black transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] font-black transition-all cursor-pointer ${
               currentView === 'chat'
-                ? 'text-[var(--primary-color, #38bdf8)] scale-105'
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-850'
+                ? 'text-[var(--primary-color)] scale-105 font-black'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <MessageSquare className="w-5 h-5 text-[var(--primary-color)]" />
-            <span>{t.chat_tab ? t.chat_tab.replace('💬', '').trim() : 'الدردشة'}</span>
+            <MessageSquare className="w-5 h-5 shrink-0" />
+            <span className="truncate max-w-full">{t.chat_tab ? t.chat_tab.replace('💬', '').trim() : (isRtl ? 'الدردشة والدعم' : 'Chat')}</span>
           </button>
 
           {/* Col 4: Favorites */}
@@ -1118,16 +1280,16 @@ export default function Navbar({
             id="mobile-nav-favorites"
             onClick={onFavoritesOpen}
             aria-label={currentLanguage === 'ar' ? 'عرض المنتجات المفضلة' : 'View favorite products'}
-            className={`flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] font-black transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] font-black transition-all cursor-pointer relative ${
               currentView === 'favorites'
-                ? 'text-rose-500 scale-105'
-                : 'text-slate-400 dark:text-slate-500 hover:text-rose-450'
-            } relative`}
+                ? 'text-[var(--primary-color)] scale-105 font-black'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
           >
-            <Heart className="w-5 h-5 text-rose-500" />
-            <span>{t.favorites}</span>
+            <Heart className="w-5 h-5 shrink-0" />
+            <span className="truncate max-w-full">{t.favorites || (isRtl ? 'المفضلة' : 'Wishlist')}</span>
             {favoritesCount > 0 && (
-              <span className="absolute top-2 right-4 bg-rose-500 text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+              <span className="absolute top-1.5 right-2 bg-[var(--primary-color)] text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
                 {favoritesCount}
               </span>
             )}
@@ -1145,18 +1307,14 @@ export default function Navbar({
               }
             }}
             aria-label={currentUser ? (currentUser.role === 'admin' ? (currentLanguage === 'ar' ? 'لوحة تحكم المسؤول' : 'Admin Panel') : (currentLanguage === 'ar' ? 'لوحة التحكم الشخصية' : 'User Dashboard')) : (currentLanguage === 'ar' ? 'تسجيل الدخول أو إنشاء حساب' : 'Login or register')}
-            className={`flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] font-black transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] font-black transition-all cursor-pointer ${
               currentView === 'dashboard' || currentView === 'admin'
-                ? 'text-[var(--primary-color, #38bdf8)] scale-105'
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-850'
+                ? 'text-[var(--primary-color)] scale-105 font-black'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            {currentUser && currentUser.role === 'admin' ? (
-              <ShieldAlert className="w-5 h-5 text-rose-500 animate-pulse" />
-            ) : (
-              <UserIcon className="w-5 h-5 text-[var(--primary-color, #38bdf8)]" />
-            )}
-            <span>{currentUser ? (currentUser.role === 'admin' ? t.admin_panel.split(' ')[0] : currentUser.role === 'affiliate' ? (isRtl ? 'المسوق' : 'Affiliate') : t.customer_panel.split(' ')[0]) : t.login}</span>
+            <UserIcon className="w-5 h-5 shrink-0" />
+            <span className="truncate max-w-full">{currentUser ? (currentUser.role === 'admin' ? (isRtl ? 'التحكم' : 'Admin') : currentUser.role === 'affiliate' ? (isRtl ? 'المسوق' : 'Affiliate') : (isRtl ? 'الحساب' : 'Account')) : (isRtl ? 'الحساب' : t.login)}</span>
           </button>
         </div>
       </div>

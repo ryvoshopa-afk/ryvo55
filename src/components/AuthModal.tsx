@@ -87,6 +87,11 @@ export default function AuthModal({
     try {
       const oauthRes = await loginWithProvider(provider);
 
+      if (oauthRes.redirecting) {
+        // User is being redirected to the OAuth provider login page
+        return;
+      }
+
       if (oauthRes.cancelled) {
         setIsLoading(false);
         setActiveOAuthProvider(null);
@@ -267,7 +272,7 @@ export default function AuthModal({
       return;
     }
 
-    if (!cleanEmail || !password.trim() || (authMode === 'register' && !fullname.trim())) {
+    if (!cleanEmail || !password || (authMode === 'register' && !fullname.trim())) {
       setFeedback({ type: 'error', text: t.error_empty_fields });
       return;
     }
@@ -278,6 +283,11 @@ export default function AuthModal({
     if (authMode === 'login') {
       setIsLoading(true);
       try {
+        console.log("LOGIN REQUEST");
+        console.log("Email:", cleanEmail);
+        console.log("Password:", JSON.stringify(password));
+        console.log("Password Length:", password.length);
+
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: {
@@ -430,7 +440,7 @@ export default function AuthModal({
       <div onClick={onClose} className="absolute inset-0 bg-slate-950/60 dark:bg-black/80 backdrop-blur-sm transition-opacity"></div>
 
       {/* Dialog container */}
-      <div id="auth-form-dialog" className="relative z-10 bg-white dark:bg-[#11141D] rounded-3xl w-full max-w-md overflow-hidden shadow-2xl p-6 sm:p-8 border border-slate-150 dark:border-[#1E293B] animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-gray-100">
+      <div id="auth-form-dialog" className="relative z-10 bg-white dark:bg-[#121622] rounded-3xl w-full max-w-md overflow-hidden shadow-2xl p-6 sm:p-8 border border-slate-200 dark:border-[var(--border-dark)] animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-gray-100">
         
         {/* Close button */}
         <button
@@ -438,7 +448,7 @@ export default function AuthModal({
           data-testid="auth-close-button"
           onClick={onClose}
           aria-label="Close modal"
-          className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} p-2 rounded-full bg-slate-50 hover:bg-[var(--primary-color)] hover:text-slate-950 dark:bg-slate-900 dark:hover:bg-[var(--primary-color)] dark:hover:text-[#0A0C10] transition-all cursor-pointer`}
+          className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} p-2 rounded-full bg-slate-100 hover:bg-[var(--primary-color)] hover:text-white dark:bg-slate-800 dark:hover:bg-[var(--primary-color)] dark:hover:text-white transition-all cursor-pointer`}
         >
           <X className="w-4 h-4" />
         </button>
@@ -559,7 +569,7 @@ export default function AuthModal({
             {/* Divider line */}
             <div className="relative flex items-center justify-center pt-2 pb-1">
               <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
-              <span className="bg-white dark:bg-[#11141D] px-3 text-[10px] uppercase font-bold text-slate-400 shrink-0">
+              <span className="bg-white dark:bg-[#121622] px-3 text-[10px] uppercase font-bold text-slate-400 shrink-0">
                 {isRtl ? 'أو تسجيل الدخول بالبريد الإلكتروني' : 'or sign in with email'}
               </span>
               <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
@@ -583,7 +593,7 @@ export default function AuthModal({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="ryvo.shopa@gmail.com"
-                  className="w-full text-xs py-2 px-3 rounded-lg border bg-slate-50 dark:bg-[#0A0C10] border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white outline-none"
+                  className="w-full text-xs py-2 px-3 rounded-lg border bg-slate-50 dark:bg-[#090B0E] border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white outline-none"
                 />
               </div>
 
@@ -600,7 +610,7 @@ export default function AuthModal({
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                   placeholder="123456"
-                  className="w-full text-center text-2xl font-mono tracking-[0.5em] py-3.5 px-4 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-slate-300 dark:border-slate-700 focus:border-red-500 focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all"
+                  className="w-full text-center text-2xl font-mono tracking-[0.5em] py-3.5 px-4 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-300 dark:border-slate-700 focus:border-red-500 focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all"
                 />
               </div>
 
@@ -615,7 +625,7 @@ export default function AuthModal({
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full text-sm py-2.5 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-slate-300 dark:border-slate-700 focus:border-red-500 text-slate-850 dark:text-white outline-none"
+                    className="w-full text-sm py-2.5 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-300 dark:border-slate-700 focus:border-red-500 text-slate-850 dark:text-white outline-none"
                   />
                 </div>
               )}
@@ -632,7 +642,7 @@ export default function AuthModal({
                     required
                     value={fullname}
                     onChange={(e) => setFullname(e.target.value)}
-                    className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-800 dark:text-white outline-none transition-all ${
+                    className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-800 dark:text-white outline-none transition-all ${
                       isRtl ? 'text-right' : 'text-left'
                     }`}
                   />
@@ -653,7 +663,7 @@ export default function AuthModal({
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={`w-full text-base md:text-xs py-3 px-3.5 pr-10 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
+                    className={`w-full text-base md:text-xs py-3 px-3.5 pr-10 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
                       isRtl ? 'text-right pr-3.5 pl-10' : 'text-left pr-10 pl-3.5'
                     }`}
                   />
@@ -675,7 +685,7 @@ export default function AuthModal({
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full text-base md:text-xs py-3 px-10 rounded-xl border bg-slate-50 dark:bg-[#0A0C10] border-transparent focus:border-[var(--primary-color, #38bdf8)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all placeholder-slate-400 text-center"
+                      className="w-full text-base md:text-xs py-3 px-10 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all placeholder-slate-400 text-center"
                     />
                     <button
                       type="button"
@@ -697,7 +707,7 @@ export default function AuthModal({
             data-testid="login-submit-button"
             type="submit"
             disabled={isLoading}
-            className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl transition-all cursor-pointer text-xs uppercase shadow-lg shadow-red-600/30 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-[var(--primary-color)] hover:brightness-110 text-white font-black rounded-xl transition-all cursor-pointer text-xs uppercase shadow-lg shadow-red-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <span className="inline-block animate-pulse">{isRtl ? 'جاري المعالجة...' : 'Processing...'}</span>
@@ -735,7 +745,7 @@ export default function AuthModal({
                 setAuthMode(authMode === 'login' ? 'register' : 'login');
               }
             }}
-            className="text-[10px] font-black uppercase text-[var(--primary-color, #38bdf8)] hover:underline cursor-pointer transition-colors"
+            className="text-[10px] font-black uppercase text-[var(--primary-color)] hover:underline cursor-pointer transition-colors"
           >
             {authMode === 'forgot'
               ? (isRtl ? 'العودة لتسجيل الدخول 🔙' : 'Back to Login 🔙')

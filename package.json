@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "npx tsx generate-sitemap.ts && vite build && npx tsx generate-sitemap.ts && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "npx tsx scripts/generateBrandAssets.ts && vite build && npx tsx scripts/generateBrandAssets.ts && npx tsx generate-sitemap.ts && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "build:netlify": "npx tsx generate-sitemap.ts && vite build && npx tsx generate-sitemap.ts",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
@@ -27,6 +27,7 @@
     "motion": "^12.23.24",
     "nodemailer": "^9.0.3",
     "pg": "^8.11.3",
+    "pngjs": "^7.0.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "recharts": "^3.10.0",

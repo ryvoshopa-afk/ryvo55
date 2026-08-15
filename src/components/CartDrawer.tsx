@@ -56,24 +56,24 @@ export default function CartDrawer({
         className="absolute inset-0 bg-slate-950/50 dark:bg-black/80 backdrop-blur-sm transition-opacity"
       ></div>
 
-      <div className={`absolute inset-y-0 ${isRtl ? 'left-0' : 'right-0'} max-w-md w-full bg-white dark:bg-[#11141D] shadow-2xl flex flex-col justify-between border-l border-slate-200 dark:border-[#1E293B] animate-in slide-in-from-right duration-300 text-slate-800 dark:text-gray-100`}>
+      <div className={`absolute inset-y-0 ${isRtl ? 'left-0' : 'right-0'} max-w-md w-full bg-white dark:bg-[#121622] shadow-2xl flex flex-col justify-between border-l border-slate-200 dark:border-[var(--border-dark)] animate-in slide-in-from-right duration-300 text-slate-800 dark:text-gray-100`}>
         
         {/* Drawer Header */}
-        <div className="p-6 border-b border-slate-200 dark:border-[#1E293B] flex items-center justify-between">
+        <div className="p-6 border-b border-slate-200 dark:border-[var(--border-dark)] flex items-center justify-between">
           <div className="flex items-center gap-2">
             {shopLogo ? (
               shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/') ? (
                 <img src={shopLogo} alt="Logo" className="h-8 max-w-[110px] object-contain rounded-lg" referrerPolicy="no-referrer" />
               ) : (
-                <span className="text-sm font-black tracking-widest bg-gradient-to-r from-[var(--primary-color, #38bdf8)] to-amber-500 bg-clip-text text-transparent uppercase font-sans">
+                <span className="text-sm font-black tracking-widest bg-gradient-to-r from-[var(--primary-color)] to-amber-500 bg-clip-text text-transparent uppercase font-sans">
                   {shopLogo}
                 </span>
               )
             ) : (
-              <ShoppingBag className="w-5 h-5 text-[var(--primary-color, #38bdf8)]" />
+              <ShoppingBag className="w-5 h-5 text-[var(--primary-color)]" />
             )}
             <h2 className="text-lg font-black">{t.cart_title}</h2>
-            <span className="bg-[var(--primary-color, #38bdf8)]/10 text-[var(--primary-color, #38bdf8)] px-2.5 py-0.5 rounded-full text-[10px] font-black">
+            <span className="bg-[var(--primary-color)]/10 text-[var(--primary-color)] px-2.5 py-0.5 rounded-full text-[10px] font-black">
               {cart.reduce((s, it) => s + it.quantity, 0)}
             </span>
           </div>
@@ -90,7 +90,7 @@ export default function CartDrawer({
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-slate-50 dark:bg-[#0A0C10] flex items-center justify-center text-slate-800 dark:text-slate-700 border dark:border-[#1E293B]">
+              <div className="w-16 h-16 rounded-full bg-slate-50 dark:bg-[#090B0E] flex items-center justify-center text-slate-800 dark:text-slate-700 border dark:border-[var(--border-dark)]">
                 <ShoppingBag className="w-8 h-8" />
               </div>
               <p className="text-xs text-slate-400 font-bold max-w-xs leading-relaxed">
@@ -105,7 +105,7 @@ export default function CartDrawer({
                   <div
                     key={`${item.product.id}-${item.color || 'default'}`}
                     id={`cart-item-${item.product.id}`}
-                    className="flex items-center gap-4 bg-slate-50 dark:bg-[#0A0C10] rounded-2xl p-4 border border-slate-150 dark:border-[#1E293B] transition-all"
+                    className="flex items-center gap-4 bg-slate-50 dark:bg-[#090B0E] rounded-2xl p-4 border border-slate-150 dark:border-[var(--border-dark)] transition-all"
                   >
                     {/* Item Image */}
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-white dark:bg-slate-900 p-1 flex-shrink-0 border border-slate-100/50 dark:border-slate-200">
@@ -120,18 +120,18 @@ export default function CartDrawer({
                       {item.color && (
                         <div className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">
                           <span>{t.selected_color || 'اللون المختار'}: </span>
-                          <span className="text-[var(--primary-color, #38bdf8)] uppercase">{t[item.color] || item.color}</span>
+                          <span className="text-[var(--primary-color)] uppercase">{t[item.color] || item.color}</span>
                         </div>
                       )}
                       
                       <div className="flex items-center justify-between">
                         {/* Unit price indicator */}
-                        <span className="text-xs font-black text-rose-500 dark:text-[var(--primary-color, #38bdf8)] block font-sans">
+                        <span className="text-xs font-black text-rose-500 dark:text-[var(--primary-color)] block font-sans">
                           {formatPrice(item.product.price, currentLanguage)}
                         </span>
 
                         {/* Quantity switches */}
-                        <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-205 dark:border-[#1E293B] p-0.5 rounded-lg text-xs">
+                        <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-205 dark:border-[var(--border-dark)] p-0.5 rounded-lg text-xs">
                           <button
                             id={`btn-cart-qty-dec-${item.product.id}`}
                             onClick={() => onUpdateQty(item.product.id, -1)}
@@ -170,7 +170,7 @@ export default function CartDrawer({
 
           {/* SMART CONSOLIDATION & SPLIT SHIPMENT ALERTS (FOR CUSTOMERS) */}
           {cart.length > 0 && (
-            <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-[#0A0C10]/50 border border-slate-150 dark:border-[#1E293B] space-y-3">
+            <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-[#090B0E]/50 border border-slate-150 dark:border-[var(--border-dark)] space-y-3">
               {isSplitShipment ? (
                 <div className="space-y-3">
                   <div className="flex items-start gap-2 text-amber-600 dark:text-amber-400">
@@ -186,7 +186,7 @@ export default function CartDrawer({
                   </div>
 
                   {/* Grouped packages display */}
-                  <div className="space-y-2.5 pt-1.5 border-t border-slate-200/60 dark:border-[#1E293B]/60">
+                  <div className="space-y-2.5 pt-1.5 border-t border-slate-200/60 dark:border-[var(--border-dark)]/60">
                     {Object.entries(itemsByWarehouse).map(([wh, items], index) => (
                       <div key={wh} className="p-2.5 rounded-xl bg-slate-100/50 dark:bg-slate-900/40 border border-slate-150 dark:border-slate-800/80 text-[10px]">
                         <div className="flex items-center justify-between font-black text-slate-600 dark:text-slate-350 border-b border-slate-200/50 dark:border-slate-800/50 pb-1.5 mb-1.5">
@@ -231,7 +231,7 @@ export default function CartDrawer({
 
         {/* Drawer Footer Calculations */}
         {cart.length > 0 && (
-          <div className="p-6 border-t border-slate-200 dark:border-[#1E293B] bg-slate-55/40 dark:bg-[#0A0C10] space-y-4">
+          <div className="p-6 border-t border-slate-200 dark:border-[var(--border-dark)] bg-slate-55/40 dark:bg-[#090B0E] space-y-4">
             
             {/* Calculation rows */}
             <div className="space-y-2 text-xs font-semibold text-slate-550 dark:text-slate-400 font-sans">
@@ -242,16 +242,16 @@ export default function CartDrawer({
               
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1">
-                  <Truck className="w-3.5 h-3.5 text-[var(--primary-color, #38bdf8)]" />
+                  <Truck className="w-3.5 h-3.5 text-[var(--primary-color)]" />
                   <span>{t.shipping}</span>
                 </span>
-                <span className={`font-bold ${shippingCost === 0 ? 'text-[var(--primary-color, #38bdf8)]' : 'text-slate-800 dark:text-white'}`}>
+                <span className={`font-bold ${shippingCost === 0 ? 'text-[var(--primary-color)]' : 'text-slate-800 dark:text-white'}`}>
                   {shippingCost === 0 ? t.free : formatPrice(shippingCost, currentLanguage)}
                 </span>
               </div>
 
               {shippingCost > 0 && (
-                <p className="text-[10px] text-[var(--primary-color, #38bdf8)] font-semibold">
+                <p className="text-[10px] text-[var(--primary-color)] font-semibold">
                   {currentLanguage === 'ar' 
                     ? 'أضف منتجات بأكثر من 500 ر.س لتحصل على شحن مجاني تماماً!' 
                     : currentLanguage === 'fr' 
@@ -262,10 +262,10 @@ export default function CartDrawer({
             </div>
 
             {/* Total */}
-            <div className="border-t border-slate-200 dark:border-[#1E293B] pt-3 space-y-2 font-sans">
+            <div className="border-t border-slate-200 dark:border-[var(--border-dark)] pt-3 space-y-2 font-sans">
               <div className="flex items-center justify-between text-xs font-extrabold text-slate-500 dark:text-slate-400">
                 <span>{currentLanguage === 'ar' ? 'مجموع كمية السلع:' : 'Total Quantity of items:'}</span>
-                <span className="font-mono bg-[var(--primary-color, #38bdf8)]/10 text-[var(--primary-color, #38bdf8)] px-2 py-0.5 rounded-lg">{cart.reduce((s, it) => s + it.quantity, 0)} {currentLanguage === 'ar' ? 'قطع' : 'units'}</span>
+                <span className="font-mono bg-[var(--primary-color)]/10 text-[var(--primary-color)] px-2 py-0.5 rounded-lg">{cart.reduce((s, it) => s + it.quantity, 0)} {currentLanguage === 'ar' ? 'قطع' : 'units'}</span>
               </div>
               
               <div className="flex items-center justify-between pt-1">
@@ -278,7 +278,7 @@ export default function CartDrawer({
 
             {/* Shield tag */}
             <div className="flex items-center gap-1.5 justify-center py-1 text-[10px] font-bold text-slate-400">
-              <ShieldCheck className="w-4 h-4 text-[var(--primary-color, #38bdf8)]" />
+              <ShieldCheck className="w-4 h-4 text-[var(--primary-color)]" />
               <span>{t.csrf_protective}</span>
             </div>
 
@@ -286,7 +286,7 @@ export default function CartDrawer({
             <button
               id="btn-cart-drawer-checkout"
               onClick={onCheckout}
-              className="w-full py-4 bg-[var(--primary-color)] hover:opacity-90 text-slate-950 font-black hover:scale-102 hover:shadow-[0_0_15px_rgba(var(--primary-color-rgb,56,189,248),0.3)] rounded-xl transition-all cursor-pointer text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md active:scale-95"
+              className="w-full py-4 bg-[var(--primary-color)] hover:brightness-110 text-white font-black rounded-xl transition-all cursor-pointer text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 active:scale-95"
             >
               <span>{t.checkout_btn}</span>
             </button>

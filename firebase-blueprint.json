@@ -95,6 +95,14 @@
     "audit_logs": {
       "schema": "AuditLog",
       "description": "System-wide administrative audit activity trail logs"
+    },
+    "welcome_coupon_sessions": {
+      "schema": "Session",
+      "description": "Welcome coupon session tracking"
+    },
+    "welcome_coupon_sessions_archive": {
+      "schema": "Session",
+      "description": "Archived welcome coupon sessions"
     }
   }
 }

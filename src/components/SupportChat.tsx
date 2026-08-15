@@ -662,7 +662,7 @@ export default function SupportChat({ currentLanguage, currentUser, onClose }: S
                   <button key={s.id} type="button"
                     disabled={isSending}
                     onClick={() => sendMessage(isRtl ? s.textAr : s.textEn)}
-                    className="p-3 bg-white dark:bg-[#11141D] hover:bg-sky-50 dark:hover:bg-sky-900/20 border border-slate-200 dark:border-slate-800 hover:border-sky-400 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-2xl transition-all cursor-pointer text-center shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">
+                    className="p-3 bg-white dark:bg-[#121622] hover:bg-sky-50 dark:hover:bg-sky-900/20 border border-slate-200 dark:border-slate-800 hover:border-sky-400 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-2xl transition-all cursor-pointer text-center shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">
                     {isRtl ? s.textAr : s.textEn}
                   </button>
                 ))}
@@ -695,7 +695,7 @@ export default function SupportChat({ currentLanguage, currentUser, onClose }: S
                     msg.sender === 'user'
                       ? 'bg-gradient-to-br from-sky-500 to-violet-600 text-white rounded-br-sm'
                       : isAiMessage(msg)
-                        ? 'bg-white dark:bg-[#11141D] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-bl-sm'
+                        ? 'bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-bl-sm'
                         : 'bg-emerald-500/10 border border-emerald-500/20 text-slate-800 dark:text-slate-100 rounded-bl-sm'
                   }`}>
                     {msg.attachment ? (
@@ -740,7 +740,7 @@ export default function SupportChat({ currentLanguage, currentUser, onClose }: S
               <div className="w-6 h-6 rounded-full bg-sky-500/20 flex items-center justify-center flex-shrink-0">
                 <Bot className="w-3.5 h-3.5 text-sky-400" />
               </div>
-              <div className="bg-white dark:bg-[#11141D] border border-slate-200 dark:border-slate-700 rounded-2xl rounded-bl-sm px-4 py-3">
+              <div className="bg-white dark:bg-[#121622] border border-slate-200 dark:border-slate-700 rounded-2xl rounded-bl-sm px-4 py-3">
                 <div className="flex items-center gap-1">
                   {[0, 150, 300].map(d => (
                     <span key={d} className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
@@ -786,7 +786,7 @@ export default function SupportChat({ currentLanguage, currentUser, onClose }: S
 
         {/* ── CSAT Rating (CLOSED state) ────────────────────────────────────── */}
         {convStatus === 'CLOSED' && (
-          <div className="bg-white dark:bg-[#11141D] border-t border-slate-200 dark:border-slate-800 p-5 flex-shrink-0">
+          <div className="bg-white dark:bg-[#121622] border-t border-slate-200 dark:border-slate-800 p-5 flex-shrink-0">
             {ratingSubmitted ? (
               <div className="text-center space-y-2 py-2">
                 <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
@@ -824,7 +824,7 @@ export default function SupportChat({ currentLanguage, currentUser, onClose }: S
 
         {/* ── Input Area ────────────────────────────────────────────────────── */}
         {convStatus !== 'CLOSED' && convStatus !== 'PENDING_CUSTOMER_APPROVAL' && (
-          <div className="bg-white dark:bg-[#11141D] border-t border-slate-200 dark:border-slate-800 p-3 flex-shrink-0">
+          <div className="bg-white dark:bg-[#121622] border-t border-slate-200 dark:border-slate-800 p-3 flex-shrink-0">
             {/* File preview */}
             {selectedFile && (
               <div className="mb-2 flex items-center gap-2 bg-slate-50 dark:bg-slate-900 rounded-xl px-3 py-2 border border-slate-200 dark:border-slate-700">

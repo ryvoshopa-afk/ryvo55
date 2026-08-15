@@ -1,48 +1,40 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import {
   getAuth,
   GoogleAuthProvider,
   FacebookAuthProvider,
   OAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   Auth
 } from 'firebase/auth';
 
-let firebaseApp: any = null;
+// Default non-sensitive Firebase web client configuration (project: ryvo-shop-v3)
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBEdq0iJBlo4Y-IRd331OZAZz4tuVV_T98",
+  authDomain: "ryvo-shop-v3.firebaseapp.com",
+  projectId: "ryvo-shop-v3",
+  storageBucket: "ryvo-shop-v3.firebasestorage.app",
+  messagingSenderId: "605012387691",
+  appId: "1:605012387691:web:2c66379078ed1736dd0e2e"
+};
+
+let firebaseApp: FirebaseApp | null = null;
 let firebaseAuth: Auth | null = null;
 
-export async function getClientAuth(): Promise<Auth> {
+export function initFirebaseSync(): Auth {
   if (firebaseAuth) return firebaseAuth;
 
-  let config: any = null;
-
-  // Try Vite env variables first if present
   const metaEnv = (import.meta as any).env || {};
-  const envApiKey = metaEnv.VITE_FIREBASE_API_KEY;
-  if (envApiKey) {
-    config = {
-      apiKey: metaEnv.VITE_FIREBASE_API_KEY,
-      authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN,
-      projectId: metaEnv.VITE_FIREBASE_PROJECT_ID,
-      storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET,
-      messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID,
-      appId: metaEnv.VITE_FIREBASE_APP_ID,
-    };
-  } else {
-    // Fetch public non-sensitive config from backend endpoint
-    try {
-      const res = await fetch('/api/auth/firebase-config');
-      if (res.ok) {
-        config = await res.json();
-      }
-    } catch (err) {
-      console.warn('Failed fetching backend firebase-config:', err);
-    }
-  }
-
-  if (!config || !config.apiKey) {
-    throw new Error('CONFIG_MISSING');
-  }
+  const config = {
+    apiKey: metaEnv.VITE_FIREBASE_API_KEY || DEFAULT_FIREBASE_CONFIG.apiKey,
+    authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || DEFAULT_FIREBASE_CONFIG.authDomain,
+    projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || DEFAULT_FIREBASE_CONFIG.projectId,
+    storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || DEFAULT_FIREBASE_CONFIG.storageBucket,
+    messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
+    appId: metaEnv.VITE_FIREBASE_APP_ID || DEFAULT_FIREBASE_CONFIG.appId,
+  };
 
   if (!getApps().length) {
     firebaseApp = initializeApp(config);
@@ -54,11 +46,26 @@ export async function getClientAuth(): Promise<Auth> {
   return firebaseAuth;
 }
 
+// Eagerly initialize Firebase Auth instance synchronously on script load
+firebaseAuth = initFirebaseSync();
+
+export function getClientAuthSync(): Auth {
+  if (!firebaseAuth) {
+    return initFirebaseSync();
+  }
+  return firebaseAuth;
+}
+
+export async function getClientAuth(): Promise<Auth> {
+  return getClientAuthSync();
+}
+
 export type OAuthProviderType = 'google' | 'apple' | 'facebook';
 
 export interface OAuthResult {
   success?: boolean;
   cancelled?: boolean;
+  redirecting?: boolean;
   user?: {
     uid: string;
     email: string | null;
@@ -73,30 +80,51 @@ export interface OAuthResult {
   errorMessageEn?: string;
 }
 
+function getProviderInstance(providerType: OAuthProviderType) {
+  if (providerType === 'google') {
+    const provider = new GoogleAuthProvider();
+    provider.addScope('email');
+    provider.addScope('profile');
+    provider.setCustomParameters({ prompt: 'select_account' });
+    return provider;
+  }
+  if (providerType === 'apple') {
+    const provider = new OAuthProvider('apple.com');
+    provider.addScope('email');
+    provider.addScope('name');
+    return provider;
+  }
+  if (providerType === 'facebook') {
+    const provider = new FacebookAuthProvider();
+    provider.addScope('email');
+    provider.addScope('public_profile');
+    return provider;
+  }
+  throw new Error(`Unsupported provider: ${providerType}`);
+}
+
 export async function loginWithProvider(providerType: OAuthProviderType): Promise<OAuthResult> {
+  // Obtain auth instance synchronously without any async delay
+  const auth = getClientAuthSync();
+  const provider = getProviderInstance(providerType);
+
+  // SAFE DEBUG LOG (NO sensitive keys, passwords, or tokens)
+  console.log('================ [OAUTH ATTEMPT DEBUG] ================');
+  console.log('Provider:', providerType);
+  console.log('Firebase ProjectID:', auth.app.options.projectId || 'ryvo-shop-v3');
+  console.log('Location Origin:', window.location.origin);
+  console.log('Location Hostname:', window.location.hostname);
+  console.log('Auth CurrentUser UID:', auth.currentUser?.uid || 'none');
+  console.log('Auth CurrentUser Email:', auth.currentUser?.email || 'none');
+  console.log('======================================================');
+
   try {
-    const auth = await getClientAuth();
-    let provider: any;
-
-    if (providerType === 'google') {
-      provider = new GoogleAuthProvider();
-      provider.addScope('email');
-      provider.addScope('profile');
-    } else if (providerType === 'apple') {
-      provider = new OAuthProvider('apple.com');
-      provider.addScope('email');
-      provider.addScope('name');
-    } else if (providerType === 'facebook') {
-      provider = new FacebookAuthProvider();
-      provider.addScope('email');
-      provider.addScope('public_profile');
-    } else {
-      throw new Error(`Unsupported provider: ${providerType}`);
-    }
-
+    // Attempt popup login synchronously
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
     const idToken = await user.getIdToken();
+
+    console.log('✅ [OAUTH POPUP SUCCESS] Logged in successfully via popup:', user.email);
 
     return {
       success: true,
@@ -112,24 +140,57 @@ export async function loginWithProvider(providerType: OAuthProviderType): Promis
     };
   } catch (error: any) {
     const errorCode = error?.code || '';
+    const errorMessage = error?.message || '';
 
-    // Gracefully handle user cancellation without displaying error banner
+    // SAFE ERROR DEBUG LOG
+    console.log('⚠️ [OAUTH POPUP ERROR DEBUG] =========================');
+    console.log('Provider:', providerType);
+    console.log('Firebase ProjectID:', auth.app.options.projectId || 'ryvo-shop-v3');
+    console.log('Location Origin:', window.location.origin);
+    console.log('Location Hostname:', window.location.hostname);
+    console.log('Error Code:', errorCode);
+    console.log('Error Message:', errorMessage);
+    console.log('======================================================');
+
+    // Handle User Cancellation
     if (
       errorCode === 'auth/popup-closed-by-user' ||
       errorCode === 'auth/cancelled-popup-request' ||
       errorCode === 'auth/user-cancelled' ||
       errorCode === 'popup_closed_by_user' ||
-      error?.message?.includes('closed-by-user')
+      errorMessage?.includes('closed-by-user')
     ) {
       return { cancelled: true };
+    }
+
+    // Automatically Fallback to Redirect when popup is blocked
+    if (
+      errorCode === 'auth/popup-blocked' ||
+      errorCode === 'auth/cancelled-popup-request' ||
+      errorCode === 'popup_blocked' ||
+      errorMessage?.toLowerCase().includes('popup')
+    ) {
+      console.log(`🔄 [OAUTH REDIRECT FALLBACK] Popup blocked for ${providerType}. Triggering signInWithRedirect...`);
+      try {
+        await signInWithRedirect(auth, provider);
+        return { redirecting: true };
+      } catch (redirectErr: any) {
+        console.error('❌ [OAUTH REDIRECT ERROR]', redirectErr?.code, redirectErr?.message);
+        return {
+          success: false,
+          errorCode: redirectErr?.code || 'redirect_failed',
+          errorMessageAr: 'تعذر توجيه الصفحة لتسجيل الدخول. يرجى السماح بالنوافذ المنبثقة.',
+          errorMessageEn: 'Failed to redirect for sign in. Please allow popups.'
+        };
+      }
     }
 
     if (errorCode === 'auth/account-exists-with-different-credential') {
       return {
         success: false,
         errorCode,
-        errorMessageAr: 'هذا البريد الإلكتروني مرتبط بالفعل بطريقة تسجيل دخول أخرى. يرجى استخدام طريقة تسجيل الدخول الأولى الحساب.',
-        errorMessageEn: 'This email address is already linked to another sign-in method. Please use your original sign-in method.'
+        errorMessageAr: 'هذا البريد الإلكتروني مرتبط بالفعل بطريقة تسجيل دخول أخرى.',
+        errorMessageEn: 'This email address is already linked to another sign-in method.'
       };
     }
 
@@ -142,20 +203,67 @@ export async function loginWithProvider(providerType: OAuthProviderType): Promis
       };
     }
 
-    if (error?.message === 'CONFIG_MISSING') {
-      return {
-        success: false,
-        errorCode: 'CONFIG_MISSING',
-        errorMessageAr: 'تعذر الاتصال بخدمة التوثيق (إعدادات Firebase غير متوفرة).',
-        errorMessageEn: 'Authentication service unavailable (Firebase config missing).'
-      };
-    }
-
     return {
       success: false,
       errorCode,
-      errorMessageAr: error?.message || 'حدث خطأ في المصادقة بواسطة المزود الخارجي.',
-      errorMessageEn: error?.message || 'An error occurred during social sign-in.'
+      errorMessageAr: errorMessage || 'حدث خطأ في المصادقة بواسطة المزود الخارجي.',
+      errorMessageEn: errorMessage || 'An error occurred during social sign-in.'
     };
   }
 }
+
+export async function checkOAuthRedirectResult(): Promise<{ success: boolean; user?: any; token?: string } | null> {
+  try {
+    const auth = getClientAuthSync();
+    if (!auth) return null;
+
+    const result = await getRedirectResult(auth);
+    if (!result || !result.user) return null;
+
+    const user = result.user;
+    const idToken = await user.getIdToken();
+
+    console.log('================ [OAUTH REDIRECT RESULT DEBUG] ================');
+    console.log('ProviderId:', result.providerId);
+    console.log('User UID:', user.uid);
+    console.log('User Email:', user.email);
+    console.log('Location Origin:', window.location.origin);
+    console.log('Location Hostname:', window.location.hostname);
+    console.log('===============================================================');
+
+    let providerType: OAuthProviderType = 'google';
+    if (result.providerId?.includes('apple')) providerType = 'apple';
+    if (result.providerId?.includes('facebook')) providerType = 'facebook';
+
+    const backendRes = await fetch('/api/auth/oauth-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        idToken,
+        provider: providerType,
+        email: user.email,
+        name: user.displayName
+      })
+    });
+
+    const data = await backendRes.json();
+
+    if (backendRes.ok && data.success && data.user) {
+      if (data.token) {
+        localStorage.setItem('ryvo_session_token', data.token);
+      }
+      localStorage.setItem('ryvo_user', JSON.stringify(data.user));
+      return {
+        success: true,
+        user: data.user,
+        token: data.token
+      };
+    }
+
+    return null;
+  } catch (err: any) {
+    console.log('⚠️ [OAUTH REDIRECT CHECK DEBUG]', err?.code, err?.message);
+    return null;
+  }
+}
+
