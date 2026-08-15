@@ -1056,10 +1056,10 @@ export default function Navbar({
         {isMobileMenuOpen && (
           <>
             <div 
-              className="fixed inset-0 bg-black/60 z-50 backdrop-blur-xs md:hidden"
+              className="fixed inset-0 bg-black/60 z-[60] backdrop-blur-xs md:hidden"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className={`fixed inset-y-0 ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} z-50 w-80 bg-white dark:bg-[#121622] border-slate-200 dark:border-[var(--border-dark)] p-6 shadow-2xl flex flex-col justify-between md:hidden animate-in fade-in duration-200 overflow-y-auto`}>
+            <div className={`fixed inset-y-0 ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} z-[60] w-80 max-w-[85vw] bg-white dark:bg-[#121622] border-slate-200 dark:border-[var(--border-dark)] p-6 shadow-2xl flex flex-col justify-between md:hidden animate-in fade-in duration-200 overflow-y-auto pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))]`}>
               <div className="space-y-6">
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-white/10">
                   <span className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -1068,7 +1068,7 @@ export default function Navbar({
                   </span>
                   <button 
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors"
+                    className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors cursor-pointer"
                     aria-label={isRtl ? 'إغلاق القائمة' : 'Close menu'}
                   >
                     <X className="w-5 h-5" />
@@ -1228,7 +1228,10 @@ export default function Navbar({
       </nav>
 
       {/* Luxury Sticky Bottom Navigation Bar for Mobile screens */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#090B0E]/95 backdrop-blur-md border-t border-slate-200 dark:border-[var(--border-dark)] shadow-[0_-4px_25px_rgba(0,0,0,0.15)] md:hidden pb-safe pointer-events-auto">
+      <div 
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#090B0E]/95 backdrop-blur-md border-t border-slate-200 dark:border-[var(--border-dark)] shadow-[0_-4px_25px_rgba(0,0,0,0.15)] md:hidden pb-safe pointer-events-auto select-none"
+        style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
+      >
         <div className="grid grid-cols-5 h-16 items-center px-1">
           {/* Col 1: Home */}
           <button

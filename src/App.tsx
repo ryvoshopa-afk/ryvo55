@@ -1801,7 +1801,7 @@ export default function App() {
       />
 
       {/* Main Container Body */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-[calc(80px+env(safe-area-inset-bottom))] lg:pb-12 min-h-[80vh]">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-[calc(88px+max(8px,env(safe-area-inset-bottom)))] md:pb-12 min-h-[80vh]">
         <Suspense fallback={
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
             <RefreshCw className="animate-spin text-emerald-500 w-8 h-8" />
@@ -2621,21 +2621,21 @@ export default function App() {
         let posClasses = '';
         if (welcomeBarMinimized) {
           if (pos === 'bottom-left' || pos === 'top-left') {
-            posClasses = 'bottom-20 left-4 md:left-6';
+            posClasses = 'bottom-[calc(76px+max(8px,env(safe-area-inset-bottom)))] md:bottom-6 left-4 md:left-6';
           } else {
-            posClasses = 'bottom-20 right-4 md:right-6';
+            posClasses = 'bottom-[calc(76px+max(8px,env(safe-area-inset-bottom)))] md:bottom-6 right-4 md:right-6';
           }
         } else {
           if (pos === 'bottom-left') {
-            posClasses = 'bottom-20 md:bottom-6 left-4 md:left-6 md:w-96 p-4 sm:p-0';
+            posClasses = 'bottom-[calc(76px+max(8px,env(safe-area-inset-bottom)))] md:bottom-6 left-4 md:left-6 md:w-96 p-4 sm:p-0';
           } else if (pos === 'top-right') {
             posClasses = 'top-24 right-4 md:right-6 md:w-96 p-4 sm:p-0';
           } else if (pos === 'top-left') {
             posClasses = 'top-24 left-4 md:left-6 md:w-96 p-4 sm:p-0';
           } else if (pos === 'bottom-bar') {
-            posClasses = 'bottom-0 left-0 right-0 w-full p-0 rounded-none z-50';
+            posClasses = 'bottom-[calc(68px+max(8px,env(safe-area-inset-bottom)))] md:bottom-0 left-0 right-0 w-full p-0 rounded-none z-45';
           } else {
-            posClasses = 'bottom-20 md:bottom-6 right-4 md:right-6 md:w-96 p-4 sm:p-0';
+            posClasses = 'bottom-[calc(76px+max(8px,env(safe-area-inset-bottom)))] md:bottom-6 right-4 md:right-6 md:w-96 p-4 sm:p-0';
           }
         }
 
@@ -2809,7 +2809,7 @@ export default function App() {
       })()}
 
       {toastMessage && (
-        <div className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 px-6 py-3.5 rounded-2xl shadow-xl font-bold text-xs flex items-center gap-2 border border-slate-700/50 dark:border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-[calc(76px+max(8px,env(safe-area-inset-bottom)))] md:bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 px-6 py-3.5 rounded-2xl shadow-xl font-bold text-xs flex items-center gap-2 border border-slate-700/50 dark:border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <span>🔔</span>
           <span>{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="ml-2 hover:opacity-75 font-bold cursor-pointer">✕</button>
