@@ -289,15 +289,15 @@ export default function ProductDetailsModal({
 
           {/* Secure Trust features badges */}
           <div className="grid grid-cols-3 gap-2 mt-3 text-[10px] text-center font-bold text-slate-500 dark:text-slate-400">
-            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#121622] border dark:border-[var(--border-dark)] rounded-xl">
+            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-xl shadow-xs">
               <ShieldCheck className="w-5 h-5 text-emerald-500 animate-pulse" />
               <span>{t.features_certified.split('•')[1]?.trim() || 'إرجاع سهل'}</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#121622] border dark:border-[var(--border-dark)] rounded-xl">
+            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-xl shadow-xs">
               <RefreshCw className="w-5 h-5 text-[var(--primary-color)]" />
               <span>{t.features_certified.split('•')[0]?.trim() || 'دعم متواصل'}</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#121622] border dark:border-[var(--border-dark)] rounded-xl">
+            <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-xl shadow-xs">
               <Star className="w-5 h-5 text-rose-500 fill-rose-500" />
               <span>{t.features_certified.split('•')[2]?.trim() || 'شحن سريع'}</span>
             </div>

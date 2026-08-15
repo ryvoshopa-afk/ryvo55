@@ -694,7 +694,7 @@ export default function CheckoutModal({
                       value={fullname}
                       onChange={(e) => setFullname(e.target.value)}
                       // Fix sudden zoom: text-base on mobile, md:text-xs on desktop
-                      className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
+                      className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                         isRtl ? 'text-right' : 'text-left'
                       }`}
                     />
@@ -716,7 +716,7 @@ export default function CheckoutModal({
                           required
                           value={country}
                           onChange={(e) => setCountry(e.target.value)}
-                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
+                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                             isRtl ? 'text-right' : 'text-left'
                           }`}
                         />
@@ -732,7 +732,7 @@ export default function CheckoutModal({
                           placeholder={isRtl ? 'الرياض، جدة...' : 'e.g. Riyadh, Jeddah...'}
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
+                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                             isRtl ? 'text-right' : 'text-left'
                           }`}
                         />
@@ -751,7 +751,7 @@ export default function CheckoutModal({
                           placeholder={isRtl ? 'مثال: حي الياسمين' : 'e.g. Al Yasmin District'}
                           value={district}
                           onChange={(e) => setDistrict(e.target.value)}
-                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
+                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                             isRtl ? 'text-right' : 'text-left'
                           }`}
                         />
@@ -767,7 +767,7 @@ export default function CheckoutModal({
                           placeholder={isRtl ? 'مثال: شارع العليا، مبنى رقم...' : 'e.g. Olaya Street, Building...'}
                           value={street}
                           onChange={(e) => setStreet(e.target.value)}
-                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
+                          className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                             isRtl ? 'text-right' : 'text-left'
                           }`}
                         />
@@ -785,7 +785,7 @@ export default function CheckoutModal({
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         // Fix sudden zoom
-                        className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
+                        className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                           isRtl ? 'text-right' : 'text-left'
                         }`}
                       />
@@ -800,7 +800,7 @@ export default function CheckoutModal({
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         // Fix sudden zoom
-                        className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
+                        className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all ${
                           isRtl ? 'text-right' : 'text-left'
                         }`}
                       />
@@ -818,7 +818,7 @@ export default function CheckoutModal({
                       placeholder={isRtl ? 'مثال: يرجى الاتصال قبل التوصيل، أو أي تعليمات خاصة بتسليم الطلب...' : 'e.g., Please call before delivery, or any specific delivery details...'}
                       value={orderNotes}
                       onChange={(e) => setOrderNotes(e.target.value)}
-                      className={`w-full text-base md:text-xs px-3.5 py-2.5 rounded-xl border bg-slate-50 dark:bg-slate-900 border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all resize-none ${
+                      className={`w-full text-base md:text-xs px-3.5 py-2.5 rounded-xl border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-[#090B0E] text-slate-850 dark:text-white outline-none transition-all resize-none ${
                         isRtl ? 'text-right' : 'text-left'
                       }`}
                     />

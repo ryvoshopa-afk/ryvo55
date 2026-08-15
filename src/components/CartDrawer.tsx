@@ -108,13 +108,13 @@ export default function CartDrawer({
                     className="flex items-center gap-4 bg-slate-50 dark:bg-[#090B0E] rounded-2xl p-4 border border-slate-150 dark:border-[var(--border-dark)] transition-all"
                   >
                     {/* Item Image */}
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-white dark:bg-slate-900 p-1 flex-shrink-0 border border-slate-100/50 dark:border-slate-200">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-white dark:bg-slate-900 p-1 flex-shrink-0 border border-slate-100/50 dark:border-slate-800">
                       <img src={item.product.image} alt={name} className="object-cover w-full h-full rounded-lg" referrerPolicy="no-referrer" />
                     </div>
 
                     {/* Description & Action adjustments */}
                     <div className={`flex-1 min-w-0 space-y-1.5 ${isRtl ? 'text-right' : 'text-left'}`}>
-                      <h4 className="font-bold text-slate-800 dark:text-gray-150 text-xs sm:text-sm truncate">
+                      <h4 className="font-bold text-slate-800 dark:text-gray-100 text-xs sm:text-sm truncate">
                         {name}
                       </h4>
                       {item.color && (
@@ -131,14 +131,14 @@ export default function CartDrawer({
                         </span>
 
                         {/* Quantity switches */}
-                        <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-205 dark:border-[var(--border-dark)] p-0.5 rounded-lg text-xs">
+                        <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-[var(--border-dark)] p-0.5 rounded-lg text-xs">
                           <button
                             id={`btn-cart-qty-dec-${item.product.id}`}
                             onClick={() => onUpdateQty(item.product.id, -1)}
                             disabled={item.quantity <= 1}
                             className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
                           >
-                            <Minus className="w-8 h-8" />
+                            <Minus className="w-3.5 h-3.5" />
                           </button>
                           <span className="px-2.5 font-bold text-slate-900 dark:text-gray-100">{item.quantity}</span>
                           <button
@@ -147,7 +147,7 @@ export default function CartDrawer({
                             disabled={item.quantity >= item.product.stock}
                             className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
                           >
-                            <Plus className="w-8 h-8" />
+                            <Plus className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>

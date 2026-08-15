@@ -114,12 +114,18 @@ export default function ProductCard({
         className="relative aspect-square w-full bg-slate-50 dark:bg-slate-900/60 overflow-hidden cursor-pointer flex items-center justify-center p-2"
       >
         <img
-          src={product.image}
+          src={product.image || 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=600&q=80'}
           alt={name}
           width={400}
           height={400}
           loading="lazy"
           referrerPolicy="no-referrer"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            if (!target.src.includes('unsplash')) {
+              target.src = 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=600&q=80';
+            }
+          }}
           className="object-cover w-full h-full transform scale-100 group-hover:scale-105 transition-transform duration-700 rounded-xl"
         />
 

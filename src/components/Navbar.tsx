@@ -458,17 +458,17 @@ export default function Navbar({
               id="mobile-menu-toggle"
               data-testid="mobile-menu-btn"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#FFFFFF] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] flex items-center justify-center shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-800 dark:text-slate-100 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
               aria-label={isRtl ? 'فتح القائمة الجانبية' : 'Open mobile menu'}
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5 text-[#E53E3E]" /> : <Menu className="w-5 h-5 text-[#0F172A] dark:text-[#F8FAFC]" />}
+              {isMobileMenuOpen ? <X className="w-5 h-5 text-[var(--primary-color)]" /> : <Menu className="w-5 h-5" />}
             </button>
 
             {/* 2. RYVO Logo Container */}
             <button
               id="ryvo-brand-mobile"
               onClick={() => onNavigate('home')}
-              className="flex items-center justify-center bg-[#F8F9FA] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] rounded-2xl px-2.5 py-1 min-w-[90px] max-w-[125px] h-10 sm:h-11 shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all shadow-xs"
+              className="flex items-center justify-center bg-slate-50 dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-2xl px-2.5 py-1 min-w-[90px] max-w-[125px] h-10 sm:h-11 shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
               aria-label="RYVO Logo"
             >
               {shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/') ? (
@@ -479,7 +479,7 @@ export default function Navbar({
                   referrerPolicy="no-referrer" 
                 />
               ) : (
-                <span className="text-[#E53E3E] font-black text-xs sm:text-sm tracking-wider uppercase truncate">
+                <span className="text-[var(--primary-color)] font-black text-xs sm:text-sm tracking-wider uppercase truncate">
                   {shopLogo}
                 </span>
               )}
@@ -489,34 +489,34 @@ export default function Navbar({
             <button
               id="mobile-settings-button"
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#FFFFFF] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] flex items-center justify-center shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
               title={isRtl ? 'الإعدادات والخيارات ⚙️' : 'Settings ⚙️'}
             >
-              <Settings className={`w-5 h-5 ${isSettingsOpen ? 'animate-spin text-[#E53E3E]' : 'text-[#64748B] dark:text-[#94A3B8]'}`} />
+              <Settings className={`w-5 h-5 ${isSettingsOpen ? 'animate-spin text-[var(--primary-color)]' : 'text-slate-500 dark:text-slate-400'}`} />
             </button>
 
             {/* 4. Theme ☀️/🌙 */}
             <button
               id="mobile-theme-button"
               onClick={onThemeToggle}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#FFFFFF] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] flex items-center justify-center shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
               aria-label="Toggle Theme"
             >
-              {currentTheme === 'light' ? <Moon className="w-5 h-5 text-[#64748B]" /> : <Sun className="w-5 h-5 text-[#E53E3E]" />}
+              {currentTheme === 'light' ? <Moon className="w-5 h-5 text-slate-600" /> : <Sun className="w-5 h-5 text-amber-400" />}
             </button>
 
             {/* 5. Notifications 🔔 */}
             <button
               id="mobile-notifications-button"
               onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#FFFFFF] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
               title={isRtl ? 'الإشعارات 🔔' : 'Notifications 🔔'}
             >
-              <Bell className="w-5 h-5 text-[#64748B] dark:text-[#94A3B8]" />
+              <Bell className="w-5 h-5 text-slate-500 dark:text-slate-400" />
               {(() => {
                 const unread = notifications.filter((n: any) => !n.read).length;
                 return unread > 0 ? (
-                  <span className="absolute -top-1 -right-1 bg-[#E53E3E] text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                  <span className="absolute -top-1 -right-1 bg-[var(--primary-color)] text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce shadow-xs">
                     {unread}
                   </span>
                 ) : null;
@@ -527,12 +527,12 @@ export default function Navbar({
             <button
               id="mobile-cart-button"
               onClick={onCartOpen}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#FFFFFF] dark:bg-[#121622] border border-[#E2E8F0] dark:border-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[#E53E3E] dark:hover:border-[#E53E3E] transition-all"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
               aria-label="Shopping Cart"
             >
-              <ShoppingBag className="w-5 h-5 text-[#64748B] dark:text-[#94A3B8]" />
+              <ShoppingBag className="w-5 h-5 text-slate-500 dark:text-slate-400" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#E53E3E] text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                <span className="absolute -top-1 -right-1 bg-[var(--primary-color)] text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce shadow-xs">
                   {cartCount}
                 </span>
               )}
@@ -548,7 +548,7 @@ export default function Navbar({
                   onAuthOpen();
                 }
               }}
-              className="h-10 sm:h-11 px-3 sm:px-4 rounded-2xl bg-[#E53E3E] hover:bg-[#d32f2f] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer transition-all shadow-sm shadow-red-500/20"
+              className="h-10 sm:h-11 px-3 sm:px-4 rounded-2xl bg-[var(--primary-color)] hover:brightness-110 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer transition-all shadow-sm shadow-red-500/20"
             >
               <UserIcon className="w-4 h-4 shrink-0" />
               <span className="truncate max-w-[80px] sm:max-w-[100px]">
