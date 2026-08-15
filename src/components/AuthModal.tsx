@@ -57,12 +57,14 @@ interface AuthModalProps {
   currentLanguage: Language;
   onClose: () => void;
   onAuthSuccess: (user: User) => void;
+  shopLogo?: string;
 }
 
 export default function AuthModal({
   currentLanguage,
   onClose,
-  onAuthSuccess
+  onAuthSuccess,
+  shopLogo = 'RYVO'
 }: AuthModalProps) {
   const t = TRANSLATIONS[currentLanguage];
   const isRtl = currentLanguage === 'ar';
@@ -435,12 +437,23 @@ export default function AuthModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-4 overscroll-contain">
       {/* Backdrop */}
-      <div onClick={onClose} className="absolute inset-0 bg-slate-950/60 dark:bg-black/80 backdrop-blur-sm transition-opacity"></div>
+      <div 
+        onClick={onClose} 
+        className="fixed inset-0 bg-slate-950/70 dark:bg-black/85 backdrop-blur-sm transition-opacity"
+      />
 
-      {/* Dialog container */}
-      <div id="auth-form-dialog" className="relative z-10 bg-white dark:bg-[#121622] rounded-3xl w-full max-w-md overflow-hidden shadow-2xl p-6 sm:p-8 border border-slate-200 dark:border-[var(--border-dark)] animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-gray-100">
+      {/* Dialog container with full responsive constraints & safe area support */}
+      <div 
+        id="auth-form-dialog" 
+        className="relative z-10 bg-white dark:bg-[#121622] rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-[var(--border-dark)] animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-gray-100 flex flex-col my-auto max-h-[calc(100dvh-2rem)] overflow-hidden"
+        style={{
+          width: 'min(100% - 1rem, 440px)',
+          marginTop: 'max(0.75rem, env(safe-area-inset-top))',
+          marginBottom: 'max(0.75rem, env(safe-area-inset-bottom))'
+        }}
+      >
         
         {/* Close button */}
         <button
@@ -448,312 +461,329 @@ export default function AuthModal({
           data-testid="auth-close-button"
           onClick={onClose}
           aria-label="Close modal"
-          className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} p-2 rounded-full bg-slate-100 hover:bg-[var(--primary-color)] hover:text-white dark:bg-slate-800 dark:hover:bg-[var(--primary-color)] dark:hover:text-white transition-all cursor-pointer`}
+          className={`absolute top-3.5 sm:top-4 ${isRtl ? 'left-3.5 sm:left-4' : 'right-3.5 sm:right-4'} z-20 p-2 rounded-full bg-slate-100 hover:bg-[var(--primary-color)] hover:text-white dark:bg-slate-800/90 dark:hover:bg-[var(--primary-color)] dark:hover:text-white transition-all cursor-pointer shadow-xs`}
         >
           <X className="w-4 h-4" />
         </button>
 
-        {/* Title */}
-        <div className="space-y-2 text-center pb-4">
-          <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">
-            {authMode === 'login' 
-              ? t.login 
-              : authMode === 'register' 
-                ? t.register 
-                : authMode === 'otp_verify'
-                  ? (isRtl ? 'تأكيد كود الأمان 🔐' : 'Enter 6-Digit OTP 🔐')
-                  : (isRtl ? 'استعادة كلمة المرور' : 'Recover Password')}
-          </h2>
-          <p className="text-xs text-slate-400 max-w-[280px] mx-auto leading-relaxed">
-            {authMode === 'forgot' 
-              ? (isRtl ? 'أدخل بريدك الإلكتروني وسنرسل لك كود التوثيق فوراً' : 'Enter your registered email and we will send a 6-digit code')
-              : authMode === 'otp_verify'
-                ? (isRtl ? `أدخل الرمز المكون من 6 أرقام المرسل إلى ${email}` : `Enter the 6-digit code sent to ${email}`)
-                : t.welcome_text}
-          </p>
-        </div>
-
-        {/* Alert Feedback messaging */}
-        {feedback && (
-          <div
-            id={feedback.type === 'error' ? 'auth-error-message' : 'auth-success-message'}
-            data-testid={feedback.type === 'error' ? 'auth-error-message' : 'auth-success-message'}
-            role={feedback.type === 'error' ? 'alert' : 'status'}
-            aria-live="assertive"
-            className={`p-4 rounded-xl text-xs font-bold ${
-              feedback.type === 'error' 
-                ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' 
-                : 'bg-[var(--primary-color, #dc2626)]/10 text-[var(--primary-color, #dc2626)] border border-[var(--primary-color, #dc2626)]/20'
-            } mb-4 text-center`}
-          >
-            {feedback.type === 'success' && <UserCheck className="w-4 h-4 inline-block align-middle me-1" />}
-            <span data-testid="auth-error-text" className="inline-block">{feedback.text}</span>
-          </div>
-        )}
-
-        {/* Social OAuth Providers */}
-        {(authMode === 'login' || authMode === 'register') && (
-          <div className="space-y-2.5 mb-4">
-            {/* Google Button */}
-            <button
-              id="btn-oauth-google"
-              data-testid="oauth-google-button"
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleOAuthLogin('google')}
-              className="w-full py-2.5 px-4 bg-white dark:bg-[#1A1F2C] border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-800 dark:text-white font-semibold rounded-xl text-xs flex items-center justify-center transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/80 disabled:opacity-50 shadow-sm"
-            >
-              {activeOAuthProvider === 'google' ? (
-                <span className="inline-block animate-pulse">
-                  {isRtl ? 'جاري الاتصال بـ Google...' : 'Connecting to Google...'}
-                </span>
-              ) : (
-                <>
-                  <svg className="w-4 h-4 me-2.5 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                  <span>{isRtl ? 'Continue with Google (المتابعة باستخدام Google)' : 'Continue with Google'}</span>
-                </>
-              )}
-            </button>
-
-            {/* Apple Button */}
-            <button
-              id="btn-oauth-apple"
-              data-testid="oauth-apple-button"
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleOAuthLogin('apple')}
-              className="w-full py-2.5 px-4 bg-slate-900 dark:bg-black text-white border border-slate-800 dark:border-slate-700 hover:bg-black font-semibold rounded-xl text-xs flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 shadow-sm"
-            >
-              {activeOAuthProvider === 'apple' ? (
-                <span className="inline-block animate-pulse">
-                  {isRtl ? 'جاري الاتصال بـ Apple...' : 'Connecting to Apple...'}
-                </span>
-              ) : (
-                <>
-                  <svg className="w-4 h-4 me-2.5 shrink-0 fill-current" viewBox="0 0 24 24">
-                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.62-.75 1.04-1.8 1.93-2.32.11 1.15-.31 2.31-.97 3.07-.63.74-1.74 1.34-2.87 1.25-.13-1.15.34-2.29.91-3z" />
-                  </svg>
-                  <span>{isRtl ? 'Continue with Apple (المتابعة باستخدام Apple)' : 'Continue with Apple'}</span>
-                </>
-              )}
-            </button>
-
-            {/* Facebook Button */}
-            <button
-              id="btn-oauth-facebook"
-              data-testid="oauth-facebook-button"
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleOAuthLogin('facebook')}
-              className="w-full py-2.5 px-4 bg-[#1877F2] hover:bg-[#166fe5] text-white font-semibold rounded-xl text-xs flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 shadow-sm"
-            >
-              {activeOAuthProvider === 'facebook' ? (
-                <span className="inline-block animate-pulse">
-                  {isRtl ? 'جاري الاتصال بـ Facebook...' : 'Connecting to Facebook...'}
-                </span>
-              ) : (
-                <>
-                  <svg className="w-4 h-4 me-2.5 shrink-0 fill-current" viewBox="0 0 24 24">
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                  </svg>
-                  <span>{isRtl ? 'Continue with Facebook (المتابعة باستخدام Facebook)' : 'Continue with Facebook'}</span>
-                </>
-              )}
-            </button>
-
-            {/* Divider line */}
-            <div className="relative flex items-center justify-center pt-2 pb-1">
-              <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
-              <span className="bg-white dark:bg-[#121622] px-3 text-[10px] uppercase font-bold text-slate-400 shrink-0">
-                {isRtl ? 'أو تسجيل الدخول بالبريد الإلكتروني' : 'or sign in with email'}
-              </span>
-              <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
-            </div>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Scrollable body content */}
+        <div 
+          className="flex-1 overflow-y-auto overflow-x-hidden p-5 sm:p-7 overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           
-          {/* OTP Mode 6-Digit Code Input */}
-          {authMode === 'otp_verify' ? (
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block">
-                  {isRtl ? 'البريد الإلكتروني' : 'Email Address'}
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ryvo.shopa@gmail.com"
-                  className="w-full text-xs py-2 px-3 rounded-lg border bg-slate-50 dark:bg-[#090B0E] border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white outline-none"
+          {/* Header section with RYVO Circular Logo & Titles */}
+          <div className="flex flex-col items-center text-center pb-4 pt-1 select-none">
+            
+            {/* Elegant Circular RYVO Logo Badge */}
+            <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-full bg-gradient-to-tr from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 border-2 border-[var(--primary-color)]/30 shadow-lg shadow-red-500/10 flex items-center justify-center p-2.5 mb-3 transition-transform hover:scale-105">
+              {shopLogo && (shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/')) ? (
+                <img 
+                  src={shopLogo} 
+                  alt="RYVO Logo" 
+                  className="w-full h-full object-contain" 
+                  referrerPolicy="no-referrer" 
                 />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block text-center">
-                  {isRtl ? 'رمز التأكيد المكون من 6 أرقام' : '6-Digit Verification OTP'}
-                </label>
-                <input
-                  id="auth-otp-input"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  required
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="123456"
-                  className="w-full text-center text-2xl font-mono tracking-[0.5em] py-3.5 px-4 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-300 dark:border-slate-700 focus:border-red-500 focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all"
-                />
-              </div>
-
-              {otpPurpose === 'reset' && (
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block">
-                    {isRtl ? 'كلمة المرور الجديدة' : 'New Password'}
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full text-sm py-2.5 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-300 dark:border-slate-700 focus:border-red-500 text-slate-850 dark:text-white outline-none"
-                  />
+              ) : (
+                <div className="flex items-center justify-center font-black tracking-tighter text-[var(--primary-color)] text-sm sm:text-base font-sans">
+                  <span>RYVO</span>
                 </div>
               )}
             </div>
-          ) : (
-            <>
-              {/* Full Name for register */}
-              {authMode === 'register' && (
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block">{t.fullname_label}</label>
-                  <input
-                    id="auth-reg-fullname"
-                    type="text"
-                    required
-                    value={fullname}
-                    onChange={(e) => setFullname(e.target.value)}
-                    className={`w-full text-base md:text-xs px-3.5 py-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-800 dark:text-white outline-none transition-all ${
-                      isRtl ? 'text-right' : 'text-left'
-                    }`}
-                  />
-                </div>
-              )}
 
-              {/* Email */}
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block">{t.email_label}</label>
-                <div className="relative">
-                  <div className={`absolute inset-y-0 ${isRtl ? 'left-3' : 'right-3'} flex items-center pointer-events-none text-slate-400`}>
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <input
-                    id="auth-email-input"
-                    data-testid="email-input"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`w-full text-base md:text-xs py-3 px-3.5 pr-10 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
-                      isRtl ? 'text-right pr-3.5 pl-10' : 'text-left pr-10 pl-3.5'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              {authMode !== 'forgot' && (
-                <div className="space-y-1 font-sans">
-                  <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block">{t.password_label}</label>
-                  <div className="relative font-sans">
-                    <div className={`absolute inset-y-0 ${isRtl ? 'left-3' : 'right-3'} flex items-center pointer-events-none text-slate-400`}>
-                      <Key className="w-4 h-4" />
-                    </div>
-                    <input
-                      id="auth-password-input"
-                      data-testid="password-input"
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full text-base md:text-xs py-3 px-10 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-transparent focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all placeholder-slate-400 text-center"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className={`absolute inset-y-0 ${isRtl ? 'right-3' : 'left-3'} flex items-center text-slate-400 hover:text-[var(--primary-color)] transition-colors`}
-                      aria-label="Toggle password visibility"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Action button */}
-          <button
-            id="btn-auth-submit"
-            data-testid="login-submit-button"
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-3.5 bg-[var(--primary-color)] hover:brightness-110 text-white font-black rounded-xl transition-all cursor-pointer text-xs uppercase shadow-lg shadow-red-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <span className="inline-block animate-pulse">{isRtl ? 'جاري المعالجة...' : 'Processing...'}</span>
-            ) : (
-              authMode === 'login' 
+            {/* Title */}
+            <h2 className="text-lg sm:text-xl font-black tracking-tight text-slate-950 dark:text-white">
+              {authMode === 'login' 
                 ? t.login 
                 : authMode === 'register' 
                   ? t.register 
                   : authMode === 'otp_verify'
-                    ? (isRtl ? 'تأكيد الكود وتأكيد الحساب 🔓' : 'Verify Code & Continue 🔓')
-                    : (isRtl ? 'إرسال كود الأمان 📩' : 'Send Recovery OTP 📩')
-            )}
-          </button>
-        </form>
+                    ? (isRtl ? 'تأكيد كود الأمان 🔐' : 'Enter 6-Digit OTP 🔐')
+                    : (isRtl ? 'استعادة كلمة المرور' : 'Recover Password')}
+            </h2>
 
-        {/* Change auth mode */}
-        <div className="flex flex-col gap-2 items-center justify-center pt-5 border-t border-slate-100 dark:border-slate-200 mt-5">
-          {authMode === 'login' && (
-            <button
-              id="btn-auth-forgot-trigger"
-              onClick={() => { setFeedback(null); setAuthMode('forgot'); }}
-              className="text-[10px] font-bold uppercase text-amber-500 hover:underline cursor-pointer"
+            {/* Subtitle */}
+            <p className="text-[11px] sm:text-xs text-slate-400 max-w-[280px] mx-auto leading-relaxed mt-1">
+              {authMode === 'forgot' 
+                ? (isRtl ? 'أدخل بريدك الإلكتروني وسنرسل لك كود التوثيق فوراً' : 'Enter your registered email and we will send a 6-digit code')
+                : authMode === 'otp_verify'
+                  ? (isRtl ? `أدخل الرمز المكون من 6 أرقام المرسل إلى ${email}` : `Enter the 6-digit code sent to ${email}`)
+                  : t.welcome_text}
+            </p>
+          </div>
+
+          {/* Alert Feedback messaging */}
+          {feedback && (
+            <div
+              id={feedback.type === 'error' ? 'auth-error-message' : 'auth-success-message'}
+              data-testid={feedback.type === 'error' ? 'auth-error-message' : 'auth-success-message'}
+              role={feedback.type === 'error' ? 'alert' : 'status'}
+              aria-live="assertive"
+              className={`p-3.5 rounded-2xl text-xs font-bold ${
+                feedback.type === 'error' 
+                  ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' 
+                  : 'bg-[var(--primary-color, #dc2626)]/10 text-[var(--primary-color, #dc2626)] border border-[var(--primary-color, #dc2626)]/20'
+              } mb-4 text-center leading-relaxed`}
             >
-              {isRtl ? 'هل نسيت كلمة المرور؟ 🔑' : 'Forgot Password? 🔑'}
-            </button>
+              {feedback.type === 'success' && <UserCheck className="w-4 h-4 inline-block align-middle me-1" />}
+              <span data-testid="auth-error-text" className="inline-block">{feedback.text}</span>
+            </div>
           )}
 
-          <button
-            id="btn-auth-mode-swap"
-            onClick={() => {
-              setFeedback(null);
-              if (authMode === 'forgot') {
-                setAuthMode('login');
-              } else {
-                setAuthMode(authMode === 'login' ? 'register' : 'login');
-              }
-            }}
-            className="text-[10px] font-black uppercase text-[var(--primary-color)] hover:underline cursor-pointer transition-colors"
-          >
-            {authMode === 'forgot'
-              ? (isRtl ? 'العودة لتسجيل الدخول 🔙' : 'Back to Login 🔙')
-              : authMode === 'login' ? t.dont_have_acc : t.already_have_acc}
-          </button>
+          {/* Main Credentials / OTP Form */}
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            
+            {/* OTP Mode 6-Digit Code Input */}
+            {authMode === 'otp_verify' ? (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block">
+                    {isRtl ? 'البريد الإلكتروني' : 'Email Address'}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="ryvo.shopa@gmail.com"
+                    className="w-full text-xs py-2 px-3 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block text-center">
+                    {isRtl ? 'رمز التأكيد المكون من 6 أرقام' : '6-Digit Verification OTP'}
+                  </label>
+                  <input
+                    id="auth-otp-input"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    required
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="123456"
+                    className="w-full text-center text-2xl font-mono tracking-[0.5em] py-3 px-4 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-300 dark:border-slate-700 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all"
+                  />
+                </div>
+
+                {otpPurpose === 'reset' && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block">
+                      {isRtl ? 'كلمة المرور الجديدة' : 'New Password'}
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full text-sm py-2.5 px-3.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-300 dark:border-slate-700 focus:border-[var(--primary-color)] text-slate-850 dark:text-white outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Full Name for register */}
+                {authMode === 'register' && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block">{t.fullname_label}</label>
+                    <input
+                      id="auth-reg-fullname"
+                      type="text"
+                      required
+                      value={fullname}
+                      onChange={(e) => setFullname(e.target.value)}
+                      className={`w-full text-sm sm:text-xs px-3.5 py-2.5 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-800 dark:text-white outline-none transition-all ${
+                        isRtl ? 'text-right' : 'text-left'
+                      }`}
+                    />
+                  </div>
+                )}
+
+                {/* Email */}
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block">{t.email_label}</label>
+                  <div className="relative">
+                    <div className={`absolute inset-y-0 ${isRtl ? 'left-3' : 'right-3'} flex items-center pointer-events-none text-slate-400`}>
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <input
+                      id="auth-email-input"
+                      data-testid="email-input"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={`w-full text-sm sm:text-xs py-2.5 px-3.5 pr-10 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all ${
+                        isRtl ? 'text-right pr-3.5 pl-10' : 'text-left pr-10 pl-3.5'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                {authMode !== 'forgot' && (
+                  <div className="space-y-1 font-sans">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 block">{t.password_label}</label>
+                    <div className="relative font-sans">
+                      <div className={`absolute inset-y-0 ${isRtl ? 'left-3' : 'right-3'} flex items-center pointer-events-none text-slate-400`}>
+                        <Key className="w-4 h-4" />
+                      </div>
+                      <input
+                        id="auth-password-input"
+                        data-testid="password-input"
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full text-sm sm:text-xs py-2.5 px-10 rounded-xl border bg-slate-50 dark:bg-[#090B0E] border-slate-200 dark:border-slate-800 focus:border-[var(--primary-color)] focus:bg-white dark:focus:bg-black text-slate-850 dark:text-white outline-none transition-all placeholder-slate-400 text-center"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className={`absolute inset-y-0 ${isRtl ? 'right-3' : 'left-3'} flex items-center text-slate-400 hover:text-[var(--primary-color)] transition-colors cursor-pointer`}
+                        aria-label="Toggle password visibility"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Primary Action Button */}
+            <button
+              id="btn-auth-submit"
+              data-testid="login-submit-button"
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 bg-[var(--primary-color)] hover:brightness-110 active:scale-[0.98] text-white font-black rounded-xl transition-all cursor-pointer text-xs uppercase shadow-md shadow-red-500/20 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+            >
+              {isLoading ? (
+                <span className="inline-block animate-pulse">{isRtl ? 'جاري المعالجة...' : 'Processing...'}</span>
+              ) : (
+                authMode === 'login' 
+                  ? t.login 
+                  : authMode === 'register' 
+                    ? t.register 
+                    : authMode === 'otp_verify'
+                      ? (isRtl ? 'تأكيد الكود وتأكيد الحساب 🔓' : 'Verify Code & Continue 🔓')
+                      : (isRtl ? 'إرسال كود الأمان 📩' : 'Send Recovery OTP 📩')
+              )}
+            </button>
+          </form>
+
+          {/* Social OAuth Providers (Compact Square Buttons under submit button) */}
+          {(authMode === 'login' || authMode === 'register') && (
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+              
+              {/* Divider text: أو / or */}
+              <div className="text-center mb-3">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">
+                  {isRtl ? 'أو عبر' : 'or continue with'}
+                </span>
+              </div>
+
+              {/* 3 Compact Square/Rectangular Social Login Buttons in a Single Row */}
+              <div className="grid grid-cols-3 gap-2.5 max-w-[280px] mx-auto">
+                
+                {/* Google Small Icon Button */}
+                <button
+                  id="btn-oauth-google"
+                  data-testid="oauth-google-button"
+                  type="button"
+                  title="Google"
+                  disabled={isLoading}
+                  onClick={() => handleOAuthLogin('google')}
+                  className="h-11 rounded-xl bg-slate-50 dark:bg-[#1A1F2C] border border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-500 flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 shadow-xs group"
+                >
+                  {activeOAuthProvider === 'google' ? (
+                    <span className="w-4 h-4 border-2 border-slate-400 border-t-[var(--primary-color)] rounded-full animate-spin"></span>
+                  ) : (
+                    <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                    </svg>
+                  )}
+                </button>
+
+                {/* Apple Small Icon Button */}
+                <button
+                  id="btn-oauth-apple"
+                  data-testid="oauth-apple-button"
+                  type="button"
+                  title="Apple"
+                  disabled={isLoading}
+                  onClick={() => handleOAuthLogin('apple')}
+                  className="h-11 rounded-xl bg-slate-900 dark:bg-black text-white border border-slate-800 dark:border-slate-700/80 hover:bg-black flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 shadow-xs group"
+                >
+                  {activeOAuthProvider === 'apple' ? (
+                    <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                  ) : (
+                    <svg className="w-5 h-5 fill-current transition-transform group-hover:scale-110" viewBox="0 0 24 24">
+                      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.62-.75 1.04-1.8 1.93-2.32.11 1.15-.31 2.31-.97 3.07-.63.74-1.74 1.34-2.87 1.25-.13-1.15.34-2.29.91-3z" />
+                    </svg>
+                  )}
+                </button>
+
+                {/* Facebook Small Icon Button */}
+                <button
+                  id="btn-oauth-facebook"
+                  data-testid="oauth-facebook-button"
+                  type="button"
+                  title="Facebook"
+                  disabled={isLoading}
+                  onClick={() => handleOAuthLogin('facebook')}
+                  className="h-11 rounded-xl bg-[#1877F2] hover:bg-[#166fe5] text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 shadow-xs group"
+                >
+                  {activeOAuthProvider === 'facebook' ? (
+                    <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                  ) : (
+                    <svg className="w-5 h-5 fill-current transition-transform group-hover:scale-110" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Links: Forgot Password & Mode Swap */}
+          <div className="flex flex-col gap-2 items-center justify-center pt-4 border-t border-slate-100 dark:border-slate-800/80 mt-4 select-none">
+            {authMode === 'login' && (
+              <button
+                id="btn-auth-forgot-trigger"
+                onClick={() => { setFeedback(null); setAuthMode('forgot'); }}
+                className="text-[11px] font-bold text-amber-500 hover:text-amber-600 hover:underline cursor-pointer transition-colors"
+              >
+                {isRtl ? 'هل نسيت كلمة المرور؟ 🔑' : 'Forgot Password? 🔑'}
+              </button>
+            )}
+
+            <button
+              id="btn-auth-mode-swap"
+              onClick={() => {
+                setFeedback(null);
+                if (authMode === 'forgot') {
+                  setAuthMode('login');
+                } else {
+                  setAuthMode(authMode === 'login' ? 'register' : 'login');
+                }
+              }}
+              className="text-[11px] font-black text-[var(--primary-color)] hover:underline cursor-pointer transition-colors"
+            >
+              {authMode === 'forgot'
+                ? (isRtl ? 'العودة لتسجيل الدخول 🔙' : 'Back to Login 🔙')
+                : authMode === 'login' ? t.dont_have_acc : t.already_have_acc}
+            </button>
+          </div>
+
         </div>
-
-
 
       </div>
     </div>

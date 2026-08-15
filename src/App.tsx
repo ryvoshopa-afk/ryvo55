@@ -2458,6 +2458,7 @@ export default function App() {
           currentLanguage={language}
           onClose={() => setIsAuthOpen(false)}
           onAuthSuccess={handleAuthSuccess}
+          shopLogo={shopLogo}
         />
       )}
 

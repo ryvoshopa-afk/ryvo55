@@ -185,6 +185,15 @@ export async function loginWithProvider(providerType: OAuthProviderType): Promis
       }
     }
 
+    if (errorCode === 'auth/unauthorized-domain') {
+      return {
+        success: false,
+        errorCode,
+        errorMessageAr: `النطاق الحالي (${window.location.hostname}) غير مضاف إلى قائمة Authorized Domains في Firebase Authentication Console. يرجى إضافته في إعدادات Firebase Authentication > Settings > Authorized domains.`,
+        errorMessageEn: `Current domain (${window.location.hostname}) is not authorized for OAuth. Please add it to Authorized Domains in Firebase Console (Authentication > Settings > Authorized domains).`
+      };
+    }
+
     if (errorCode === 'auth/account-exists-with-different-credential') {
       return {
         success: false,
