@@ -451,117 +451,11 @@ export default function Navbar({
       <nav className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#FFFFFF]/95 dark:bg-[#090B0E]/95 border-b border-[#E2E8F0] dark:border-[#1E293B] transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           
-          {/* Mobile Header View (lg:hidden) */}
-          <div className="lg:hidden w-full px-2 py-2.5 flex items-center justify-between gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar">
-            {/* 1. Menu Toggle ☰ */}
-            <button
-              id="mobile-menu-toggle"
-              data-testid="mobile-menu-btn"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-800 dark:text-slate-100 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
-              aria-label={isRtl ? 'فتح القائمة الجانبية' : 'Open mobile menu'}
-            >
-              {isMobileMenuOpen ? <X className="w-5 h-5 text-[var(--primary-color)]" /> : <Menu className="w-5 h-5" />}
-            </button>
-
-            {/* 2. RYVO Logo Container */}
-            <button
-              id="ryvo-brand-mobile"
-              onClick={() => onNavigate('home')}
-              className="flex items-center justify-center bg-slate-50 dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-2xl px-2.5 py-1 min-w-[90px] max-w-[125px] h-10 sm:h-11 shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
-              aria-label="RYVO Logo"
-            >
-              {shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/') ? (
-                <img 
-                  src={shopLogo} 
-                  alt="RYVO Logo" 
-                  className="h-7 sm:h-8 w-auto max-w-[105px] object-contain" 
-                  referrerPolicy="no-referrer" 
-                />
-              ) : (
-                <span className="text-[var(--primary-color)] font-black text-xs sm:text-sm tracking-wider uppercase truncate">
-                  {shopLogo}
-                </span>
-              )}
-            </button>
-
-            {/* 3. Settings ⚙ */}
-            <button
-              id="mobile-settings-button"
-              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
-              title={isRtl ? 'الإعدادات والخيارات ⚙️' : 'Settings ⚙️'}
-            >
-              <Settings className={`w-5 h-5 ${isSettingsOpen ? 'animate-spin text-[var(--primary-color)]' : 'text-slate-500 dark:text-slate-400'}`} />
-            </button>
-
-            {/* 4. Theme ☀️/🌙 */}
-            <button
-              id="mobile-theme-button"
-              onClick={onThemeToggle}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
-              aria-label="Toggle Theme"
-            >
-              {currentTheme === 'light' ? <Moon className="w-5 h-5 text-slate-600" /> : <Sun className="w-5 h-5 text-amber-400" />}
-            </button>
-
-            {/* 5. Notifications 🔔 */}
-            <button
-              id="mobile-notifications-button"
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
-              title={isRtl ? 'الإشعارات 🔔' : 'Notifications 🔔'}
-            >
-              <Bell className="w-5 h-5 text-slate-500 dark:text-slate-400" />
-              {(() => {
-                const unread = notifications.filter((n: any) => !n.read).length;
-                return unread > 0 ? (
-                  <span className="absolute -top-1 -right-1 bg-[var(--primary-color)] text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce shadow-xs">
-                    {unread}
-                  </span>
-                ) : null;
-              })()}
-            </button>
-
-            {/* 6. Cart 🛍 */}
-            <button
-              id="mobile-cart-button"
-              onClick={onCartOpen}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
-              aria-label="Shopping Cart"
-            >
-              <ShoppingBag className="w-5 h-5 text-slate-500 dark:text-slate-400" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[var(--primary-color)] text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce shadow-xs">
-                  {cartCount}
-                </span>
-              )}
-            </button>
-
-            {/* 7. Login / Account Button */}
-            <button
-              id="mobile-login-button"
-              onClick={() => {
-                if (currentUser) {
-                  onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard');
-                } else {
-                  onAuthOpen();
-                }
-              }}
-              className="h-10 sm:h-11 px-3 sm:px-4 rounded-2xl bg-[var(--primary-color)] hover:brightness-110 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer transition-all shadow-sm shadow-red-500/20"
-            >
-              <UserIcon className="w-4 h-4 shrink-0" />
-              <span className="truncate max-w-[80px] sm:max-w-[100px]">
-                {currentUser ? currentUser.name : (isRtl ? 'تسجيل الدخول' : t.login)}
-              </span>
-            </button>
-          </div>
-
           {/* Desktop Header View (hidden lg:flex) */}
-          <div className="hidden lg:flex items-center justify-between h-20 gap-3 sm:gap-4 lg:gap-6">
+          <div className="hidden lg:flex items-center justify-between h-20 gap-2 xl:gap-6">
             
             {/* Logo */}
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2 xl:gap-3 shrink-0">
               <button
                 id="ryvo-brand"
                 onClick={() => onNavigate('home')}
@@ -571,11 +465,11 @@ export default function Navbar({
                   <img 
                     src={shopLogo} 
                     alt="RYVO Logo" 
-                    className="h-9 sm:h-11 md:h-12 w-auto max-w-[180px] sm:max-w-[220px] object-contain shrink-0" 
+                    className="h-9 sm:h-11 md:h-12 w-auto max-w-[150px] xl:max-w-[220px] object-contain shrink-0" 
                     referrerPolicy="no-referrer" 
                   />
                 ) : shopLogo.toUpperCase().includes('RYVO') ? (
-                  <div className="flex items-center gap-1.5 text-xl sm:text-2xl font-black font-sans tracking-tight">
+                  <div className="flex items-center gap-1.5 text-lg xl:text-2xl font-black font-sans tracking-tight">
                     <span className="text-[var(--primary-color)] font-black">RYVO</span>
                     {shopLogo.toUpperCase().replace('RYVO', '').trim() && (
                       <span className="text-slate-900 dark:text-white">
@@ -584,7 +478,7 @@ export default function Navbar({
                     )}
                   </div>
                 ) : (
-                  <div className="text-xl sm:text-2xl font-black font-sans tracking-tight text-slate-900 dark:text-white">
+                  <div className="text-lg xl:text-2xl font-black font-sans tracking-tight text-slate-900 dark:text-white">
                     <span className="text-[var(--primary-color)] font-black uppercase">
                       {shopLogo}
                     </span>
@@ -594,7 +488,7 @@ export default function Navbar({
             </div>
 
             {/* Quick Navigation Links (Desktop lg+) */}
-            <div className="hidden lg:flex items-center gap-4 xl:gap-6 shrink-0">
+            <div className="hidden lg:flex items-center gap-2.5 xl:gap-6 shrink-0">
               <button
                 id="nav-link-home"
                 data-testid="nav-link-1"
@@ -1064,6 +958,118 @@ export default function Navbar({
             </div>
 
           </div>
+
+          {/* Mobile Header View (lg:hidden) */}
+          <div className="lg:hidden w-full py-2 flex items-center justify-between gap-1 sm:gap-2">
+            {/* Left: Menu Toggle ☰ + RYVO Logo */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <button
+                id="mobile-menu-toggle"
+                data-testid="mobile-menu-btn"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-800 dark:text-slate-100 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
+                aria-label={isRtl ? 'فتح القائمة الجانبية' : 'Open mobile menu'}
+              >
+                {isMobileMenuOpen ? <X className="w-4 h-4 text-[var(--primary-color)]" /> : <Menu className="w-4 h-4" />}
+              </button>
+
+              <button
+                id="ryvo-brand-mobile"
+                onClick={() => onNavigate('home')}
+                className="flex items-center justify-center bg-slate-50 dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-xl px-1.5 py-1 min-w-[55px] max-w-[80px] sm:max-w-[110px] h-9 sm:h-10 shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
+                aria-label="RYVO Logo"
+              >
+                {shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/') ? (
+                  <img 
+                    src={shopLogo} 
+                    alt="RYVO Logo" 
+                    className="h-5 sm:h-7 w-auto max-w-[70px] sm:max-w-[95px] object-contain" 
+                    referrerPolicy="no-referrer" 
+                  />
+                ) : (
+                  <span className="text-[var(--primary-color)] font-black text-xs tracking-wider uppercase truncate">
+                    {shopLogo}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Right: Actions (Theme, Notif, Cart, Login) */}
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              {/* Settings (visible on sm+ screens, and inside Drawer) */}
+              <button
+                id="mobile-settings-button"
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                className="hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
+                title={isRtl ? 'الإعدادات والخيارات ⚙️' : 'Settings ⚙️'}
+              >
+                <Settings className={`w-4 h-4 ${isSettingsOpen ? 'animate-spin text-[var(--primary-color)]' : 'text-slate-500 dark:text-slate-400'}`} />
+              </button>
+
+              {/* Theme ☀️/🌙 (available on sm+ in topbar and always inside Drawer) */}
+              <button
+                id="mobile-theme-button"
+                onClick={onThemeToggle}
+                className="hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
+                aria-label="Toggle Theme"
+              >
+                {currentTheme === 'light' ? <Moon className="w-4 h-4 text-slate-600" /> : <Sun className="w-4 h-4 text-amber-400" />}
+              </button>
+
+              {/* Notifications 🔔 (available on sm+ in topbar and always inside Drawer) */}
+              <button
+                id="mobile-notifications-button"
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className="hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 items-center justify-center relative shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
+                title={isRtl ? 'الإشعارات 🔔' : 'Notifications 🔔'}
+              >
+                <Bell className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                {(() => {
+                  const unread = notifications.filter((n: any) => !n.read).length;
+                  return unread > 0 ? (
+                    <span className="absolute -top-1 -right-1 bg-[var(--primary-color)] text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                      {unread}
+                    </span>
+                  ) : null;
+                })()}
+              </button>
+
+              {/* Cart 🛍 */}
+              <button
+                id="mobile-cart-button"
+                onClick={onCartOpen}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
+                aria-label="Shopping Cart"
+              >
+                <ShoppingBag className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[var(--primary-color)] text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                    {cartCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Login / Account Button */}
+              <button
+                id="mobile-login-button"
+                data-testid="login-button"
+                onClick={() => {
+                  if (currentUser) {
+                    onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard');
+                  } else {
+                    onAuthOpen();
+                  }
+                }}
+                aria-label={isRtl ? 'تسجيل الدخول' : t.login}
+                className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-xl bg-[var(--primary-color)] hover:brightness-110 text-white font-black text-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer transition-all shadow-sm shadow-red-500/20"
+              >
+                <UserIcon className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate max-w-[65px] sm:max-w-[85px]">
+                  {currentUser ? currentUser.name : (isRtl ? 'تسجيل الدخول' : t.login)}
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Mobile Side Drawer Menu */}
@@ -1074,6 +1080,10 @@ export default function Navbar({
               onClick={() => setIsMobileMenuOpen(false)}
             />
             <div 
+              id="mobile-drawer"
+              data-testid="mobile-drawer"
+              role="dialog"
+              aria-label={isRtl ? 'قائمة RYVO الرئيسية' : 'RYVO Main Menu'}
               className={`fixed inset-y-0 ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} z-[70] w-80 max-w-[85vw] h-[100dvh] max-h-[100dvh] bg-white dark:bg-[#121622] border-slate-200 dark:border-[var(--border-dark)] shadow-2xl flex flex-col justify-between md:hidden animate-in fade-in duration-200 overflow-hidden select-none`}
               style={{
                 touchAction: 'pan-y'

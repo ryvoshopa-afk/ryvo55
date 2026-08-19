@@ -2,6 +2,24 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+
+// Process-level unhandled error handlers for clear diagnostics and logging
+process.on("unhandledRejection", (reason: any) => {
+  console.error("[ERROR] Unhandled Promise Rejection:", {
+    reason: reason instanceof Error ? reason.message : reason,
+    stack: reason instanceof Error ? reason.stack : undefined,
+    timestamp: new Date().toISOString()
+  });
+});
+
+process.on("uncaughtException", (error: Error) => {
+  console.error("[ERROR] Uncaught Exception:", {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+    timestamp: new Date().toISOString()
+  });
+});
 import { createServer as createViteServer } from "vite";
 import { createServer as createHttpServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
@@ -617,7 +635,7 @@ app.use((req, res, next) => {
     "font-src 'self' data: https://fonts.gstatic.com; " +
     "img-src * data: blob: android-asset:; " + // Relaxed image source to prevent breaking product images loaded via Unsplash/user uploads
     "media-src * data: blob:; " +
-    "connect-src 'self' ws: wss: https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.google.com; " +
+    "connect-src 'self' ws: wss: https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.google.com https://ipapi.co; " +
     "frame-src 'self' https://*.google.com https://*.run.app https://ai.studio; " +
     "frame-ancestors 'self' https://*.google.com https://ai.studio https://*.run.app; " +
     "object-src 'none';"
@@ -855,11 +873,29 @@ async function runFirestoreBackup() {
   }
 }
 
-// Run backup 10 seconds after server bootstrap, and repeat every 24 hours
-setTimeout(() => {
-  runFirestoreBackup();
-}, 10000);
-setInterval(runFirestoreBackup, 24 * 60 * 60 * 1000);
+let backupSchedulerStarted = false;
+function initBackupScheduler() {
+  if (backupSchedulerStarted) return;
+  backupSchedulerStarted = true;
+  setTimeout(() => {
+    runFirestoreBackup().catch((e) => {
+      console.error("[ERROR] Firestore Backup Failure:", {
+        reason: e?.message || e,
+        stack: e?.stack,
+        timestamp: new Date().toISOString()
+      });
+    });
+  }, 10000);
+  setInterval(() => {
+    runFirestoreBackup().catch((e) => {
+      console.error("[ERROR] Firestore Periodic Backup Failure:", {
+        reason: e?.message || e,
+        stack: e?.stack,
+        timestamp: new Date().toISOString()
+      });
+    });
+  }, 24 * 60 * 60 * 1000);
+}
 
 // Initialize Firebase Client SDK safely for Server-Side Use
 export let db: any = null;
@@ -2974,14 +3010,14 @@ app.post("/api/auth/login", async (req, res) => {
   if (!userFound) {
     return res.status(401).json({
       stage: "user_not_found",
-      error: "البريد الإلكتروني غير مسجل في النظام."
+      error: "يبدو أن البريد الإلكتروني أو كلمة المرور غير صحيحة! يرجى التحقق وإعادة المحاولة أو استعادتها."
     });
   }
 
   // Case C: User exists but password was wrong
   return res.status(401).json({
     stage: "firebase_auth",
-    error: "كلمة المرور غير صحيحة (Invalid Credentials)"
+    error: "يبدو أن البريد الإلكتروني أو كلمة المرور غير صحيحة! يرجى التحقق وإعادة المحاولة أو استعادتها."
   });
 });
 
@@ -7390,9 +7426,31 @@ async function setupViteRouter() {
     console.error("⚠️ PostgreSQL initialization error:", dbErr.message);
   }
 
+  httpServer.on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+      console.warn(`⚠️ [PORT OCCUPIED] Port ${PORT} is in use. Process will wait and retry gracefully.`);
+    } else {
+      console.error("⚠️ HTTP server error:", err?.message || err);
+    }
+  });
+
+  const handleShutdown = (signal: string) => {
+    console.log(`📡 Received ${signal}. Shutting down HTTP server gracefully...`);
+    httpServer.close(() => {
+      console.log("🛑 HTTP server stopped cleanly.");
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+  process.on("SIGINT", () => handleShutdown("SIGINT"));
+
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server successfully started on http://localhost:${PORT}`);
     
+    // Start automated Firestore backup schedule safely as a singleton
+    initBackupScheduler();
+
     // Seed the Firestore database asynchronously after the server is up and listening
     console.log("Executing Firestore initialization/seeding asynchronously...");
     seedDatabaseIfNeeded()

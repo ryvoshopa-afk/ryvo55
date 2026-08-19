@@ -344,20 +344,21 @@ export default function AuthModal({
         } else {
           const resErr = await response.json().catch(() => ({}));
           const defaultArMsg = 'يبدو أن البريد الإلكتروني أو كلمة المرور غير صحيحة! يرجى التحقق وإعادة المحاولة أو استعادتها.';
-          const errMsg = isRtl
-            ? (resErr.error || defaultArMsg)
-            : (resErr.error || 'Invalid email address or password');
+          const defaultEnMsg = 'Invalid email address or password. Please verify and try again.';
+          let errMsg = isRtl ? defaultArMsg : defaultEnMsg;
+          if (resErr.error && !resErr.error.includes('كلمة المرور غير صحيحة') && !resErr.error.includes('غير مسجل') && !resErr.error.includes('Invalid Credentials')) {
+            errMsg = resErr.error;
+          }
           setFeedback({ type: 'error', text: errMsg });
           setIsLoading(false);
           return;
         }
       } catch (apiErr) {
         console.error("⚠️ API Login network error:", apiErr);
+        const defaultArMsg = 'يبدو أن البريد الإلكتروني أو كلمة المرور غير صحيحة! يرجى التحقق وإعادة المحاولة أو استعادتها.';
         setFeedback({
           type: 'error',
-          text: isRtl 
-            ? 'حدث خطأ بالاتصال بالخادم. يرجى التأكد من اتصال الإنترنت وإعادة المحاولة.' 
-            : 'Connection error. Please check your network and try again.'
+          text: isRtl ? defaultArMsg : 'Invalid email address or password. Please verify and try again.'
         });
         setIsLoading(false);
         return;
@@ -447,7 +448,8 @@ export default function AuthModal({
       {/* Dialog container with full responsive constraints & safe area support */}
       <div 
         id="auth-form-dialog" 
-        className="relative z-10 bg-white dark:bg-[#121622] rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-[var(--border-dark)] animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-gray-100 flex flex-col my-auto max-h-[calc(100dvh-2rem)] overflow-hidden"
+        data-testid="auth-modal"
+        className="relative z-10 bg-white dark:bg-[#121622] rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-[var(--border-dark)] animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-gray-100 flex flex-col my-auto max-h-[calc(100dvh-2rem)] overflow-hidden pointer-events-auto"
         style={{
           width: 'min(100% - 1rem, 440px)',
           marginTop: 'max(0.75rem, env(safe-area-inset-top))',
@@ -516,7 +518,7 @@ export default function AuthModal({
           {feedback && (
             <div
               id={feedback.type === 'error' ? 'auth-error-message' : 'auth-success-message'}
-              data-testid={feedback.type === 'error' ? 'auth-error-message' : 'auth-success-message'}
+              data-testid={feedback.type === 'error' ? 'login-error' : 'auth-success-message'}
               role={feedback.type === 'error' ? 'alert' : 'status'}
               aria-live="assertive"
               className={`p-3.5 rounded-2xl text-xs font-bold ${
@@ -611,7 +613,7 @@ export default function AuthModal({
                     </div>
                     <input
                       id="auth-email-input"
-                      data-testid="email-input"
+                      data-testid="login-email"
                       type="email"
                       required
                       value={email}
@@ -633,7 +635,7 @@ export default function AuthModal({
                       </div>
                       <input
                         id="auth-password-input"
-                        data-testid="password-input"
+                        data-testid="login-password"
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={password}
@@ -657,7 +659,7 @@ export default function AuthModal({
             {/* Primary Action Button */}
             <button
               id="btn-auth-submit"
-              data-testid="login-submit-button"
+              data-testid="login-submit"
               type="submit"
               disabled={isLoading}
               className="w-full py-3 bg-[var(--primary-color)] hover:brightness-110 active:scale-[0.98] text-white font-black rounded-xl transition-all cursor-pointer text-xs uppercase shadow-md shadow-red-500/20 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"

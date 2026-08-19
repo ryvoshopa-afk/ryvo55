@@ -56,7 +56,7 @@ export default function CartDrawer({
         className="absolute inset-0 bg-slate-950/50 dark:bg-black/80 backdrop-blur-sm transition-opacity"
       ></div>
 
-      <div className={`absolute inset-y-0 ${isRtl ? 'left-0' : 'right-0'} max-w-md w-full bg-white dark:bg-[#121622] shadow-2xl flex flex-col justify-between border-l border-slate-200 dark:border-[var(--border-dark)] animate-in slide-in-from-right duration-300 text-slate-800 dark:text-gray-100`}>
+      <div className={`absolute inset-y-0 ${isRtl ? 'left-0 border-r' : 'right-0 border-l'} max-w-[90vw] sm:max-w-md w-full bg-white dark:bg-[#121622] shadow-2xl flex flex-col justify-between border-slate-200 dark:border-[var(--border-dark)] animate-in slide-in-from-right duration-300 text-slate-800 dark:text-gray-100`}>
         
         {/* Drawer Header */}
         <div className="p-6 border-b border-slate-200 dark:border-[var(--border-dark)] flex items-center justify-between">
