@@ -448,7 +448,10 @@ export default function AuthModal({
       {/* Dialog container with full responsive constraints & safe area support */}
       <div 
         id="auth-form-dialog" 
-        data-testid="auth-modal"
+        data-testid="login-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-modal-title"
         className="relative z-10 bg-white dark:bg-[#121622] rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-[var(--border-dark)] animate-in fade-in zoom-in-95 duration-200 text-slate-800 dark:text-gray-100 flex flex-col my-auto max-h-[calc(100dvh-2rem)] overflow-hidden pointer-events-auto"
         style={{
           width: 'min(100% - 1rem, 440px)',
@@ -494,7 +497,7 @@ export default function AuthModal({
             </div>
 
             {/* Title */}
-            <h2 className="text-lg sm:text-xl font-black tracking-tight text-slate-950 dark:text-white">
+            <h2 id="auth-modal-title" className="text-lg sm:text-xl font-black tracking-tight text-slate-950 dark:text-white">
               {authMode === 'login' 
                 ? t.login 
                 : authMode === 'register' 

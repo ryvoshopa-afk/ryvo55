@@ -945,10 +945,10 @@ export default function Navbar({
               ) : (
                 <button
                   id="auth-login-trigger"
-                  data-testid="login-button"
+                  data-testid="sign-in-button"
                   onClick={onAuthOpen}
                   className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 bg-[var(--primary-color)] hover:brightness-110 text-white font-black text-xs rounded-xl shadow-lg shadow-red-500/20 transition-all cursor-pointer whitespace-nowrap"
-                  aria-label={currentLanguage === 'ar' ? 'تسجيل الدخول أو إنشاء حساب' : 'Login or sign up'}
+                  aria-label={currentLanguage === 'ar' ? 'تسجيل الدخول' : 'Sign In'}
                 >
                   <UserIcon className="w-4 h-4 shrink-0" />
                   <span>{t.login}</span>
@@ -965,7 +965,7 @@ export default function Navbar({
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 id="mobile-menu-toggle"
-                data-testid="mobile-menu-btn"
+                data-testid="mobile-menu-button"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-800 dark:text-slate-100 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
                 aria-label={isRtl ? 'فتح القائمة الجانبية' : 'Open mobile menu'}
@@ -1052,7 +1052,7 @@ export default function Navbar({
               {/* Login / Account Button */}
               <button
                 id="mobile-login-button"
-                data-testid="login-button"
+                data-testid="sign-in-mobile-button"
                 onClick={() => {
                   if (currentUser) {
                     onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard');
@@ -1252,7 +1252,7 @@ export default function Navbar({
                 ) : (
                   <button
                     id="mobile-drawer-login-btn"
-                    data-testid="login-button"
+                    data-testid="sign-in-mobile-button"
                     onClick={() => { onAuthOpen(); setIsMobileMenuOpen(false); }}
                     className="w-full flex items-center justify-center gap-2 py-3 bg-[var(--primary-color)] text-white font-black text-xs rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
                   >
