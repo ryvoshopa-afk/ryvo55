@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useConfirm } from './ConfirmationDialog';
 import { Language, Theme, User } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
-import { ShoppingBag, Heart, User as UserIcon, Sun, Moon, Settings, ShieldAlert, Languages, Search, Sliders, MessageSquare, Truck, Home, Facebook, Twitter, Instagram, Youtube, Music, Ghost, Volume2, VolumeX, Coins, BookOpen, Bell, Menu, X, Grid } from 'lucide-react';
+import { ShoppingBag, Heart, User as UserIcon, Sun, Moon, Settings, ShieldAlert, Languages, Search, Sliders, MessageSquare, Truck, Home, Facebook, Twitter, Instagram, Youtube, Music, Ghost, Volume2, VolumeX, Coins, BookOpen, Bell, Menu, X, Grid, Globe } from 'lucide-react';
 import { formatPrice } from '../utils/price';
 import socket from '../utils/socket';
 import { smartFetch } from '../utils/smartFetch';
@@ -960,67 +960,75 @@ export default function Navbar({
           </div>
 
           {/* Mobile Header View (lg:hidden) */}
-          <div className="lg:hidden w-full py-2 flex items-center justify-between gap-1 sm:gap-2">
-            {/* Left: Menu Toggle ☰ + RYVO Logo */}
+          <div className="lg:hidden w-full py-2 flex items-center justify-between gap-1.5 sm:gap-2">
+            {/* Left Group: Menu Toggle ☰ + Perfectly Circular RYVO Logo */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 id="mobile-menu-toggle"
                 data-testid="mobile-menu-button"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-800 dark:text-slate-100 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
+                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-800 dark:text-slate-100 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] active:scale-95 transition-all shadow-xs"
                 aria-label={isRtl ? 'فتح القائمة الجانبية' : 'Open mobile menu'}
               >
-                {isMobileMenuOpen ? <X className="w-4 h-4 text-[var(--primary-color)]" /> : <Menu className="w-4 h-4" />}
+                {isMobileMenuOpen ? <X className="w-5 h-5 text-[var(--primary-color)]" /> : <Menu className="w-5 h-5" />}
               </button>
 
+              {/* Perfectly Centered & Symmetrical Circular RYVO Brand Logo */}
               <button
                 id="ryvo-brand-mobile"
+                data-testid="mobile-brand-logo"
                 onClick={() => onNavigate('home')}
-                className="flex items-center justify-center bg-slate-50 dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-xl px-1.5 py-1 min-w-[55px] max-w-[80px] sm:max-w-[110px] h-9 sm:h-10 shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
-                aria-label="RYVO Logo"
+                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-full bg-white dark:bg-[#121622] border-2 border-slate-200 dark:border-[var(--border-dark)] hover:border-[var(--primary-color)] flex items-center justify-center p-1 shrink-0 cursor-pointer transition-all shadow-xs overflow-hidden active:scale-95"
+                aria-label={isRtl ? 'الصفحة الرئيسية لـ RYVO' : 'RYVO Home'}
               >
                 {shopLogo.startsWith('data:image') || shopLogo.includes('http') || shopLogo.includes('/') ? (
                   <img 
                     src={shopLogo} 
-                    alt="RYVO Logo" 
-                    className="h-5 sm:h-7 w-auto max-w-[70px] sm:max-w-[95px] object-contain" 
+                    alt="RYVO" 
+                    className="w-full h-full object-contain rounded-full" 
                     referrerPolicy="no-referrer" 
                   />
                 ) : (
-                  <span className="text-[var(--primary-color)] font-black text-xs tracking-wider uppercase truncate">
-                    {shopLogo}
+                  <span className="text-[var(--primary-color)] font-black text-xs tracking-tighter uppercase select-none">
+                    {shopLogo || 'RYVO'}
                   </span>
                 )}
               </button>
             </div>
 
-            {/* Right: Actions (Theme, Notif, Cart, Login) */}
+            {/* Right Group: Actions (Settings, Theme, Notif, Cart, Login) with touch targets */}
             <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-              {/* Settings (visible on sm+ screens, and inside Drawer) */}
+              {/* Settings ⚙️ (visible on xs+ screens & fully organized in Drawer) */}
               <button
                 id="mobile-settings-button"
+                data-testid="mobile-settings-button"
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className="hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
+                className="hidden xs:flex w-9 h-9 sm:w-10 sm:h-10 min-w-[36px] sm:min-w-[40px] rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] active:scale-95 transition-all shadow-xs"
+                aria-label={isRtl ? 'الإعدادات والخيارات ⚙️' : 'Settings ⚙️'}
                 title={isRtl ? 'الإعدادات والخيارات ⚙️' : 'Settings ⚙️'}
               >
                 <Settings className={`w-4 h-4 ${isSettingsOpen ? 'animate-spin text-[var(--primary-color)]' : 'text-slate-500 dark:text-slate-400'}`} />
               </button>
 
-              {/* Theme ☀️/🌙 (available on sm+ in topbar and always inside Drawer) */}
+              {/* Theme ☀️/🌙 */}
               <button
                 id="mobile-theme-button"
+                data-testid="mobile-theme-toggle"
                 onClick={onThemeToggle}
-                className="hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
-                aria-label="Toggle Theme"
+                className="w-9 h-9 sm:w-10 sm:h-10 min-w-[36px] sm:min-w-[40px] rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] active:scale-95 transition-all shadow-xs"
+                aria-label={isRtl ? 'تغيير الوضع الداكن أو الفاتح' : 'Toggle Dark/Light Mode'}
+                title={isRtl ? 'تغيير الوضع 🌙/☀️' : 'Toggle Theme 🌙/☀️'}
               >
                 {currentTheme === 'light' ? <Moon className="w-4 h-4 text-slate-600" /> : <Sun className="w-4 h-4 text-amber-400" />}
               </button>
 
-              {/* Notifications 🔔 (available on sm+ in topbar and always inside Drawer) */}
+              {/* Notifications 🔔 */}
               <button
                 id="mobile-notifications-button"
+                data-testid="mobile-notifications-button"
                 onClick={() => setIsNotifOpen(!isNotifOpen)}
-                className="hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 items-center justify-center relative shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
+                className="w-9 h-9 sm:w-10 sm:h-10 min-w-[36px] sm:min-w-[40px] rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[var(--primary-color)] active:scale-95 transition-all shadow-xs"
+                aria-label={isRtl ? 'الإشعارات والتنبيهات' : 'Notifications'}
                 title={isRtl ? 'الإشعارات 🔔' : 'Notifications 🔔'}
               >
                 <Bell className="w-4 h-4 text-slate-500 dark:text-slate-400" />
@@ -1037,9 +1045,10 @@ export default function Navbar({
               {/* Cart 🛍 */}
               <button
                 id="mobile-cart-button"
+                data-testid="mobile-cart-button"
                 onClick={onCartOpen}
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[var(--primary-color)] transition-all shadow-xs"
-                aria-label="Shopping Cart"
+                className="w-9 h-9 sm:w-10 sm:h-10 min-w-[36px] sm:min-w-[40px] rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center relative shrink-0 cursor-pointer hover:border-[var(--primary-color)] active:scale-95 transition-all shadow-xs"
+                aria-label={isRtl ? 'سلة المشتريات' : 'Shopping Cart'}
               >
                 <ShoppingBag className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                 {cartCount > 0 && (
@@ -1061,10 +1070,10 @@ export default function Navbar({
                   }
                 }}
                 aria-label={isRtl ? 'تسجيل الدخول' : t.login}
-                className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-xl bg-[var(--primary-color)] hover:brightness-110 text-white font-black text-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer transition-all shadow-sm shadow-red-500/20"
+                className="h-9 sm:h-10 px-2.5 sm:px-3 min-h-[36px] sm:min-h-[40px] rounded-xl bg-[var(--primary-color)] hover:brightness-110 active:scale-95 text-white font-black text-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer transition-all shadow-sm shadow-red-500/20"
               >
                 <UserIcon className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate max-w-[65px] sm:max-w-[85px]">
+                <span className="truncate max-w-[55px] sm:max-w-[85px]">
                   {currentUser ? currentUser.name : (isRtl ? 'تسجيل الدخول' : t.login)}
                 </span>
               </button>
@@ -1224,6 +1233,98 @@ export default function Navbar({
                     <span>{currentUser.role === 'admin' ? (isRtl ? 'لوحة تحكم المسؤول ⚙️' : 'Admin Panel ⚙️') : (isRtl ? 'حسابي الشخصي 👤' : 'My Account 👤')}</span>
                   </button>
                 )}
+
+                {/* Settings & Preferences Section (الإعدادات والتفضيلات) */}
+                <div className="pt-3 pb-1 border-t border-slate-100 dark:border-white/10 mt-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 block px-3.5 mb-2">
+                    {isRtl ? 'الإعدادات والخيارات ⚙️' : 'Settings & Preferences ⚙️'}
+                  </span>
+
+                  <div className="space-y-1.5">
+                    {/* Theme Toggle Button */}
+                    <button
+                      onClick={onThemeToggle}
+                      className="w-full flex items-center justify-between py-2.5 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
+                      aria-label="Toggle Dark/Light Mode"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {currentTheme === 'light' ? <Moon className="w-4 h-4 text-slate-600" /> : <Sun className="w-4 h-4 text-amber-400" />}
+                        <span>{isRtl ? 'المظهر والوضع' : 'Theme Mode'}</span>
+                      </div>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-white dark:bg-slate-700 shadow-2xs">
+                        {currentTheme === 'light' ? (isRtl ? 'النهاري ☀️' : 'Light ☀️') : (isRtl ? 'الليلي 🌙' : 'Dark 🌙')}
+                      </span>
+                    </button>
+
+                    {/* Notifications Button */}
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        setIsNotifOpen(true);
+                      }}
+                      className="w-full flex items-center justify-between py-2.5 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
+                      aria-label="Open Notifications"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Bell className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                        <span>{isRtl ? 'الإشعارات والتنبيهات' : 'Notifications'}</span>
+                      </div>
+                      {(() => {
+                        const unread = notifications.filter((n: any) => !n.read).length;
+                        return unread > 0 ? (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[var(--primary-color)] text-white shadow-2xs">
+                            {unread} {isRtl ? 'جديد' : 'New'}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400">{isRtl ? 'محدّثة' : 'Updated'}</span>
+                        );
+                      })()}
+                    </button>
+
+                    {/* Store Preferences / Settings Modal */}
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        setIsSettingsOpen(true);
+                      }}
+                      className="w-full flex items-center justify-between py-2.5 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
+                      aria-label="Open Store Settings"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                        <span>{isRtl ? 'خيارات المتجر والموقع' : 'Store Settings'}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400">⚙️</span>
+                    </button>
+
+                    {/* Quick Language & Currency Switcher Row */}
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      <button
+                        onClick={() => {
+                          const nextLang = currentLanguage === 'ar' ? 'en' : currentLanguage === 'en' ? 'fr' : 'ar';
+                          onLanguageChange(nextLang);
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
+                        aria-label="Change Language"
+                      >
+                        <Globe className="w-3.5 h-3.5 text-[var(--primary-color)]" />
+                        <span className="uppercase text-[11px] font-black">{currentLanguage}</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          const nextCurr = currentCurrency === 'USD' ? 'SAR' : currentCurrency === 'SAR' ? 'EUR' : currentCurrency === 'EUR' ? 'AED' : 'USD';
+                          onCurrencyChange(nextCurr);
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
+                        aria-label="Change Currency"
+                      >
+                        <span className="text-[var(--primary-color)] font-black text-xs">$</span>
+                        <span className="uppercase text-[11px] font-black">{currentCurrency}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Drawer Fixed Footer / Actions (with bottom safe-area & Bottom Nav clearance) */}
