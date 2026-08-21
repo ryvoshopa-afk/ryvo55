@@ -635,105 +635,6 @@ export default function Navbar({
                 >
                   <Settings className={`w-4 h-4 text-slate-600 dark:text-slate-400 ${isSettingsOpen ? 'animate-spin' : 'hover:rotate-45 transition-transform duration-300'}`} />
                 </button>
-
-                {isSettingsOpen && (
-                  <>
-                    <div 
-                      className="fixed inset-0 bg-black/40 dark:bg-black/70 z-40 backdrop-blur-xs"
-                      onClick={() => setIsSettingsOpen(false)}
-                    />
-                    <div className="fixed top-[84px] left-1/2 -translate-x-1/2 w-[92%] sm:w-full max-w-sm bg-white dark:bg-[#121622] border border-slate-150 dark:border-[var(--border-dark)] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
-                      <div className="p-3 bg-slate-50 dark:bg-black/40 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
-                        <span className="text-xs font-black text-slate-800 dark:text-[var(--primary-color)]">
-                          ⚙️ {isRtl ? 'تخصيص التجربة' : 'Customize Experience'}
-                        </span>
-                        <button 
-                          onClick={() => setIsSettingsOpen(false)}
-                          className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold cursor-pointer"
-                        >
-                          {isRtl ? 'تم' : 'Done'}
-                        </button>
-                      </div>
-
-                      <div className="p-4 space-y-4 text-right">
-                        {/* Language Selection */}
-                        <div className="space-y-1.5">
-                          <label className={`block text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ${isRtl ? 'text-right' : 'text-left'}`}>
-                            🌐 {isRtl ? 'اللغة المفضلة' : 'Preferred Language'}
-                          </label>
-                          <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-[#090B0E] rounded-xl p-1 border dark:border-[var(--border-dark)]">
-                            {([
-                              { code: 'ar', label: 'العربية' },
-                              { code: 'en', label: 'English' },
-                              { code: 'fr', label: 'Français' }
-                            ]).map((la) => (
-                              <button
-                                key={la.code}
-                                onClick={() => {
-                                  onLanguageChange(la.code as Language);
-                                }}
-                                className={`py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                                  currentLanguage === la.code
-                                    ? 'bg-[var(--primary-color)] text-white shadow-sm font-black'
-                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                                }`}
-                              >
-                                {la.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Currency Selection */}
-                        <div className="space-y-1.5">
-                          <label className={`block text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ${isRtl ? 'text-right' : 'text-left'}`}>
-                            🪙 {isRtl ? 'العملة المعروضة' : 'Display Currency'}
-                          </label>
-                          <div className="grid grid-cols-4 gap-1 bg-slate-100 dark:bg-[#090B0E] rounded-xl p-1 border dark:border-[var(--border-dark)]">
-                            {(['SAR', 'USD', 'AED', 'EUR'] as const).map((curr) => (
-                              <button
-                                key={curr}
-                                onClick={() => onCurrencyChange(curr)}
-                                className={`py-1.5 text-[10px] font-black rounded-lg transition-all cursor-pointer ${
-                                  currentCurrency === curr
-                                    ? 'bg-[var(--primary-color)] text-white shadow-sm'
-                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                                }`}
-                              >
-                                {curr}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Sound Audio Toggle */}
-                        <div className="space-y-1.5">
-                          <label className={`block text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ${isRtl ? 'text-right' : 'text-left'}`}>
-                            🔊 {isRtl ? 'المؤثرات الصوتية' : 'Sound Effects'}
-                          </label>
-                          <button
-                            onClick={onMuteToggle}
-                            className={`w-full flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer ${
-                              !isMuted 
-                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold' 
-                                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-[var(--border-dark)] text-slate-500 dark:text-slate-400 font-medium'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-emerald-500 animate-pulse" />}
-                              <span className="text-[11px] font-bold">
-                                {isMuted ? (isRtl ? 'الأصوات مكتومة' : 'Sounds Muted') : (isRtl ? 'الأصوات مفعلة' : 'Sounds Active')}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-black underline uppercase">
-                              {isMuted ? (isRtl ? 'تشغيل' : 'Enable') : (isRtl ? 'كتم' : 'Mute')}
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
 
               {/* Dark & Light mode switch */}
@@ -998,16 +899,16 @@ export default function Navbar({
 
             {/* Right Group: Actions (Settings, Theme, Notif, Cart, Login) with touch targets */}
             <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-              {/* Settings ⚙️ (visible on xs+ screens & fully organized in Drawer) */}
+              {/* Settings ⚙️ (Always visible on mobile & opens the comprehensive settings modal) */}
               <button
                 id="mobile-settings-button"
                 data-testid="mobile-settings-button"
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className="hidden xs:flex w-9 h-9 sm:w-10 sm:h-10 min-w-[36px] sm:min-w-[40px] rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] active:scale-95 transition-all shadow-xs"
-                aria-label={isRtl ? 'الإعدادات والخيارات ⚙️' : 'Settings ⚙️'}
+                className="w-9 h-9 sm:w-10 sm:h-10 min-w-[36px] sm:min-w-[40px] rounded-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 cursor-pointer hover:border-[var(--primary-color)] active:scale-95 transition-all shadow-xs"
+                aria-label={isRtl ? 'الإعدادات والخيارات (اللغة والعملة والصوت) ⚙️' : 'Settings (Language, Currency, Sound) ⚙️'}
                 title={isRtl ? 'الإعدادات والخيارات ⚙️' : 'Settings ⚙️'}
               >
-                <Settings className={`w-4 h-4 ${isSettingsOpen ? 'animate-spin text-[var(--primary-color)]' : 'text-slate-500 dark:text-slate-400'}`} />
+                <Settings className={`w-4 h-4 ${isSettingsOpen ? 'animate-spin text-[var(--primary-color)]' : 'text-slate-600 dark:text-slate-400'}`} />
               </button>
 
               {/* Theme ☀️/🌙 */}
@@ -1281,7 +1182,7 @@ export default function Navbar({
                       })()}
                     </button>
 
-                    {/* Store Preferences / Settings Modal */}
+                    {/* Store Preferences / Settings Modal (Language, Currency, Sound) */}
                     <button
                       onClick={() => {
                         setIsMobileMenuOpen(false);
@@ -1292,9 +1193,28 @@ export default function Navbar({
                     >
                       <div className="flex items-center gap-2.5">
                         <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                        <span>{isRtl ? 'خيارات المتجر والموقع' : 'Store Settings'}</span>
+                        <span>{isRtl ? 'لوحة تخصيص الإعدادات ⚙️' : 'Customize Settings ⚙️'}</span>
                       </div>
-                      <span className="text-[10px] text-slate-400">⚙️</span>
+                      <span className="text-[10px] text-slate-400 font-bold">{isRtl ? 'فتح' : 'Open'}</span>
+                    </button>
+
+                    {/* Sound Audio Mute Toggle Button in Drawer */}
+                    <button
+                      onClick={onMuteToggle}
+                      className={`w-full flex items-center justify-between py-2.5 px-3.5 rounded-xl transition-all ${
+                        !isMuted 
+                          ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold' 
+                          : 'bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold'
+                      }`}
+                      aria-label="Toggle Sound Effects"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-emerald-500 animate-pulse" />}
+                        <span>{isRtl ? 'المؤثرات الصوتية' : 'Sound Effects'}</span>
+                      </div>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-white dark:bg-slate-700 shadow-2xs">
+                        {isMuted ? (isRtl ? 'مكتوم 🔇' : 'Muted 🔇') : (isRtl ? 'مفعل 🔊' : 'Active 🔊')}
+                      </span>
                     </button>
 
                     {/* Quick Language & Currency Switcher Row */}
@@ -1304,11 +1224,16 @@ export default function Navbar({
                           const nextLang = currentLanguage === 'ar' ? 'en' : currentLanguage === 'en' ? 'fr' : 'ar';
                           onLanguageChange(nextLang);
                         }}
-                        className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
+                        className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
                         aria-label="Change Language"
                       >
-                        <Globe className="w-3.5 h-3.5 text-[var(--primary-color)]" />
-                        <span className="uppercase text-[11px] font-black">{currentLanguage}</span>
+                        <div className="flex items-center gap-1.5">
+                          <Globe className="w-3.5 h-3.5 text-[var(--primary-color)]" />
+                          <span className="text-[11px] font-bold">{isRtl ? 'اللغة:' : 'Lang:'}</span>
+                        </div>
+                        <span className="uppercase text-[11px] font-black px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 text-[var(--primary-color)]">
+                          {currentLanguage === 'ar' ? 'العربية' : currentLanguage === 'fr' ? 'Français' : 'English'}
+                        </span>
                       </button>
 
                       <button
@@ -1316,11 +1241,16 @@ export default function Navbar({
                           const nextCurr = currentCurrency === 'USD' ? 'SAR' : currentCurrency === 'SAR' ? 'EUR' : currentCurrency === 'EUR' ? 'AED' : 'USD';
                           onCurrencyChange(nextCurr);
                         }}
-                        className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
+                        className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
                         aria-label="Change Currency"
                       >
-                        <span className="text-[var(--primary-color)] font-black text-xs">$</span>
-                        <span className="uppercase text-[11px] font-black">{currentCurrency}</span>
+                        <div className="flex items-center gap-1.5">
+                          <Coins className="w-3.5 h-3.5 text-[var(--primary-color)]" />
+                          <span className="text-[11px] font-bold">{isRtl ? 'العملة:' : 'Curr:'}</span>
+                        </div>
+                        <span className="uppercase text-[11px] font-black px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 text-[var(--primary-color)]">
+                          {currentCurrency}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -1461,6 +1391,126 @@ export default function Navbar({
           </button>
         </div>
       </div>
+
+      {/* Global Responsive Settings Modal (تخصيص الإعدادات: اللغة، العملة، كتم الصوت) */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop Blur */}
+          <div 
+            className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsSettingsOpen(false)}
+          />
+
+          {/* Modal Card */}
+          <div 
+            className="relative w-full max-w-sm bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-2xl shadow-2xl overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-label={isRtl ? 'إعدادات المتجر والتفضيلات' : 'Store Settings'}
+          >
+            {/* Header */}
+            <div className="p-3.5 bg-slate-50 dark:bg-black/40 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-[var(--primary-color)] animate-spin" />
+                <span className="text-xs font-black text-slate-800 dark:text-white">
+                  {isRtl ? 'تخصيص الإعدادات والخيارات' : 'Customize Experience'}
+                </span>
+              </div>
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
+                aria-label="Close Settings"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 space-y-4">
+              {/* Language Selection */}
+              <div className="space-y-1.5">
+                <label className={`block text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ${isRtl ? 'text-right' : 'text-left'}`}>
+                  🌐 {isRtl ? 'اللغة المفضلة' : 'Preferred Language'}
+                </label>
+                <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-[#090B0E] rounded-xl p-1 border dark:border-[var(--border-dark)]">
+                  {([
+                    { code: 'ar', label: 'العربية' },
+                    { code: 'en', label: 'English' },
+                    { code: 'fr', label: 'Français' }
+                  ]).map((la) => (
+                    <button
+                      key={la.code}
+                      onClick={() => onLanguageChange(la.code as Language)}
+                      className={`py-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                        currentLanguage === la.code
+                          ? 'bg-[var(--primary-color)] text-white shadow-sm font-black'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {la.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Currency Selection */}
+              <div className="space-y-1.5">
+                <label className={`block text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ${isRtl ? 'text-right' : 'text-left'}`}>
+                  🪙 {isRtl ? 'العملة المعروضة' : 'Display Currency'}
+                </label>
+                <div className="grid grid-cols-4 gap-1 bg-slate-100 dark:bg-[#090B0E] rounded-xl p-1 border dark:border-[var(--border-dark)]">
+                  {(['SAR', 'USD', 'AED', 'EUR'] as const).map((curr) => (
+                    <button
+                      key={curr}
+                      onClick={() => onCurrencyChange(curr)}
+                      className={`py-2 text-[10px] font-black rounded-lg transition-all cursor-pointer ${
+                        currentCurrency === curr
+                          ? 'bg-[var(--primary-color)] text-white shadow-sm'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {curr}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sound Audio Toggle */}
+              <div className="space-y-1.5">
+                <label className={`block text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ${isRtl ? 'text-right' : 'text-left'}`}>
+                  🔊 {isRtl ? 'المؤثرات الصوتية للمتجر' : 'Sound Effects'}
+                </label>
+                <button
+                  onClick={onMuteToggle}
+                  className={`w-full flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${
+                    !isMuted 
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold' 
+                      : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-[var(--border-dark)] text-slate-600 dark:text-slate-400 font-medium'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-emerald-500 animate-pulse" />}
+                    <span className="text-xs font-bold">
+                      {isMuted ? (isRtl ? 'الأصوات مكتومة' : 'Sounds Muted') : (isRtl ? 'الأصوات مفعلة ومسموعة' : 'Sounds Active')}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-1 rounded bg-white dark:bg-slate-800 shadow-2xs uppercase">
+                    {isMuted ? (isRtl ? 'تشغيل 🔊' : 'Enable 🔊') : (isRtl ? 'كتم 🔇' : 'Mute 🔇')}
+                  </span>
+                </button>
+              </div>
+
+              {/* Done Button */}
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="w-full py-2.5 bg-[var(--primary-color)] text-white font-black text-xs rounded-xl shadow-md hover:brightness-110 active:scale-98 transition-all cursor-pointer"
+              >
+                {isRtl ? 'حفظ وإغلاق ✓' : 'Save & Close ✓'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
