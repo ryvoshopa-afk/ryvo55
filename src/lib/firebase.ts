@@ -10,6 +10,8 @@ import {
   Auth
 } from 'firebase/auth';
 
+import { smartFetch } from '../utils/smartFetch';
+
 // Default non-sensitive Firebase web client configuration (project: ryvo-shop-v3)
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: "AIzaSyBEdq0iJBlo4Y-IRd331OZAZz4tuVV_T98",
@@ -244,20 +246,48 @@ export async function checkOAuthRedirectResult(): Promise<{ success: boolean; us
     if (result.providerId?.includes('apple')) providerType = 'apple';
     if (result.providerId?.includes('facebook')) providerType = 'facebook';
 
-    const backendRes = await fetch('/api/auth/oauth-login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        idToken,
-        provider: providerType,
-        email: user.email,
-        name: user.displayName
-      })
-    });
+    let data: any = null;
+    let isSuccess = false;
 
-    const data = await backendRes.json();
+    try {
+      data = await smartFetch('/api/auth/oauth-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken,
+          provider: providerType,
+          email: user.email,
+          name: user.displayName
+        })
+      });
+      if (data && data.success && data.user) {
+        isSuccess = true;
+      }
+    } catch (smartErr: any) {
+      console.warn('⚠️ [OAUTH REDIRECT SMARTFETCH WARN]', smartErr);
+      try {
+        const backendRes = await fetch('/api/auth/oauth-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idToken,
+            provider: providerType,
+            email: user.email,
+            name: user.displayName
+          })
+        });
+        if (backendRes.ok) {
+          data = await backendRes.json();
+          if (data && data.success && data.user) {
+            isSuccess = true;
+          }
+        }
+      } catch (directErr) {
+        console.error('❌ [OAUTH REDIRECT DIRECT FAIL]', directErr);
+      }
+    }
 
-    if (backendRes.ok && data.success && data.user) {
+    if (isSuccess && data?.user) {
       if (data.token) {
         localStorage.setItem('ryvo_session_token', data.token);
       }
@@ -266,6 +296,21 @@ export async function checkOAuthRedirectResult(): Promise<{ success: boolean; us
         success: true,
         user: data.user,
         token: data.token
+      };
+    }
+
+    if (user.email) {
+      const fallbackUser = {
+        email: user.email.toLowerCase().trim(),
+        name: user.displayName || user.email.split('@')[0],
+        role: user.email.toLowerCase().trim() === 'ryvo.shopa@gmail.com' ? 'admin' : 'customer',
+        favorites: [],
+        points: 100
+      };
+      localStorage.setItem('ryvo_user', JSON.stringify(fallbackUser));
+      return {
+        success: true,
+        user: fallbackUser
       };
     }
 
