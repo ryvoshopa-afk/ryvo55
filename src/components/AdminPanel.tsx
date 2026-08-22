@@ -1333,6 +1333,7 @@ export default function AdminPanel({
   const [supportSearchTerm, setSupportSearchTerm] = useState('');
   const [supportSelectedOrderId, setSupportSelectedOrderId] = useState<string>('');
   const [supportSubTab, setSupportSubTab] = useState<'chat' | 'quickReplies' | 'notifications' | 'settings' | 'knowledge' | 'logs'>('chat');
+  const [supportSessionFilter, setSupportSessionFilter] = useState<'human' | 'agent' | 'all' | 'closed'>('human');
   
   // Quick Replies (Canned Responses) state
   const [quickReplySearchTerm, setQuickReplySearchTerm] = useState('');
@@ -1604,6 +1605,12 @@ export default function AdminPanel({
       const reqId = data?.id || data?.requestId || `req-${Date.now()}`;
       const clientIdentifier = data?.userName || data?.clientName || data?.userEmail || data?.sessionId || 'عميل';
       const reason = data?.reason || data?.message || 'طلب التحدث مع موظف دعم بشري';
+      const incomingSessionId = data?.sessionId || data?.conversationId || data?.userEmail;
+
+      if (incomingSessionId) {
+        setSelectedSessionEmail(incomingSessionId);
+        setSupportSessionFilter('human');
+      }
 
       const saved = localStorage.getItem('ryvo_broadcast_notifications');
       let parsed: any[] = [];
@@ -7370,9 +7377,8 @@ export default function AdminPanel({
             </div>
 
             {(() => {
-              // ── AI-First: only show conversations that require HUMAN intervention ──
-              // Filter to only QUEUED_FOR_HUMAN and HUMAN_HANDLING - hide AI_HANDLING entirely
-              const humanStatuses = new Set(['QUEUED_FOR_HUMAN', 'HUMAN_HANDLING', 'waiting']);
+              // ── Multi-filter Support Sessions List ──
+              const humanStatuses = new Set(['QUEUED_FOR_HUMAN', 'HUMAN_HANDLING', 'waiting', 'pending', 'open', 'escalated']);
               const allConversations = dbConversations.map(c => {
                 const lastMsg = c.messages && c.messages.length > 0 ? c.messages[c.messages.length - 1] : null;
                 return {
@@ -7394,15 +7400,24 @@ export default function AdminPanel({
                 };
               });
 
-              // Only show sessions that need human agents (AI_HANDLING is hidden)
-              const list = allConversations.filter(s => humanStatuses.has(s.status));
+              // Apply active filter tab
+              let list = allConversations;
+              if (supportSessionFilter === 'human') {
+                list = allConversations.filter(s => s.status === 'QUEUED_FOR_HUMAN' || s.status === 'waiting' || s.status === 'pending' || s.status === 'escalated' || s.status === 'open');
+              } else if (supportSessionFilter === 'agent') {
+                list = allConversations.filter(s => s.status === 'HUMAN_HANDLING' || s.status === 'in_progress');
+              } else if (supportSessionFilter === 'closed') {
+                list = allConversations.filter(s => s.status === 'CLOSED' || s.status === 'resolved');
+              }
 
-              // Placeholder if no human-handled sessions exist
+              // Placeholder if no sessions match the filter
               if (list.length === 0) {
                 list.push({
                   email: 'no-sessions@ryvo.co',
-                  name: isRtl ? '✅ لا توجد جلسات تحتاج تدخلاً بشرياً' : '✅ No sessions need human support',
-                  lastText: isRtl ? 'الذكاء الاصطناعي يتعامل مع جميع الجلسات حالياً' : 'AI is handling all sessions',
+                  name: supportSessionFilter === 'human'
+                    ? (isRtl ? '✅ لا توجد طلبات معلقة للدعم البشري' : '✅ No pending human support requests')
+                    : (isRtl ? 'لا توجد محادثات في هذا القسم' : 'No conversations in this section'),
+                  lastText: isRtl ? 'الذكاء الاصطناعي يتعامل مع المحادثات حالياً' : 'AI is handling conversations currently',
                   time: '',
                   status: 'AI_HANDLING',
                   ai_summary: '',
@@ -8635,14 +8650,70 @@ export default function AdminPanel({
                             className="w-full text-[10px] p-2 bg-slate-50 dark:bg-[#090B0E] border border-slate-200 dark:border-slate-800 rounded-lg text-slate-805 dark:text-white outline-none font-sans text-right"
                           />
                         </div>
+
+                        {/* Filter Tabs */}
+                        <div className="grid grid-cols-4 gap-1 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setSupportSessionFilter('human')}
+                            className={`py-1 text-[8.5px] font-black rounded-lg transition-all cursor-pointer truncate ${
+                              supportSessionFilter === 'human'
+                                ? 'bg-amber-500 text-white shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                            }`}
+                          >
+                            {isRtl ? '⏳ معلقة' : '⏳ Queued'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSupportSessionFilter('agent')}
+                            className={`py-1 text-[8.5px] font-black rounded-lg transition-all cursor-pointer truncate ${
+                              supportSessionFilter === 'agent'
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                            }`}
+                          >
+                            {isRtl ? '👨‍💼 موظف' : '👨‍💼 Agent'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSupportSessionFilter('all')}
+                            className={`py-1 text-[8.5px] font-black rounded-lg transition-all cursor-pointer truncate ${
+                              supportSessionFilter === 'all'
+                                ? 'bg-sky-600 text-white shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                            }`}
+                          >
+                            {isRtl ? '🤖 الكل' : '🤖 All'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSupportSessionFilter('closed')}
+                            className={`py-1 text-[8.5px] font-black rounded-lg transition-all cursor-pointer truncate ${
+                              supportSessionFilter === 'closed'
+                                ? 'bg-slate-700 text-white shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                            }`}
+                          >
+                            {isRtl ? '✅ مغلقة' : '✅ Closed'}
+                          </button>
+                        </div>
                       </div>
 
                       {/* Live count badge */}
                       <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 px-1 py-1">
-                        <span className="text-amber-400 font-black">{list.filter(s => s.status !== 'AI_HANDLING').length} {isRtl ? 'تحتاج تدخلاً' : 'need attention'}</span>
+                        <span className="text-amber-400 font-black">
+                          {list.filter(s => s.status !== 'AI_HANDLING' && s.email !== 'no-sessions@ryvo.co').length} {isRtl ? 'جلسة' : 'sessions'}
+                        </span>
                         <span className="flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                          {isRtl ? 'مُصفّاة (بشري فقط)' : 'Filtered (human only)'}
+                          {supportSessionFilter === 'human'
+                            ? (isRtl ? 'طلب تدخل بشري' : 'Human requests')
+                            : supportSessionFilter === 'agent'
+                              ? (isRtl ? 'جارية مع موظف' : 'Active with agent')
+                              : supportSessionFilter === 'closed'
+                                ? (isRtl ? 'مكتملة' : 'Closed')
+                                : (isRtl ? 'جميع المحادثات' : 'All chats')}
                         </span>
                       </div>
                       <div className="flex-1 overflow-y-auto pt-1 space-y-2 pr-1 select-none">
