@@ -53,6 +53,27 @@
       "description": "Administrative and user activity audit trail log entity",
       "type": "object",
       "properties": {}
+    },
+    "SupportRequest": {
+      "title": "SupportRequest",
+      "description": "Customer escalation request for human support",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "conversationId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userPhone": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" },
+        "requestType": { "type": "string" },
+        "source": { "type": "string" },
+        "reason": { "type": "string" },
+        "message": { "type": "string" },
+        "aiSummary": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "unread": { "type": "boolean" }
+      }
     }
   },
   "firestore": {
@@ -91,6 +112,10 @@
     "support_conversations": {
       "schema": "SupportConversation",
       "description": "Real-time support conversations and metadata tracking"
+    },
+    "support_requests": {
+      "schema": "SupportRequest",
+      "description": "Escalated human support requests submitted by customers"
     },
     "audit_logs": {
       "schema": "AuditLog",

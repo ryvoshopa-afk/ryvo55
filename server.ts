@@ -6478,6 +6478,173 @@ app.post("/api/support/upload", async (req, res) => {
   }
 });
 
+// 7.8 Human Support Request Escalation Trigger (Writes to Firestore 'support_requests', triggers Resend Email, and displays real-time admin alert)
+app.post("/api/support/request-human", async (req, res) => {
+  const {
+    conversationId,
+    userName,
+    userEmail,
+    userPhone,
+    reason,
+    message,
+    aiSummary,
+    metadata
+  } = req.body;
+
+  const cleanSessionId = (conversationId || userEmail || 'guest@ryvo.co').toLowerCase().trim();
+  const clientName = userName || cleanSessionId.split('@')[0] || 'عميل المتجر';
+  const clientEmail = userEmail || cleanSessionId;
+  const clientPhone = userPhone || '';
+  const reqReason = reason || 'طلب التحدث مع موظف دعم بشري';
+  const summary = aiSummary || '';
+  const clientMessage = message || '';
+
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+  const supportRequestDoc = {
+    id: requestId,
+    conversationId: cleanSessionId,
+    userName: clientName,
+    userEmail: clientEmail,
+    userPhone: clientPhone,
+    status: 'pending',
+    priority: 'high',
+    requestType: 'human_support',
+    source: 'support_chat',
+    reason: reqReason,
+    message: clientMessage,
+    aiSummary: summary,
+    createdAt: new Date().toISOString(),
+    timestamp: Date.now(),
+    unread: true,
+    metadata: metadata || {}
+  };
+
+  try {
+    // 1. Push document to 'support_requests' Firestore collection
+    if (db) {
+      try {
+        await db.collection("support_requests").doc(requestId).set(supportRequestDoc);
+        console.log(`✅ [FIRESTORE API] Saved document to 'support_requests' with ID: ${requestId}`);
+      } catch (err: any) {
+        console.error("❌ [FIRESTORE API] Failed to setDoc in support_requests:", err.message);
+      }
+    }
+
+    // 2. Update conversation status in PostgreSQL / DB to QUEUED_FOR_HUMAN
+    await dbSupportService.updateConversationStatus(cleanSessionId, 'QUEUED_FOR_HUMAN');
+    if (summary) {
+      await dbSupportService.updateConversationSummary(cleanSessionId, summary);
+    }
+
+    // 3. Add system message
+    await dbSupportService.addMessage(
+      cleanSessionId,
+      'system',
+      'text',
+      'تم تسجيل طلب التحدث مع الدعم البشري بنجاح وتم إشعار مسؤولي الدعم بالمتجر عبر البريد الإلكتروني والإشعارات الفورية.',
+      false
+    );
+
+    // 4. Trigger Email via Resend API
+    sendAdminSupportRequestNotification(
+      clientEmail,
+      clientName,
+      clientMessage || reqReason,
+      cleanSessionId,
+      db,
+      getSettings,
+      {
+        phone: clientPhone,
+        reason: reqReason,
+        aiSummary: summary,
+        requestId: requestId,
+        device: metadata?.device
+      }
+    ).then((r) => {
+      console.log(`📧 [API RESEND] Support request email notification result: ${r.success ? 'SUCCESS' : 'FAILED'}`);
+    }).catch(e => {
+      console.error("❌ [API RESEND] Error sending support request email:", e);
+    });
+
+    // 5. Broadcast real-time Socket notification to all logged-in admins in agents_room
+    if (io) {
+      io.to('agents_room').emit('new_support_request', supportRequestDoc);
+      io.to('agents_room').emit('new_conversation_queued', {
+        sessionId: cleanSessionId,
+        clientName: clientName,
+        clientEmail: clientEmail,
+        ai_summary: summary,
+        requestId: requestId,
+        reason: reqReason,
+        createdAt: supportRequestDoc.createdAt
+      });
+      io.to('agents_room').emit('admin_notification', {
+        id: requestId,
+        title: 'طلب دعم فني بشري 🚨',
+        body: `${clientName} (${clientEmail}): ${reqReason}`,
+        icon: '👨‍💼',
+        timestamp: Date.now(),
+        type: 'support_request',
+        conversationId: cleanSessionId,
+        priority: 'high',
+        requestId: requestId
+      });
+      io.to('agents_room').emit('agent_status_updated', { sessionId: cleanSessionId, status: 'QUEUED_FOR_HUMAN' });
+      io.to(`conversation_${cleanSessionId}`).emit('status_updated', { status: 'QUEUED_FOR_HUMAN' });
+    }
+
+    await dbSupportService.addSupportLog(`Customer requested human support (#${requestId}). Pushed to support_requests.`, 'Customer');
+
+    return res.json({
+      success: true,
+      requestId,
+      request: supportRequestDoc,
+      message: "Human support request submitted successfully."
+    });
+  } catch (error: any) {
+    console.error("❌ Error processing human support request:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 7.9 Get all Support Requests (for Admin Panel)
+app.get("/api/support/requests", requireAdmin, async (req, res) => {
+  try {
+    let requests: any[] = [];
+    if (db) {
+      const snap = await db.collection("support_requests").get();
+      if (snap && snap.docs) {
+        requests = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      }
+    }
+    // Sort descending by timestamp/createdAt
+    requests.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    return res.json({ success: true, requests });
+  } catch (err: any) {
+    console.error("Error fetching support requests:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 7.10 Update Support Request Status
+app.patch("/api/support/requests/:id", requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  try {
+    if (db) {
+      await db.collection("support_requests").doc(id).update({
+        ...updates,
+        updatedAt: new Date().toISOString()
+      });
+    }
+    return res.json({ success: true, id, updates });
+  } catch (err: any) {
+    console.error("Error updating support request:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 8. Live Notifications API Endpoint
 app.get("/api/notifications", async (req, res) => {
   const { conversationId } = req.query;
@@ -7380,7 +7547,7 @@ async function setupViteRouter() {
     pingTimeout: 20000,
     pingInterval: 25000
   });
-  initSockets(io);
+  initSockets(io, db, getSettings);
 
   if (process.env.NODE_ENV !== "production") {
     console.log("Starting server in DEVELOPMENT mode with Vite Middleware...");

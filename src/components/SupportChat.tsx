@@ -274,23 +274,78 @@ export default function SupportChat({ currentLanguage, currentUser, onClose }: S
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isAiTyping, isAgentTyping]);
 
-  // ─── Handle Transfer to Agent (customer approves) ──────────────────────────
-  const handleTransferToAgent = async () => {
+  // ─── Automated Trigger for Human Support Escalation ──────────────────────────
+  const triggerContactHumanSupport = async (reason?: string, initialMessage?: string) => {
     try {
-      socket.emit('approve_transfer', { sessionId: conversationId });
+      const reasonText = reason || (isRtl ? 'طلب التحدث مع موظف دعم بشري' : 'Contact human support request');
+      const clientName = currentUser?.name || guestName || (isRtl ? 'عميل زائر' : 'Guest');
+      const clientEmail = currentUser?.email || conversationId;
+      const clientPhone = currentUser?.phone || '';
+      const lastMsg = initialMessage || (messages.length > 0 ? messages[messages.length - 1].text : '');
+
+      const metadata = {
+        userAgent: navigator.userAgent,
+        language: currentLanguage,
+        page: typeof window !== 'undefined' ? window.location.pathname : '/',
+        device: /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
+        timestamp: new Date().toISOString()
+      };
+
       setConvStatus('QUEUED_FOR_HUMAN');
+
+      // 1. Send via Real-time Socket
+      if (socketConnected) {
+        socket.emit('request_human_support', {
+          sessionId: conversationId,
+          userName: clientName,
+          userEmail: clientEmail,
+          userPhone: clientPhone,
+          reason: reasonText,
+          message: lastMsg,
+          aiSummary: aiSummary,
+          metadata
+        });
+      }
+
+      // 2. Automated POST request: creates 'support_requests' Firestore document & sends Resend email
+      try {
+        await smartFetch('/api/support/request-human', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId,
+            userName: clientName,
+            userEmail: clientEmail,
+            userPhone: clientPhone,
+            reason: reasonText,
+            message: lastMsg,
+            aiSummary: aiSummary,
+            metadata
+          })
+        });
+      } catch (postErr) {
+        console.warn('REST support request fallback completed:', postErr);
+      }
+
       const sysMsg: ChatMessage = {
-        id: `sys-transfer-${Date.now()}`,
+        id: `sys-human-req-${Date.now()}`,
         sender: 'support',
         sender_type: 'system',
-        text: isRtl ? '✅ تم تحويل محادثتك إلى قسم الدعم الفني البشري. سيتصل بك أحد موظفينا قريباً. شكراً لصبرك! 🙏' : '✅ Your conversation has been transferred to our human support team. An agent will be with you shortly. Thank you for your patience! 🙏',
+        text: isRtl
+          ? '✅ تم تسجيل طلب التحويل للدعم البشري بنجاح وإشعار فريق الإدارة والمسؤولين. سيتواصل معك أحد موظفينا قريباً جداً. 🙏'
+          : '✅ Human support request has been logged successfully and our support admins have been notified. An agent will be with you shortly. 🙏',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         timestamp: Date.now()
       };
       addMessage(sysMsg);
     } catch (err) {
-      console.error('Transfer failed:', err);
+      console.error('Failed to trigger human support request:', err);
     }
+  };
+
+  // ─── Handle Transfer to Agent (customer approves) ──────────────────────────
+  const handleTransferToAgent = async () => {
+    await triggerContactHumanSupport(isRtl ? 'موافقة العميل على التحويل للدعم البشري' : 'Customer approved transfer to human support');
   };
 
   const handleDeclineTransfer = async () => {
@@ -514,6 +569,20 @@ export default function SupportChat({ currentLanguage, currentUser, onClose }: S
     ? settings.suggestions!.filter(s => s.isActive)
     : defaultSuggestions;
 
+  // ─── Suggestions click handler with automated human support trigger ────────
+  const handleSuggestionClick = (s: any) => {
+    const isHumanRequest = s.id === 's9' || 
+      s.textAr?.includes('موظف') || 
+      s.textEn?.toLowerCase()?.includes('agent') || 
+      s.textEn?.toLowerCase()?.includes('human');
+    
+    if (isHumanRequest) {
+      triggerContactHumanSupport(isRtl ? s.textAr : s.textEn);
+    } else {
+      sendMessage(isRtl ? s.textAr : s.textEn);
+    }
+  };
+
   // ─── Sender badge ────────────────────────────────────────────────────────────
   const getSenderLabel = (msg: ChatMessage) => {
     if (msg.sender === 'user') return isRtl ? 'أنت' : 'You';
@@ -588,9 +657,23 @@ export default function SupportChat({ currentLanguage, currentUser, onClose }: S
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-            {isRtl ? 'رايفو RYVO' : 'RYVO Store'}
+          <div className="flex items-center gap-2">
+            {convStatus !== 'HUMAN_HANDLING' && convStatus !== 'QUEUED_FOR_HUMAN' && (
+              <button
+                type="button"
+                onClick={() => triggerContactHumanSupport()}
+                className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-[11px] font-extrabold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                title={isRtl ? 'طلب التحدث مع موظف دعم بشري' : 'Contact human support'}
+              >
+                <PhoneCall className="w-3.5 h-3.5" />
+                <span>{isRtl ? 'طلب موظف بشري' : 'Contact Human'}</span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+              {isRtl ? 'رايفو RYVO' : 'RYVO Store'}
+            </div>
           </div>
         </div>
 
@@ -661,7 +744,7 @@ export default function SupportChat({ currentLanguage, currentUser, onClose }: S
                 {activeSuggestions.map(s => (
                   <button key={s.id} type="button"
                     disabled={isSending}
-                    onClick={() => sendMessage(isRtl ? s.textAr : s.textEn)}
+                    onClick={() => handleSuggestionClick(s)}
                     className="p-3 bg-white dark:bg-[#121622] hover:bg-sky-50 dark:hover:bg-sky-900/20 border border-slate-200 dark:border-slate-800 hover:border-sky-400 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-2xl transition-all cursor-pointer text-center shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">
                     {isRtl ? s.textAr : s.textEn}
                   </button>
@@ -775,7 +858,7 @@ export default function SupportChat({ currentLanguage, currentUser, onClose }: S
               {activeSuggestions.map(s => (
                 <button key={s.id} type="button"
                   disabled={isSending}
-                  onClick={() => sendMessage(isRtl ? s.textAr : s.textEn)}
+                  onClick={() => handleSuggestionClick(s)}
                   className="whitespace-nowrap px-3 py-1.5 bg-slate-100 dark:bg-slate-800/80 hover:bg-sky-500/10 dark:hover:bg-sky-500/20 hover:border-sky-400/50 border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 text-[11px] font-bold rounded-xl transition-all cursor-pointer flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs hover:scale-[1.02] active:scale-[0.98]">
                   {isRtl ? s.textAr : s.textEn}
                 </button>

@@ -900,34 +900,64 @@ export async function sendAdminSupportRequestNotification(
   messageContent: string,
   sessionId?: string,
   db?: any,
-  getSettings?: () => any
+  getSettings?: () => any,
+  additionalDetails?: {
+    phone?: string;
+    reason?: string;
+    aiSummary?: string;
+    requestId?: string;
+    device?: string;
+  }
 ) {
   const adminEmail = PRIMARY_ADMIN_EMAIL;
+  const requestId = additionalDetails?.requestId || `REQ-${Date.now().toString(36).toUpperCase()}`;
 
   const bodyContent = `
-    <p>قام عميل بطلب تحدث أو استفسار دعم فني جديد في المتجر!</p>
+    <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <span style="font-size: 20px;">🚨</span>
+        <strong style="color: #ef4444; font-size: 16px;">طلب تحويل مباشر إلى موظف دعم فني بشري (Human Support Escalation)</strong>
+      </div>
+      <p style="margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+        قام العميل باختيار التحدث مع الدعم الفني البشري في متجر رايفو، وهو الآن بانتظار استجابة أحد المسؤولين في لوحة التحكم.
+      </p>
+    </div>
+
     <div class="content-box">
-      <div style="font-size:15px; font-weight:800; color:#38bdf8; margin-bottom:10px;">تفاصيل طلب الدعم الفني:</div>
-      <p style="margin:4px 0;"><strong>اسم العميل:</strong> ${clientName || 'عميل المتجر'}</p>
-      <p style="margin:4px 0;"><strong>بريد العميل:</strong> ${clientEmail}</p>
-      ${sessionId ? `<p style="margin:4px 0;"><strong>معرف الجلسة:</strong> <code>${sessionId}</code></p>` : ''}
-      <div style="margin-top:12px; padding:12px; background:#0f172a; border-radius:10px; border-right:4px solid #38bdf8; color:#f1f5f9;">
-        <strong>محتوى الرسالة / الاستفسار:</strong>
-        <p style="margin:6px 0 0; font-style:italic;">"${messageContent}"</p>
+      <div style="font-size:15px; font-weight:800; color:#38bdf8; margin-bottom:12px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
+        📋 تفاصيل تذكرة طلب الدعم الفني (#${requestId}):
+      </div>
+      <p style="margin:6px 0;"><strong>👤 اسم العميل:</strong> ${clientName || 'عميل المتجر'}</p>
+      <p style="margin:6px 0;"><strong>📧 بريد العميل:</strong> <a href="mailto:${clientEmail}" style="color: #38bdf8; text-decoration: none;">${clientEmail}</a></p>
+      ${additionalDetails?.phone ? `<p style="margin:6px 0;"><strong>📱 رقم الهاتف:</strong> <span style="direction: ltr; font-family: monospace;">${additionalDetails.phone}</span></p>` : ''}
+      ${sessionId ? `<p style="margin:6px 0;"><strong>🆔 معرّف الجلسة:</strong> <code style="background: #1e293b; padding: 2px 6px; border-radius: 4px; color: #f59e0b;">${sessionId}</code></p>` : ''}
+      ${additionalDetails?.reason ? `<p style="margin:6px 0;"><strong>🎯 سبب الطلب:</strong> <span style="color: #fbbf24; font-weight: bold;">${additionalDetails.reason}</span></p>` : ''}
+      ${additionalDetails?.device ? `<p style="margin:6px 0;"><strong>💻 الجهاز والبيئة:</strong> ${additionalDetails.device}</p>` : ''}
+      <p style="margin:6px 0;"><strong>⏰ وقت الطلب:</strong> ${new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })} (توقيت الرياض)</p>
+
+      ${additionalDetails?.aiSummary ? `
+      <div style="margin-top:14px; padding:12px; background: rgba(56, 189, 248, 0.08); border-radius:10px; border-right:4px solid #38bdf8; color:#e2e8f0; font-size: 13px;">
+        <strong style="color: #38bdf8; display: block; margin-bottom: 4px;">🤖 ملخص المساعد الذكي لمشكلة العميل:</strong>
+        <p style="margin:0; line-height: 1.5;">${additionalDetails.aiSummary}</p>
+      </div>` : ''}
+
+      <div style="margin-top:14px; padding:12px; background:#0f172a; border-radius:10px; border-right:4px solid #ef4444; color:#f1f5f9;">
+        <strong style="color: #f87171; display: block; margin-bottom: 4px;">💬 آخر رسالة / استفسار من العميل:</strong>
+        <p style="margin:0; font-style:italic; line-height: 1.5; color: #f8fafc;">"${messageContent || 'طلب التحدث مع موظف دعم بشري فوراً'}"</p>
       </div>
     </div>
   `;
 
   return sendRealEmail({
     to: adminEmail,
-    subject: `💬 طلب دعم فني جديد من العميل: ${clientName || clientEmail}`,
+    subject: `🚨 [طلب دعم بشري] عميل جديد بانتظار الرد: ${clientName || clientEmail}`,
     html: buildHtmlEmailTemplate(
-      `تنبيه دعم فني جديد`,
-      `عزيزي المدير،`,
+      `طلب دعم فني بشري جديد 🚨`,
+      `عزيزي مدير المتجر،`,
       bodyContent,
-      `الرد على العميل عبر لوحة التحكم`,
+      `الدخول للوحة التحكم والرد الفوري 💬`,
       `https://ryvo.shop/admin`,
-      'دعم فني 💬'
+      'دعم فني عاجل 🚨'
     ),
     triggerEvent: 'support_message',
     db,

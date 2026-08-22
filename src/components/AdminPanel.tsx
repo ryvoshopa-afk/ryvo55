@@ -1597,8 +1597,54 @@ export default function AdminPanel({
       }
     };
 
+    // Real-time listener for human support requests (Contact Human Support Trigger)
+    const handleNewSupportRequest = (data: any) => {
+      fetchSupportData();
+
+      const reqId = data?.id || data?.requestId || `req-${Date.now()}`;
+      const clientIdentifier = data?.userName || data?.clientName || data?.userEmail || data?.sessionId || 'عميل';
+      const reason = data?.reason || data?.message || 'طلب التحدث مع موظف دعم بشري';
+
+      const saved = localStorage.getItem('ryvo_broadcast_notifications');
+      let parsed: any[] = [];
+      if (saved) {
+        try { parsed = JSON.parse(saved); } catch(e){}
+      }
+
+      if (!parsed.some(n => n.id === `support-req-${reqId}`)) {
+        parsed.unshift({
+          id: `support-req-${reqId}`,
+          title: isRtl ? '🚨 طلب دعم فني بشري جديد!' : '🚨 New Human Support Request!',
+          body: `${clientIdentifier}: ${reason}`,
+          icon: '👨‍💼',
+          date: new Date().toLocaleDateString(isRtl ? 'ar-SA' : 'en-US'),
+          time: new Date().toLocaleTimeString(isRtl ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' }),
+          sessionId: data?.sessionId || data?.conversationId,
+          type: 'support_request'
+        });
+        localStorage.setItem('ryvo_broadcast_notifications', JSON.stringify(parsed.slice(0, 30)));
+      }
+
+      if (triggerToast) {
+        triggerToast(
+          isRtl 
+            ? `🚨 طلب دعم فني بشري عاجل من ${clientIdentifier}!` 
+            : `🚨 Urgent human support requested by ${clientIdentifier}!`
+        );
+      }
+    };
+
+    const handleAdminNotification = (notif: any) => {
+      if (notif?.type === 'support_request') {
+        handleNewSupportRequest(notif);
+      }
+    };
+
     socket.on('agent_message_received', handleAgentMessage);
     socket.on('agent_status_updated', handleAgentStatusUpdated);
+    socket.on('new_support_request', handleNewSupportRequest);
+    socket.on('new_conversation_queued', handleNewSupportRequest);
+    socket.on('admin_notification', handleAdminNotification);
 
     // Sync on page refocus
     const handleVisibilityChange = () => {
@@ -1611,6 +1657,9 @@ export default function AdminPanel({
     return () => {
       socket.off('agent_message_received', handleAgentMessage);
       socket.off('agent_status_updated', handleAgentStatusUpdated);
+      socket.off('new_support_request', handleNewSupportRequest);
+      socket.off('new_conversation_queued', handleNewSupportRequest);
+      socket.off('admin_notification', handleAdminNotification);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [currentUser, adminTab, isRtl, triggerToast]);

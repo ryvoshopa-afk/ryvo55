@@ -21,7 +21,17 @@ export function isAnyAdminOnline(): boolean {
   return connectedAdmins.size > 0;
 }
 
-export function initSockets(io: Server) {
+let globalDb: any = null;
+let globalSettingsProvider: (() => any) | null = null;
+
+export function setSocketDbAndSettings(db: any, settingsProvider?: () => any) {
+  globalDb = db;
+  if (settingsProvider) globalSettingsProvider = settingsProvider;
+}
+
+export function initSockets(io: Server, dbInstance?: any, settingsProvider?: () => any) {
+  if (dbInstance) globalDb = dbInstance;
+  if (settingsProvider) globalSettingsProvider = settingsProvider;
   console.log("🔌 Initializing Socket.io Event Listeners...");
 
   io.on('connection', (socket: Socket) => {
@@ -225,44 +235,158 @@ export function initSockets(io: Server) {
       }
     });
 
-    // Handle customer approving transfer to human agent
-    socket.on('approve_transfer', async ({ sessionId }) => {
-      if (!sessionId) return;
-      const cleanSessionId = sessionId.toLowerCase().trim();
+    // Helper function to process support request escalation
+    const processSupportRequest = async (payload: {
+      sessionId: string;
+      userName?: string;
+      userEmail?: string;
+      userPhone?: string;
+      reason?: string;
+      message?: string;
+      aiSummary?: string;
+      metadata?: any;
+    }) => {
+      const cleanSessionId = payload.sessionId.toLowerCase().trim();
       const clientRoom = `conversation_${cleanSessionId}`;
       
       let conversation = await getOrCreateConversation(cleanSessionId);
-      if (conversation) {
-        await updateConversationStatus(conversation.id, 'QUEUED_FOR_HUMAN');
-        
-        // Save a system message to indicate customer accepted transfer
-        const systemMsg = await addMessage(conversation.id, 'system', 'text', 'تم تحويل المحادثة لانتظار الموظف بناءً على طلب العميل.', false);
-        if (systemMsg) {
-          io.to(clientRoom).emit('message_received', systemMsg);
+      if (!conversation) return null;
+
+      const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const clientName = payload.userName || conversation.clientName || 'عميل المتجر';
+      const clientEmail = payload.userEmail || conversation.clientEmail || cleanSessionId;
+      const clientPhone = payload.userPhone || conversation.clientPhone || '';
+      const summary = payload.aiSummary || conversation.ai_summary || '';
+      const reason = payload.reason || 'طلب التحدث مع موظف دعم بشري';
+      const lastMessage = payload.message || (conversation.messages && conversation.messages.length > 0 ? conversation.messages[conversation.messages.length - 1].text : '');
+
+      const supportRequestDoc = {
+        id: requestId,
+        conversationId: cleanSessionId,
+        userName: clientName,
+        userEmail: clientEmail,
+        userPhone: clientPhone,
+        status: 'pending',
+        priority: 'high',
+        requestType: 'human_support',
+        source: 'support_chat',
+        reason: reason,
+        message: lastMessage,
+        aiSummary: summary,
+        createdAt: new Date().toISOString(),
+        timestamp: Date.now(),
+        unread: true,
+        metadata: payload.metadata || {}
+      };
+
+      // 1. Push document to 'support_requests' Firestore collection
+      if (globalDb) {
+        try {
+          await globalDb.collection('support_requests').doc(requestId).set(supportRequestDoc);
+          console.log(`✅ [FIRESTORE] Document written to 'support_requests' collection with ID: ${requestId}`);
+        } catch (dbErr: any) {
+          console.error("❌ [FIRESTORE] Error writing to 'support_requests':", dbErr.message);
         }
-        
-        // Notify both customer and agents room
-        io.to(clientRoom).emit('status_updated', { status: 'QUEUED_FOR_HUMAN' });
-        io.to('agents_room').emit('agent_status_updated', { sessionId: cleanSessionId, status: 'QUEUED_FOR_HUMAN' });
-        
-        // Push notification of new queued conversation to agents room!
-        io.to('agents_room').emit('new_conversation_queued', {
-          sessionId: cleanSessionId,
-          clientName: conversation.clientName,
-          clientEmail: conversation.clientEmail,
-          ai_summary: conversation.ai_summary
-        });
-
-        // Trigger email notification to admin
-        sendAdminSupportRequestNotification(
-          conversation.clientEmail || cleanSessionId,
-          conversation.clientName || 'عميل المتجر',
-          `طلب العميل التحدث مع فريق الدعم الفني البشري. ملخص الذكاء الاصطناعي: ${conversation.ai_summary || 'جديد'}`,
-          cleanSessionId
-        ).catch(err => console.error("Admin support email notify error:", err));
-
-        await addSupportLog(`User approved transfer to human agent. Ticket created and queued.`, 'Customer');
       }
+
+      // 2. Update conversation status to QUEUED_FOR_HUMAN
+      await updateConversationStatus(conversation.id, 'QUEUED_FOR_HUMAN');
+      
+      // 3. Save a system message to indicate customer transferred to human support
+      const systemMsg = await addMessage(
+        conversation.id, 
+        'system', 
+        'text', 
+        'تم تسجيل طلب التحدث مع الدعم البشري بنجاح وتم إشعار مسؤولي الدعم بالمتجر عبر البريد الإلكتروني والإشعارات الفورية.', 
+        false
+      );
+      if (systemMsg) {
+        io.to(clientRoom).emit('message_received', systemMsg);
+      }
+      
+      // 4. Notify both customer and agents room
+      io.to(clientRoom).emit('status_updated', { status: 'QUEUED_FOR_HUMAN' });
+      io.to('agents_room').emit('agent_status_updated', { sessionId: cleanSessionId, status: 'QUEUED_FOR_HUMAN' });
+      
+      // 5. Display real-time notification to all logged-in admins in agents_room
+      io.to('agents_room').emit('new_support_request', supportRequestDoc);
+      io.to('agents_room').emit('new_conversation_queued', {
+        sessionId: cleanSessionId,
+        clientName: clientName,
+        clientEmail: clientEmail,
+        ai_summary: summary,
+        requestId: requestId,
+        reason: reason,
+        createdAt: supportRequestDoc.createdAt
+      });
+      io.to('agents_room').emit('admin_notification', {
+        id: requestId,
+        title: 'طلب دعم فني بشري 🚨',
+        body: `${clientName} (${clientEmail}): ${reason}`,
+        icon: '👨‍💼',
+        timestamp: Date.now(),
+        type: 'support_request',
+        conversationId: cleanSessionId,
+        priority: 'high',
+        requestId: requestId
+      });
+
+      // 6. Trigger email notification to admin via Resend API
+      sendAdminSupportRequestNotification(
+        clientEmail,
+        clientName,
+        lastMessage || reason,
+        cleanSessionId,
+        globalDb,
+        globalSettingsProvider || undefined,
+        {
+          phone: clientPhone,
+          reason: reason,
+          aiSummary: summary,
+          requestId: requestId,
+          device: payload.metadata?.device
+        }
+      ).then((res) => {
+        console.log(`📧 [RESEND] Admin notification email triggered for support request ${requestId}: ${res.success ? 'SUCCESS' : 'FAILED'}`);
+      }).catch(err => {
+        console.error("❌ [RESEND] Admin support email notify error:", err);
+      });
+
+      await addSupportLog(`Human support requested (Ticket #${requestId}). Pushed to support_requests and notified admins.`, 'Customer');
+
+      return supportRequestDoc;
+    };
+
+    // Handle customer approving transfer to human agent
+    socket.on('approve_transfer', async (data) => {
+      const sessionId = typeof data === 'string' ? data : data?.sessionId;
+      if (!sessionId) return;
+      await processSupportRequest({
+        sessionId,
+        userName: data?.userName,
+        userEmail: data?.userEmail,
+        userPhone: data?.userPhone,
+        reason: data?.reason || 'طلب التحدث مع موظف دعم بشري',
+        message: data?.message,
+        aiSummary: data?.aiSummary,
+        metadata: data?.metadata
+      });
+    });
+
+    // Dedicated event: request_human_support
+    socket.on('request_human_support', async (data) => {
+      const sessionId = typeof data === 'string' ? data : data?.sessionId;
+      if (!sessionId) return;
+      await processSupportRequest({
+        sessionId,
+        userName: data?.userName,
+        userEmail: data?.userEmail,
+        userPhone: data?.userPhone,
+        reason: data?.reason || 'طلب التحدث مع موظف دعم بشري',
+        message: data?.message,
+        aiSummary: data?.aiSummary,
+        metadata: data?.metadata
+      });
     });
 
     // Handle customer declining transfer, remaining with AI
