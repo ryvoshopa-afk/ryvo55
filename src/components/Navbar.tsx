@@ -194,9 +194,9 @@ export default function Navbar({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Lock background body scroll when mobile menu drawer is open
+  // Lock background body scroll when mobile menu drawer or notification modal is open
   useEffect(() => {
-    if (isMobileMenuOpen) {
+    if (isMobileMenuOpen || isNotifOpen || isSettingsOpen) {
       const originalOverflow = document.body.style.overflow;
       const originalTouchAction = document.body.style.touchAction;
       document.body.style.overflow = 'hidden';
@@ -206,7 +206,7 @@ export default function Navbar({
         document.body.style.touchAction = originalTouchAction;
       };
     }
-  }, [isMobileMenuOpen]);
+  }, [isMobileMenuOpen, isNotifOpen, isSettingsOpen]);
 
   useEffect(() => {
     const loadNotifs = () => {
@@ -680,110 +680,6 @@ export default function Navbar({
                     ) : null;
                   })()}
                 </button>
-
-                {isNotifOpen && (
-                  <>
-                    <div 
-                      className="fixed inset-0 bg-black/40 dark:bg-black/70 z-40 backdrop-blur-xs"
-                      onClick={() => setIsNotifOpen(false)}
-                    />
-                    <div className="fixed top-[84px] left-1/2 -translate-x-1/2 w-[92%] sm:w-full max-w-lg md:max-w-xl bg-white dark:bg-[#121622] border border-slate-150 dark:border-[var(--border-dark)] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
-                      <div className="p-4 bg-slate-50 dark:bg-black/40 border-b border-slate-100 dark:border-white/5 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-slate-800 dark:text-amber-400">
-                            🔔 {isRtl ? 'مركز إشعارات رايفو' : 'Ryvo Notification Hub'}
-                          </span>
-                          {notifications.filter((n: any) => !n.read).length > 0 && (
-                            <span className="px-2 py-0.5 text-[9px] font-black bg-rose-500 text-white rounded-full animate-pulse">
-                              {notifications.filter((n: any) => !n.read).length} {isRtl ? 'جديد' : 'new'}
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          {notifications.length > 0 && (
-                            <button
-                              onClick={() => {
-                                const updated = notifications.map((n: any) => ({ ...n, read: true }));
-                                setNotifications(updated);
-                                localStorage.setItem('ryvo_broadcast_notifications', JSON.stringify(updated));
-                                if (triggerToast) {
-                                  triggerToast(isRtl ? '✅ تم تحديد الكل كمقروء' : '✅ Marked all as read');
-                                } else {
-                                  setCopyToast(isRtl ? 'تم تحديد الكل كمقروء' : 'Marked all as read');
-                                  setTimeout(() => setCopyToast(null), 2000);
-                                }
-                              }}
-                              className="text-[10px] text-amber-600 dark:text-amber-400 font-black bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-                            >
-                              {isRtl ? 'قراءة الكل' : 'Mark all as read'}
-                            </button>
-                          )}
-                          <button 
-                            onClick={() => setIsNotifOpen(false)}
-                            className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-                          >
-                            {isRtl ? 'إغلاق' : 'Close'}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-850">
-                        {notifications.length === 0 ? (
-                          <div className="p-10 text-center text-slate-400 text-xs font-semibold">
-                            {isRtl ? 'لا توجد إشعارات حالياً.' : 'No active notifications.'}
-                          </div>
-                        ) : (
-                          notifications.map((notif: any, notifIdx: number) => {
-                            const handleNotifClick = () => {
-                              if (!notif.read) {
-                                const updated = notifications.map((n: any) => n.id === notif.id ? { ...n, read: true } : n);
-                                setNotifications(updated);
-                                localStorage.setItem('ryvo_broadcast_notifications', JSON.stringify(updated));
-                              }
-                              if (notif.type === 'support_reply') {
-                                setIsNotifOpen(false);
-                                onNavigate('chat');
-                              }
-                            };
-
-                            return (
-                              <div 
-                                key={notif.id || `notif-${notifIdx}`} 
-                                onClick={handleNotifClick}
-                                className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors text-right flex gap-3 cursor-pointer ${
-                                  !notif.read ? 'bg-amber-500/[0.02] dark:bg-amber-500/[0.03]' : ''
-                                }`}
-                              >
-                                <span className="text-xl shrink-0 mt-0.5">{notif.icon || '📢'}</span>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between gap-2 mb-1">
-                                    <h4 className="text-xs font-black text-slate-900 dark:text-white leading-snug">{notif.title}</h4>
-                                    {!notif.read && (
-                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" title={isRtl ? 'غير مقروء' : 'Unread'} />
-                                    )}
-                                  </div>
-                                  <p className="text-[10.5px] text-slate-500 dark:text-slate-450 mt-1 leading-relaxed font-medium font-sans whitespace-pre-wrap">
-                                    {renderInteractiveText(notif.body, isRtl, (copiedCode) => {
-                                      handleNotifClick();
-                                      if (triggerToast) {
-                                        triggerToast(isRtl ? `📋 تم نسخ كود الخصم: ${copiedCode}` : `📋 Copied discount code: ${copiedCode}`);
-                                      } else {
-                                        setCopyToast(copiedCode);
-                                        setTimeout(() => setCopyToast(null), 2000);
-                                      }
-                                    })}
-                                  </p>
-                                  <span className="text-[8px] text-slate-400 font-mono mt-2 block">{notif.date} • {notif.time}</span>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
 
               {/* Shopping Bag / Cart Button */}
@@ -1508,6 +1404,143 @@ export default function Navbar({
                 {isRtl ? 'حفظ وإغلاق ✓' : 'Save & Close ✓'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Responsive Notification Hub Modal (Accessible across Mobile, Tablet, and Desktop) */}
+      {isNotifOpen && (
+        <div 
+          id="global-notification-hub-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={isRtl ? 'مركز إشعارات رايفو' : 'Ryvo Notification Hub'}
+          className="fixed inset-0 z-[80] flex items-start sm:items-center justify-center p-3 sm:p-4 pt-14 sm:pt-4"
+        >
+          {/* Backdrop Blur */}
+          <div 
+            className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsNotifOpen(false)}
+          />
+
+          {/* Modal Container */}
+          <div className="relative w-full max-w-lg md:max-w-xl bg-white dark:bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-2xl shadow-2xl z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh] sm:max-h-[80vh]">
+            
+            {/* Modal Header */}
+            <div className="p-4 bg-slate-50 dark:bg-black/40 border-b border-slate-150 dark:border-white/5 flex items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-amber-400 flex items-center gap-1.5">
+                  <Bell className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span>{isRtl ? 'مركز إشعارات وتنبيهات رايفو' : 'Ryvo Notification Hub'}</span>
+                </span>
+                {notifications.filter((n: any) => !n.read).length > 0 && (
+                  <span className="px-2 py-0.5 text-[9px] font-black bg-rose-500 text-white rounded-full animate-pulse shadow-2xs">
+                    {notifications.filter((n: any) => !n.read).length} {isRtl ? 'جديد' : 'new'}
+                  </span>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {notifications.length > 0 && (
+                  <button
+                    onClick={() => {
+                      const updated = notifications.map((n: any) => ({ ...n, read: true }));
+                      setNotifications(updated);
+                      localStorage.setItem('ryvo_broadcast_notifications', JSON.stringify(updated));
+                      if (triggerToast) {
+                        triggerToast(isRtl ? '✅ تم تحديد الكل كمقروء' : '✅ Marked all as read');
+                      } else {
+                        setCopyToast(isRtl ? 'تم تحديد الكل كمقروء' : 'Marked all as read');
+                        setTimeout(() => setCopyToast(null), 2000);
+                      }
+                    }}
+                    className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 font-black bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-lg transition-colors cursor-pointer active:scale-95"
+                  >
+                    {isRtl ? 'قراءة الكل' : 'Mark all as read'}
+                  </button>
+                )}
+                <button 
+                  onClick={() => setIsNotifOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg bg-slate-100 dark:bg-white/5 transition-colors cursor-pointer active:scale-95"
+                  aria-label={isRtl ? 'إغلاق الإشعارات' : 'Close notifications'}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body / Notifications List */}
+            <div 
+              className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 p-1 sm:p-2 overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              {notifications.length === 0 ? (
+                <div className="py-14 text-center text-slate-400 text-xs sm:text-sm font-semibold flex flex-col items-center justify-center gap-2">
+                  <span className="text-3xl">📭</span>
+                  <span>{isRtl ? 'لا توجد إشعارات حالياً.' : 'No active notifications.'}</span>
+                </div>
+              ) : (
+                notifications.map((notif: any, notifIdx: number) => {
+                  const handleNotifClick = () => {
+                    if (!notif.read) {
+                      const updated = notifications.map((n: any) => n.id === notif.id ? { ...n, read: true } : n);
+                      setNotifications(updated);
+                      localStorage.setItem('ryvo_broadcast_notifications', JSON.stringify(updated));
+                    }
+                    if (notif.type === 'support_reply') {
+                      setIsNotifOpen(false);
+                      onNavigate('chat');
+                    }
+                  };
+
+                  return (
+                    <div 
+                      key={notif.id || `notif-${notifIdx}`} 
+                      onClick={handleNotifClick}
+                      className={`p-3.5 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-900/40 rounded-xl transition-colors ${isRtl ? 'text-right' : 'text-left'} flex gap-3 cursor-pointer ${
+                        !notif.read ? 'bg-amber-500/[0.03] dark:bg-amber-500/[0.04] border border-amber-500/10' : ''
+                      }`}
+                    >
+                      <span className="text-xl sm:text-2xl shrink-0 mt-0.5">{notif.icon || '📢'}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-snug">{notif.title}</h4>
+                          {!notif.read && (
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" title={isRtl ? 'غير مقروء' : 'Unread'} />
+                          )}
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed font-medium font-sans whitespace-pre-wrap">
+                          {renderInteractiveText(notif.body, isRtl, (copiedCode) => {
+                            handleNotifClick();
+                            if (triggerToast) {
+                              triggerToast(isRtl ? `📋 تم نسخ كود الخصم: ${copiedCode}` : `📋 Copied discount code: ${copiedCode}`);
+                            } else {
+                              setCopyToast(copiedCode);
+                              setTimeout(() => setCopyToast(null), 2000);
+                            }
+                          })}
+                        </p>
+                        <span className="text-[9px] text-slate-400 font-mono mt-2 block">{notif.date} • {notif.time}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-slate-50/70 dark:bg-black/30 border-t border-slate-100 dark:border-white/5 flex items-center justify-between shrink-0">
+              <span className="text-[10px] text-slate-400 font-medium">
+                {isRtl ? 'متجر رايفو RYVO • مركز الإشعارات الفورية' : 'RYVO Store • Live Notification Hub'}
+              </span>
+              <button
+                onClick={() => setIsNotifOpen(false)}
+                className="px-3 py-1.5 bg-[var(--primary-color)] hover:brightness-110 text-white font-bold text-xs rounded-lg shadow-sm transition-all cursor-pointer active:scale-95"
+              >
+                {isRtl ? 'إغلاق ✕' : 'Close ✕'}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
