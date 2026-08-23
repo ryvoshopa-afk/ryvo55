@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useConfirm } from './ConfirmationDialog';
 import { Language, Theme, User } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
-import { ShoppingBag, Heart, User as UserIcon, Sun, Moon, Settings, ShieldAlert, Languages, Search, Sliders, MessageSquare, Truck, Home, Facebook, Twitter, Instagram, Youtube, Music, Ghost, Volume2, VolumeX, Coins, BookOpen, Bell, Menu, X, Grid, Globe } from 'lucide-react';
+import { ShoppingBag, Heart, User as UserIcon, Sun, Moon, Settings, ShieldAlert, Languages, Search, Sliders, MessageSquare, Truck, Home, Facebook, Twitter, Instagram, Youtube, Music, Ghost, Volume2, VolumeX, Coins, BookOpen, Bell, Menu, X, Grid, Globe, LogIn, LogOut } from 'lucide-react';
 import { formatPrice } from '../utils/price';
 import socket from '../utils/socket';
 import { smartFetch } from '../utils/smartFetch';
@@ -732,11 +732,12 @@ export default function Navbar({
                   <button
                     id="auth-logout-btn"
                     onClick={handleLogoutClick}
-                    className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-[var(--border-dark)] text-slate-500 hover:text-rose-500 text-xs font-bold transition-all active:scale-95 cursor-pointer"
-                    title={isRtl ? 'تسجيل الخروج' : 'Logout'}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white dark:hover:text-white border border-rose-500/20 text-xs font-black transition-all active:scale-95 cursor-pointer shadow-xs"
+                    title={isRtl ? 'تسجيل الخروج' : 'Sign Out'}
+                    aria-label={isRtl ? 'تسجيل الخروج' : 'Sign Out'}
                   >
-                    <span className="hidden sm:inline">{t.logout}</span>
-                    <X className="w-4 h-4 sm:hidden" />
+                    <LogOut className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden sm:inline">{isRtl ? 'تسجيل خروج' : (t.logout || 'Logout')}</span>
                   </button>
                 </div>
               ) : (
@@ -744,11 +745,11 @@ export default function Navbar({
                   id="auth-login-trigger"
                   data-testid="sign-in-button"
                   onClick={onAuthOpen}
-                  className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 bg-[var(--primary-color)] hover:brightness-110 text-white font-black text-xs rounded-xl shadow-lg shadow-red-500/20 transition-all cursor-pointer whitespace-nowrap"
+                  className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 bg-[var(--primary-color)] hover:brightness-110 text-white font-black text-xs rounded-xl shadow-lg shadow-red-500/20 transition-all cursor-pointer whitespace-nowrap active:scale-95"
                   aria-label={currentLanguage === 'ar' ? 'تسجيل الدخول' : 'Sign In'}
                 >
-                  <UserIcon className="w-4 h-4 shrink-0" />
-                  <span>{t.login}</span>
+                  <LogIn className="w-4 h-4 shrink-0" />
+                  <span>{t.login || (isRtl ? 'تسجيل الدخول' : 'Sign In')}</span>
                 </button>
               )}
 
@@ -855,25 +856,46 @@ export default function Navbar({
                 )}
               </button>
 
-              {/* Login / Account Button */}
-              <button
-                id="mobile-login-button"
-                data-testid="sign-in-mobile-button"
-                onClick={() => {
-                  if (currentUser) {
-                    onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard');
-                  } else {
-                    onAuthOpen();
-                  }
-                }}
-                aria-label={isRtl ? 'تسجيل الدخول' : t.login}
-                className="h-9 sm:h-10 px-2.5 sm:px-3 min-h-[36px] sm:min-h-[40px] rounded-xl bg-[var(--primary-color)] hover:brightness-110 active:scale-95 text-white font-black text-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer transition-all shadow-sm shadow-red-500/20"
-              >
-                <UserIcon className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate max-w-[55px] sm:max-w-[85px]">
-                  {currentUser ? currentUser.name : (isRtl ? 'تسجيل الدخول' : t.login)}
-                </span>
-              </button>
+              {/* Login / Account / Logout Button on Mobile */}
+              {currentUser ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    id="mobile-login-button"
+                    data-testid="sign-in-mobile-button"
+                    onClick={() => onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard')}
+                    aria-label={currentUser.name}
+                    className="h-9 sm:h-10 px-2 sm:px-2.5 min-h-[36px] sm:min-h-[40px] rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-[var(--border-dark)] text-slate-800 dark:text-slate-200 hover:border-[var(--primary-color)] font-bold text-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer transition-all max-w-[85px] truncate"
+                  >
+                    <UserIcon className="w-3.5 h-3.5 text-[var(--primary-color)] shrink-0" />
+                    <span className="truncate max-w-[50px]">
+                      {currentUser.name.split(' ')[0]}
+                    </span>
+                  </button>
+                  <button
+                    id="mobile-quick-logout-btn"
+                    onClick={handleLogoutClick}
+                    aria-label={isRtl ? 'تسجيل الخروج' : 'Logout'}
+                    className="h-9 sm:h-10 px-2 sm:px-2.5 min-h-[36px] sm:min-h-[40px] rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white dark:hover:text-white border border-rose-500/20 font-black text-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer transition-all active:scale-95 shadow-xs"
+                    title={isRtl ? 'تسجيل الخروج' : 'Logout'}
+                  >
+                    <LogOut className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden xs:inline text-[10px]">{isRtl ? 'خروج' : 'Exit'}</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  id="mobile-login-button"
+                  data-testid="sign-in-mobile-button"
+                  onClick={onAuthOpen}
+                  aria-label={isRtl ? 'تسجيل الدخول' : t.login}
+                  className="h-9 sm:h-10 px-2.5 sm:px-3 min-h-[36px] sm:min-h-[40px] rounded-xl bg-[var(--primary-color)] hover:brightness-110 active:scale-95 text-white font-black text-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer transition-all shadow-sm shadow-red-500/20"
+                >
+                  <LogIn className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate max-w-[65px] sm:max-w-[85px]">
+                    {isRtl ? 'دخول' : t.login}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1170,10 +1192,14 @@ export default function Navbar({
                       </span>
                     </div>
                     <button
-                      onClick={() => { onLogout(); setIsMobileMenuOpen(false); }}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        handleLogoutClick();
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 font-black text-xs rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
                     >
-                      <span>{isRtl ? 'تسجيل الخروج 🚪' : 'Logout 🚪'}</span>
+                      <LogOut className="w-4 h-4" />
+                      <span>{isRtl ? 'تسجيل الخروج 🚪' : 'Sign Out / Logout 🚪'}</span>
                     </button>
                   </div>
                 ) : (
@@ -1183,8 +1209,8 @@ export default function Navbar({
                     onClick={() => { onAuthOpen(); setIsMobileMenuOpen(false); }}
                     className="w-full flex items-center justify-center gap-2 py-3 bg-[var(--primary-color)] text-white font-black text-xs rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
                   >
-                    <UserIcon className="w-4 h-4" />
-                    <span>{t.login}</span>
+                    <LogIn className="w-4 h-4" />
+                    <span>{t.login || (isRtl ? 'تسجيل الدخول' : 'Sign In')}</span>
                   </button>
                 )}
               </div>

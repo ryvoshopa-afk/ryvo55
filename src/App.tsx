@@ -1562,6 +1562,17 @@ export default function App() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (_) {}
+    setCurrentUser(null);
+    localStorage.removeItem('ryvo_user');
+    setFavorites([]);
+    setActiveView('home');
+    triggerToast(language === 'ar' ? 'تم تسجيل الخروج بنجاح 👋' : 'Signed out successfully 👋');
+  };
+
   // Admin Callbacks
   const handleAddProduct = async (newProduct: Product) => {
     setProducts(prev => [newProduct, ...prev]);
@@ -1771,11 +1782,7 @@ export default function App() {
         announcementTextEn={announcementTextEn}
         announcementTextFr={announcementTextFr}
         announcementLink={announcementLink}
-        onLogout={() => {
-          setCurrentUser(null);
-          setFavorites([]);
-          setActiveView('home');
-        }}
+        onLogout={handleLogout}
         onNavigate={(view) => {
           setActiveView(view);
           if (view === 'home') {
@@ -1883,6 +1890,7 @@ export default function App() {
              onUpdateUser={(updated) => setCurrentUser(updated)}
              shopLogo={shopLogo}
              onCancelOrder={handleCancelOrder}
+             onLogout={handleLogout}
            />
         ) : (
           /* VIEW 3: MAIN MARKET SHOWCASE */

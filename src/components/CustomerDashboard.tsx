@@ -2,7 +2,7 @@ import React from 'react';
 import { useConfirm } from './ConfirmationDialog';
 import { Language, Order, Product, User } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
-import { ShoppingBag, Heart, Settings, Plus, Key, Calendar, Mail, CheckCircle, ShieldCheck, Coins, History, Award, Wallet, CreditCard, ArrowRightLeft, MapPin, Phone, Sparkles, TrendingUp } from 'lucide-react';
+import { ShoppingBag, Heart, Settings, Plus, Key, Calendar, Mail, CheckCircle, ShieldCheck, Coins, History, Award, Wallet, CreditCard, ArrowRightLeft, MapPin, Phone, Sparkles, TrendingUp, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { formatPrice } from '../utils/price';
 
@@ -18,6 +18,7 @@ interface CustomerDashboardProps {
   shopLogo: string;
   onUpdateUser?: (updatedUser: User) => void;
   onCancelOrder?: (orderId: string) => void;
+  onLogout?: () => void;
 }
 
 export default function CustomerDashboard({
@@ -31,11 +32,28 @@ export default function CustomerDashboard({
   onUpdateUserName,
   shopLogo,
   onUpdateUser,
-  onCancelOrder
+  onCancelOrder,
+  onLogout
 }: CustomerDashboardProps) {
   const t = TRANSLATIONS[currentLanguage];
   const isRtl = currentLanguage === 'ar';
   const { confirm } = useConfirm();
+
+  const handleLogoutPrompt = async () => {
+    if (!onLogout) return;
+    const confirmed = await confirm({
+      title: isRtl ? 'تسجيل الخروج من الحساب 🔒' : 'Sign Out of Account 🔒',
+      description: isRtl 
+        ? 'هل أنت متأكد من رغبتك في تسجيل الخروج من حسابك في متجر RYVO؟'
+        : 'Are you sure you want to sign out of your RYVO account?',
+      confirmText: isRtl ? 'تسجيل الخروج' : 'Log Out',
+      cancelText: isRtl ? 'إلغاء' : 'Cancel',
+      type: 'warning'
+    });
+    if (confirmed) {
+      onLogout();
+    }
+  };
 
   const [activeTab, setActiveTab] = useState<'orders' | 'favorites' | 'settings' | 'inbox' | 'wallet'>('orders');
 
@@ -427,17 +445,31 @@ Track or check history anytime at our verified portal.
         <div className="bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden mb-6 shadow-sm">
           <div className="absolute right-0 top-0 w-80 h-80 bg-gradient-to-br from-rose-500/10 to-transparent rounded-full blur-3xl -mr-12 -mt-12"></div>
           
-          <div className={`relative ${isRtl ? 'text-right' : 'text-left'} space-y-2`}>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-500/15 border border-rose-500/25 rounded-full text-[10px] font-black text-rose-400 tracking-wider uppercase">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{isRtl ? 'شريك نجاح معتمد 🏆' : 'Verified Affiliate Partner 🏆'}</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative">
+            <div className={`${isRtl ? 'text-right' : 'text-left'} space-y-2`}>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-500/15 border border-rose-500/25 rounded-full text-[10px] font-black text-rose-400 tracking-wider uppercase">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{isRtl ? 'شريك نجاح معتمد 🏆' : 'Verified Affiliate Partner 🏆'}</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black font-sans bg-gradient-to-r from-white to-rose-400 bg-clip-text text-transparent">
+                {isRtl ? `أهلاً بك، شريكنا العزيز ${currentUser.name}! 👋` : `Welcome, partner ${currentUser.name}! 👋`}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {isRtl ? 'لوحة التحكم الحصرية بالمسوقين بالعمولة لمتجر RYVO الفاخر' : 'Exclusive Affiliate Partner Portal for RYVO Premium Store'}
+              </p>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black font-sans bg-gradient-to-r from-white to-rose-400 bg-clip-text text-transparent">
-              {isRtl ? `أهلاً بك، شريكنا العزيز ${currentUser.name}! 👋` : `Welcome, partner ${currentUser.name}! 👋`}
-            </h2>
-            <p className="text-xs text-slate-400">
-              {isRtl ? 'لوحة التحكم الحصرية بالمسوقين بالعمولة لمتجر RYVO الفاخر' : 'Exclusive Affiliate Partner Portal for RYVO Premium Store'}
-            </p>
+
+            {onLogout && (
+              <button
+                id="affiliate-logout-btn"
+                type="button"
+                onClick={handleLogoutPrompt}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-500/15 hover:bg-rose-500 text-rose-300 hover:text-white border border-rose-500/30 rounded-2xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 self-start sm:self-center"
+              >
+                <LogOut className="w-4 h-4 shrink-0" />
+                <span>{isRtl ? 'تسجيل الخروج' : 'Sign Out'}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -691,6 +723,22 @@ Track or check history anytime at our verified portal.
                 💾 {isRtl ? 'حفظ البيانات الشخصية الفاخرة' : 'Save Personal Partner Details'}
               </button>
             </form>
+
+            {/* Affiliate Account Logout Card */}
+            {onLogout && (
+              <div className="pt-6 border-t border-slate-150 dark:border-slate-800 space-y-3">
+                <button
+                  id="btn-affiliate-settings-logout"
+                  type="button"
+                  onClick={handleLogoutPrompt}
+                  className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white dark:hover:text-white border border-rose-500/25 font-black text-xs uppercase cursor-pointer rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xs"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>{isRtl ? 'تسجيل الخروج من حساب الشريك' : 'Log Out of Partner Account'}</span>
+                </button>
+              </div>
+            )}
+
           </div>
         )}
       </div>
@@ -704,13 +752,27 @@ Track or check history anytime at our verified portal.
       <div className="bg-[#121622] border border-slate-200 dark:border-[var(--border-dark)] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden mb-3 shadow-sm">
         <div className="absolute right-0 top-0 w-80 h-80 bg-gradient-to-br from-[var(--primary-color)]/10 to-transparent rounded-full blur-3xl -mr-12 -mt-12"></div>
         
-        <div className={`relative ${isRtl ? 'text-right' : 'text-left'} space-y-2`}>
-          <h2 className="text-2xl sm:text-3xl font-black font-sans bg-gradient-to-r from-white to-[var(--primary-color)] bg-clip-text text-transparent">
-            {t.dashboard_welcome}
-          </h2>
-          <p className="text-xs text-slate-400">
-            {currentUser.name} ({currentUser.email}) • {currentUser.role === 'admin' ? t.admin_panel : t.customer_panel}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative">
+          <div className={`${isRtl ? 'text-right' : 'text-left'} space-y-2`}>
+            <h2 className="text-2xl sm:text-3xl font-black font-sans bg-gradient-to-r from-white to-[var(--primary-color)] bg-clip-text text-transparent">
+              {t.dashboard_welcome}
+            </h2>
+            <p className="text-xs text-slate-400">
+              {currentUser.name} ({currentUser.email}) • {currentUser.role === 'admin' ? t.admin_panel : t.customer_panel}
+            </p>
+          </div>
+
+          {onLogout && (
+            <button
+              id="customer-header-logout-btn"
+              type="button"
+              onClick={handleLogoutPrompt}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-500/15 hover:bg-rose-500 text-rose-300 hover:text-white border border-rose-500/30 rounded-2xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 self-start sm:self-center"
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span>{isRtl ? 'تسجيل الخروج' : 'Sign Out'}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1150,6 +1212,33 @@ Track or check history anytime at our verified portal.
                 {t.save_changes}
               </button>
             </form>
+
+            {/* Account Logout Card */}
+            {onLogout && (
+              <div className="pt-6 border-t border-slate-150 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-left space-y-0.5">
+                    <h4 className="text-xs font-black text-slate-800 dark:text-white flex items-center gap-1.5">
+                      <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                      <span>{isRtl ? 'إدارة الجلسة وتسجيل الخروج' : 'Account Session & Sign Out'}</span>
+                    </h4>
+                    <p className="text-[10px] text-slate-400">
+                      {isRtl ? 'تسجيل الخروج الآمن من حسابك على هذا الجهاز' : 'Safely terminate your session on this device'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  id="btn-settings-logout"
+                  type="button"
+                  onClick={handleLogoutPrompt}
+                  className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white dark:hover:text-white border border-rose-500/25 font-black text-xs uppercase cursor-pointer rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xs"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>{isRtl ? 'تسجيل الخروج من الحساب' : 'Log Out of Account'}</span>
+                </button>
+              </div>
+            )}
 
           </div>
         )}
