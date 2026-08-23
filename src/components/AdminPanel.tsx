@@ -9551,65 +9551,76 @@ export default function AdminPanel({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                    {registeredUsers.filter(u => u.role !== 'admin').map((u, uIdx) => {
-                      const hasAddress = u.city || u.district || u.street;
-                      return (
-                        <tr key={u.id || u.email || `cust-row-${uIdx}`} className="admin-customer-row hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
-                          <td className="p-3 font-semibold text-slate-850 dark:text-white font-sans">{u.name || (isRtl ? 'عميل مجهول' : 'Anonymous Client')}</td>
-                          <td className="p-3 font-mono text-[11px] text-slate-500 dark:text-slate-400 select-all">{u.email}</td>
-                          <td className="p-3 font-semibold text-slate-700 dark:text-slate-300 font-sans">
-                            {u.phone ? (
-                              <span className="inline-flex items-center gap-1">
-                                <span>📞</span>
-                                <span className="select-all">{u.phone}</span>
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 italic text-[10px]">{isRtl ? 'غير مسجل' : 'Not Provided'}</span>
-                            )}
-                          </td>
-                          <td className="p-3 font-sans text-slate-600 dark:text-slate-400">
-                            {hasAddress ? (
-                              <div className="space-y-1 text-left" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
-                                <div className="text-[11px] font-black text-slate-800 dark:text-slate-200">
-                                  <span>📍 </span>
-                                  <span>{isRtl ? `المدينة: ${u.city || ''}` : `City: ${u.city || ''}`}</span>
+                    {registeredUsers.filter(u => u.role !== 'admin').length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-slate-400 font-medium font-sans">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <span className="text-2xl">👥</span>
+                            <span>{isRtl ? 'لا يوجد عملاء مسجلين حتى الآن في قاعدة البيانات.' : 'No registered customers found in database yet.'}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      registeredUsers.filter(u => u.role !== 'admin').map((u, uIdx) => {
+                        const hasAddress = u.city || u.district || u.street;
+                        return (
+                          <tr key={u.id || u.email || `cust-row-${uIdx}`} className="admin-customer-row hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
+                            <td className="p-3 font-semibold text-slate-850 dark:text-white font-sans">{u.name || (isRtl ? 'عميل مجهول' : 'Anonymous Client')}</td>
+                            <td className="p-3 font-mono text-[11px] text-slate-500 dark:text-slate-400 select-all">{u.email}</td>
+                            <td className="p-3 font-semibold text-slate-700 dark:text-slate-300 font-sans">
+                              {u.phone ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <span>📞</span>
+                                  <span className="select-all">{u.phone}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic text-[10px]">{isRtl ? 'غير مسجل' : 'Not Provided'}</span>
+                              )}
+                            </td>
+                            <td className="p-3 font-sans text-slate-600 dark:text-slate-400">
+                              {hasAddress ? (
+                                <div className="space-y-1 text-left" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+                                  <div className="text-[11px] font-black text-slate-800 dark:text-slate-200">
+                                    <span>📍 </span>
+                                    <span>{isRtl ? `المدينة: ${u.city || ''}` : `City: ${u.city || ''}`}</span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 dark:text-slate-400 leading-relaxed font-sans">
+                                    <span>{isRtl ? `الحي: ${u.district || ''}` : `District: ${u.district || ''}`} • {isRtl ? `الشارع: ${u.street || ''}` : `Street: ${u.street || ''}`}</span>
+                                    {u.postal_code && <span> • {isRtl ? `الرمز البريدي: ${u.postal_code}` : `Zip Code: ${u.postal_code}`}</span>}
+                                  </div>
                                 </div>
-                                <div className="text-[10px] text-slate-400 dark:text-slate-400 leading-relaxed font-sans">
-                                  <span>{isRtl ? `الحي: ${u.district || ''}` : `District: ${u.district || ''}`} • {isRtl ? `الشارع: ${u.street || ''}` : `Street: ${u.street || ''}`}</span>
-                                  {u.postal_code && <span> • {isRtl ? `الرمز البريدي: ${u.postal_code}` : `Zip Code: ${u.postal_code}`}</span>}
-                                </div>
+                              ) : (
+                                <span className="text-slate-400 italic text-[10px] flex items-center gap-1 font-sans">
+                                  <span>⚠️</span>
+                                  <span>{isRtl ? 'لم يسجل عنوان شحن بعد' : 'Shipping setup pending'}</span>
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="space-y-0.5">
+                                <span className="block font-black text-emerald-500 text-[11.5px] font-mono">{(u.wallet_balance || 0).toFixed(2)} SAR</span>
+                                <span className="block text-[9.5px] text-amber-500 font-bold">{u.points || 0} PTS</span>
                               </div>
-                            ) : (
-                              <span className="text-slate-400 italic text-[10px] flex items-center gap-1 font-sans">
-                                <span>⚠️</span>
-                                <span>{isRtl ? 'لم يسجل عنوان شحن بعد' : 'Shipping setup pending'}</span>
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-right">
-                            <div className="space-y-0.5">
-                              <span className="block font-black text-emerald-500 text-[11.5px] font-mono">{(u.wallet_balance || 0).toFixed(2)} SAR</span>
-                              <span className="block text-[9.5px] text-amber-500 font-bold">{u.points || 0} PTS</span>
-                            </div>
-                          </td>
-                          <td className="p-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPointsTargetUser(u);
-                                setPointsToAdd(50);
-                                setPointsReason(isRtl ? 'مكافأة تقديرية من إدارة المتجر 🎁' : 'Appreciation gift from store management 🎁');
-                                setIsPointsModalOpen(true);
-                              }}
-                              className="mx-auto px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-lg text-[10px] cursor-pointer shadow-sm transition-all active:scale-95 flex items-center gap-1"
-                            >
-                              <span>🪙</span>
-                              <span>{isRtl ? 'إضافة نقاط' : 'Add Points'}</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            </td>
+                            <td className="p-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPointsTargetUser(u);
+                                  setPointsToAdd(50);
+                                  setPointsReason(isRtl ? 'مكافأة تقديرية من إدارة المتجر 🎁' : 'Appreciation gift from store management 🎁');
+                                  setIsPointsModalOpen(true);
+                                }}
+                                className="mx-auto px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-lg text-[10px] cursor-pointer shadow-sm transition-all active:scale-95 flex items-center gap-1"
+                              >
+                                <span>🪙</span>
+                                <span>{isRtl ? 'إضافة نقاط' : 'Add Points'}</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
