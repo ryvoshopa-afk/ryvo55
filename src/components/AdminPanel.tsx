@@ -2225,10 +2225,40 @@ export default function AdminPanel({
   }, [fetchUsers]);
 
   useEffect(() => {
-    if (adminTab === 'users_passwords') {
+    if (adminTab === 'customers' || adminTab === 'users_passwords' || adminTab === 'overview') {
       fetchUsers();
     }
   }, [adminTab, fetchUsers]);
+
+  // Periodic user sync & real-time socket events for customer management
+  useEffect(() => {
+    const handleUserSync = () => {
+      fetchUsers();
+    };
+
+    socket.on('user_updated', handleUserSync);
+    socket.on('user_registered', handleUserSync);
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchUsers();
+      }
+    }, 20000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchUsers();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      socket.off('user_updated', handleUserSync);
+      socket.off('user_registered', handleUserSync);
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [fetchUsers]);
 
   // --- Advanced RBAC and Newsletter subscribers state ---
   const [newAdminRole, setNewAdminRole] = useState<'super_admin' | 'admin' | 'manager' | 'support' | 'warehouse' | 'marketing' | 'finance'>('admin');

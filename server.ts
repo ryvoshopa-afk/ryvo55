@@ -559,7 +559,7 @@ async function resolveAndMigrateUserProfile(firestoreDb: any, uid: string | null
 }
 
 /**
- * Saves/updates user profile in Firestore at users/{uid} (and creates an alias pointer at users/{cleanEmail}).
+ * Saves/updates user profile in Firestore at users/{uid} (and cleans up legacy alias docs).
  */
 async function saveUserProfile(firestoreDb: any, uid: string | null, email: string, profileData: any): Promise<any> {
   if (!firestoreDb) return profileData;
@@ -576,10 +576,15 @@ async function saveUserProfile(firestoreDb: any, uid: string | null, email: stri
     const docRef = doc(firestoreDb, "users", targetId);
     await setDoc(docRef, cleanData, { merge: true });
 
-    // Write pointer to users/cleanEmail if targetId is uid
+    // If targetId is UID and cleanEmail is a distinct key, cleanly delete any old email document to prevent duplicates
     if (uid && cleanEmail && targetId !== cleanEmail) {
-      const emailPointerRef = doc(firestoreDb, "users", cleanEmail);
-      await setDoc(emailPointerRef, { uid, email: cleanEmail, migratedToUid: true }, { merge: true });
+      try {
+        const oldDocRef = doc(firestoreDb, "users", cleanEmail);
+        const oldSnap = await getDoc(oldDocRef);
+        if (oldSnap && oldSnap.exists && oldSnap.exists()) {
+          await deleteDoc(oldDocRef);
+        }
+      } catch (_) {}
     }
   } catch (err: any) {
     console.error(`⚠️ Failed saving user profile for [${targetId}]:`, err.message);
@@ -900,6 +905,7 @@ function initBackupScheduler() {
 // Initialize Firebase Client SDK safely for Server-Side Use
 export let db: any = null;
 setAiSupportDbGetter(() => db);
+dbSupportService.setSupportDbGetter(() => db);
 export let io: SocketIOServer | null = null;
 let firebaseConfig: any = null;
 
@@ -2346,11 +2352,49 @@ app.get("/api/users", async (req, res) => {
   try {
     const usersCol = collection(db, "users");
     const snap = await getDocs(usersCol);
-    const list = snap.docs.map(d => {
+    const usersMap = new Map<string, any>();
+
+    for (const d of snap.docs) {
       const u = d.data();
+      if (!u) continue;
+      // Skip pure pointer objects without email or without user fields
+      if (u.migratedToUid && !u.name && !u.role && !u.points) continue;
+
       const { password, ...safeUser } = u;
-      return safeUser;
-    });
+      const emailKey = (safeUser.email || "").toLowerCase().trim();
+      const uidKey = safeUser.uid || safeUser.id || d.id;
+      const key = emailKey || uidKey;
+      if (!key) continue;
+
+      const normalizedUser = {
+        id: uidKey || emailKey,
+        uid: uidKey || emailKey,
+        email: safeUser.email || (key.includes('@') ? key : ''),
+        name: safeUser.name || (safeUser.email ? safeUser.email.split('@')[0] : 'عميل رايفو'),
+        role: safeUser.role || 'customer',
+        status: safeUser.status || 'active',
+        points: safeUser.points !== undefined ? safeUser.points : 100,
+        wallet_balance: safeUser.wallet_balance !== undefined ? safeUser.wallet_balance : 0,
+        phone: safeUser.phone || '',
+        city: safeUser.city || '',
+        district: safeUser.district || '',
+        street: safeUser.street || '',
+        postal_code: safeUser.postal_code || '',
+        provider: safeUser.provider || safeUser.authProvider || 'password',
+        createdAt: safeUser.createdAt || new Date().toISOString(),
+        updatedAt: safeUser.updatedAt || new Date().toISOString(),
+        ...safeUser
+      };
+
+      if (usersMap.has(key)) {
+        const existing = usersMap.get(key);
+        usersMap.set(key, { ...existing, ...normalizedUser });
+      } else {
+        usersMap.set(key, normalizedUser);
+      }
+    }
+
+    const list = Array.from(usersMap.values());
     res.json(list);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -2783,6 +2827,12 @@ app.post("/api/auth/oauth-login", async (req, res) => {
 
     console.log(`🎉 [AUTH STAGE 5: OAUTH SUCCESS] Login completely successful for: ${cleanEmail} (Role: ${finalRole}, IsAdmin: ${isAdmin})`);
     console.log(`==================================================\n`);
+
+    if (io) {
+      io.to('agents_room').emit('user_updated', safeUser);
+      io.to('agents_room').emit('user_registered', safeUser);
+      io.emit('user_registered', safeUser);
+    }
 
     return res.json({
       success: true,
