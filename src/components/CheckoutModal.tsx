@@ -425,7 +425,16 @@ export default function CheckoutModal({
           onOrderSuccess(finalOrder);
           playCheckoutSuccessSound();
         } else {
-          setFormError(data.error || (isRtl ? 'حدث خطأ أثناء معالجة طلبك، يرجى المحاولة لاحقاً.' : 'An error occurred while processing your order.'));
+          const rawErr = data?.error;
+          const isTechnical = typeof rawErr === 'string' && /TypeError|ReferenceError|SyntaxError|not a function|Expected type|undefined|null|object|Firestore|Adapter/i.test(rawErr);
+          if (rawErr && !isTechnical) {
+            setFormError(rawErr);
+          } else {
+            setFormError(isRtl ? 'حدث خطأ غير متوقع أثناء معالجة الطلب، يرجى إعادة المحاولة أو التواصل مع الدعم.' : 'An error occurred while processing your order. Please try again.');
+          }
+          if (rawErr) {
+            console.error('Checkout API error:', rawErr);
+          }
         }
       })
       .catch(err => {

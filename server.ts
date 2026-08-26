@@ -226,6 +226,17 @@ class LocalDbAdapter {
   collection(colName: string) {
     return new LocalCollectionRefWrapper(colName);
   }
+
+  doc(pathOrCol: string, docId?: string) {
+    if (docId) {
+      return this.collection(pathOrCol).doc(docId);
+    }
+    const parts = pathOrCol.split("/").filter(Boolean);
+    if (parts.length >= 2) {
+      return this.collection(parts[0]).doc(parts.slice(1).join("/"));
+    }
+    return this.collection(pathOrCol).doc(parts[0] || "default");
+  }
 }
 
 // --- CLIENT-SDK-BASED FIRESTORE ADAPTERS ---
@@ -416,53 +427,147 @@ class ClientDbAdapter {
     const cRef = clientCollection(this.rawFirestore, colName);
     return new ClientCollectionRefWrapper(cRef, this.rawFirestore);
   }
+
+  doc(pathOrCol: string, docId?: string) {
+    if (docId) {
+      return this.collection(pathOrCol).doc(docId);
+    }
+    const parts = pathOrCol.split("/").filter(Boolean);
+    if (parts.length >= 2) {
+      return this.collection(parts[0]).doc(parts.slice(1).join("/"));
+    }
+    const dRef = clientDoc(this.rawFirestore, pathOrCol);
+    return new ClientDocRefWrapper(dRef);
+  }
 }
 
 // Functional Helper Wrappers matching previous syntax
 function collection(dbInstance: any, path: string) {
   if (!dbInstance) throw new Error("Firestore DB not initialized");
-  return dbInstance.collection(path);
+  if (typeof dbInstance.collection === "function") {
+    return dbInstance.collection(path);
+  }
+  const rawFs = dbInstance.rawFirestore || dbInstance;
+  const cRef = clientCollection(rawFs, path);
+  return new ClientCollectionRefWrapper(cRef, rawFs);
 }
 
 function doc(dbInstanceOrCol: any, pathOrId: string, docId?: string) {
   if (!dbInstanceOrCol) throw new Error("Firestore DB/Col not initialized");
+
+  // 1. If 3 arguments provided: doc(db, "orders", "123")
   if (docId) {
-    return dbInstanceOrCol.collection(pathOrId).doc(docId);
+    if (typeof dbInstanceOrCol.collection === "function") {
+      const col = dbInstanceOrCol.collection(pathOrId);
+      if (typeof col.doc === "function") {
+        return col.doc(docId);
+      }
+    }
+    if (typeof dbInstanceOrCol.doc === "function") {
+      return dbInstanceOrCol.doc(`${pathOrId}/${docId}`);
+    }
+    const rawFs = dbInstanceOrCol.rawFirestore || dbInstanceOrCol;
+    const dRef = clientDoc(rawFs, pathOrId, docId);
+    return new ClientDocRefWrapper(dRef);
   }
+
+  // 2. If 2 arguments provided: doc(colRef, "123") OR doc(db, "orders/123")
   if (typeof dbInstanceOrCol.doc === "function") {
     return dbInstanceOrCol.doc(pathOrId);
   }
-  return dbInstanceOrCol.doc(pathOrId);
+
+  // If dbInstanceOrCol is a DB adapter with collection() and pathOrId is "orders/123"
+  if (typeof dbInstanceOrCol.collection === "function") {
+    const parts = pathOrId.split("/").filter(Boolean);
+    if (parts.length >= 2) {
+      const colName = parts[0];
+      const docName = parts.slice(1).join("/");
+      return dbInstanceOrCol.collection(colName).doc(docName);
+    }
+  }
+
+  // If dbInstanceOrCol is a collection reference or wrapper without a direct .doc() function
+  if (dbInstanceOrCol.rawRef || dbInstanceOrCol.type === "collection" || dbInstanceOrCol._delegate) {
+    const rawCol = dbInstanceOrCol.rawRef || dbInstanceOrCol;
+    const dRef = clientDoc(rawCol, pathOrId);
+    return new ClientDocRefWrapper(dRef);
+  }
+
+  // If dbInstanceOrCol is a raw Firestore instance
+  const rawFs = dbInstanceOrCol.rawFirestore || dbInstanceOrCol;
+  if (rawFs) {
+    const parts = pathOrId.split("/").filter(Boolean);
+    if (parts.length >= 2) {
+      const dRef = clientDoc(rawFs, parts[0], parts.slice(1).join("/"));
+      return new ClientDocRefWrapper(dRef);
+    }
+    const dRef = clientDoc(rawFs, pathOrId);
+    return new ClientDocRefWrapper(dRef);
+  }
+
+  return new LocalDocRefWrapper(pathOrId, docId || "default");
 }
 
 async function getDocs(collectionRef: any) {
   if (!collectionRef) throw new Error("Collection ref not initialized");
-  return await collectionRef.get();
+  if (typeof collectionRef.get === "function") {
+    return await collectionRef.get();
+  }
+  const snap = await clientGetDocs(collectionRef.rawRef || collectionRef);
+  return {
+    size: snap.size,
+    empty: snap.empty,
+    docs: snap.docs.map((d: any) => new ClientDocSnapshotWrapper(d))
+  };
 }
 
 async function getDoc(docRef: any) {
   if (!docRef) throw new Error("Doc ref not initialized");
-  return await docRef.get();
+  if (typeof docRef.get === "function") {
+    return await docRef.get();
+  }
+  const snap = await clientGetDoc(docRef.rawRef || docRef);
+  return new ClientDocSnapshotWrapper(snap);
 }
 
 async function setDoc(docRef: any, data: any, options?: any) {
   if (!docRef) throw new Error("Doc ref not initialized");
-  return await docRef.set(data, options);
+  if (typeof docRef.set === "function") {
+    return await docRef.set(data, options);
+  }
+  if (options && options.merge) {
+    await clientSetDoc(docRef.rawRef || docRef, data, { merge: true });
+  } else {
+    await clientSetDoc(docRef.rawRef || docRef, data);
+  }
+  return { success: true };
 }
 
 async function updateDoc(docRef: any, data: any) {
   if (!docRef) throw new Error("Doc ref not initialized");
-  return await docRef.update(data);
+  if (typeof docRef.update === "function") {
+    return await docRef.update(data);
+  }
+  await clientUpdateDoc(docRef.rawRef || docRef, data);
+  return { success: true };
 }
 
 async function deleteDoc(docRef: any) {
   if (!docRef) throw new Error("Doc ref not initialized");
-  return await docRef.delete();
+  if (typeof docRef.delete === "function") {
+    return await docRef.delete();
+  }
+  await clientDeleteDoc(docRef.rawRef || docRef);
+  return { success: true };
 }
 
 async function addDoc(collectionRef: any, data: any) {
   if (!collectionRef) throw new Error("Collection ref not initialized");
-  return await collectionRef.add(data);
+  if (typeof collectionRef.add === "function") {
+    return await collectionRef.add(data);
+  }
+  const dRef = await clientAddDoc(collectionRef.rawRef || collectionRef, data);
+  return new ClientDocRefWrapper(dRef);
 }
 
 function query(colRef: any, ...args: any[]) {
@@ -2172,7 +2277,7 @@ app.post("/api/orders", async (req, res) => {
     o.shipping = calculatedShipping;
     o.total = calculatedTotal;
 
-    // 5. Atomic Deduct Stock via Firestore Transaction & Handle Dropship Auto-forwarding
+    // 5. Deduct Stock & Handle Dropship Auto-forwarding
     let isDropshipOrder = false;
     let dropshipSupplier = "AliExpress";
 
@@ -2182,33 +2287,32 @@ app.post("/api/orders", async (req, res) => {
 
       let currentPData: any = null;
 
-      await runTransaction(db, async (transaction) => {
-        const freshSnap = await transaction.get(pDocRef);
-        if (!freshSnap.exists()) {
-          throw new Error(`المنتج لم يعد متوفراً في قاعدة البيانات!`);
-        }
-        currentPData = freshSnap.data();
-        const storeStock = currentPData.stock !== undefined ? Number(currentPData.stock) : 0;
-        const supStock = currentPData.supplier_stock !== undefined ? Number(currentPData.supplier_stock) : storeStock;
-        const effectiveStock = Math.min(storeStock, supStock);
+      const freshSnap = await getDoc(pDocRef);
+      if (!freshSnap.exists()) {
+        throw new Error(`المنتج لم يعد متوفراً في قاعدة البيانات!`);
+      }
+      currentPData = freshSnap.data();
+      const storeStock = currentPData.stock !== undefined ? Number(currentPData.stock) : 0;
+      const supStock = currentPData.supplier_stock !== undefined ? Number(currentPData.supplier_stock) : storeStock;
+      const effectiveStock = Math.min(storeStock, supStock);
 
-        if (item.quantity > effectiveStock) {
-          throw new Error(`عذراً، نفد مخزون المنتج (${currentPData.name || 'المنتج'}) أثناء معالجة طلبك. المتوفر حالياً: ${effectiveStock}`);
-        }
+      if (item.quantity > effectiveStock) {
+        throw new Error(`عذراً، نفد مخزون المنتج (${currentPData.name || 'المنتج'}) أثناء معالجة طلبك. المتوفر حالياً: ${effectiveStock}`);
+      }
 
-        const newStoreStock = Math.max(0, storeStock - item.quantity);
-        const newSupStock = currentPData.supplier_stock !== undefined ? Math.max(0, supStock - item.quantity) : undefined;
+      const newStoreStock = Math.max(0, storeStock - item.quantity);
+      const newSupStock = currentPData.supplier_stock !== undefined ? Math.max(0, supStock - item.quantity) : undefined;
 
-        const updatePayload: any = { stock: newStoreStock };
-        if (newSupStock !== undefined) {
-          updatePayload.supplier_stock = newSupStock;
-        }
-        if (newSupStock !== undefined && newStoreStock > newSupStock) {
-          updatePayload.stock = newSupStock;
-        }
+      const updatePayload: any = { stock: newStoreStock };
+      if (newSupStock !== undefined) {
+        updatePayload.supplier_stock = newSupStock;
+      }
+      if (newSupStock !== undefined && newStoreStock > newSupStock) {
+        updatePayload.stock = newSupStock;
+      }
 
-        transaction.update(pDocRef, updatePayload);
-      });
+      await updateDoc(pDocRef, updatePayload);
+      productsCache = null; // Invalidate cache so stock decrement reflects immediately
 
       if (currentPData && (currentPData.is_dropship || currentPData.price > 1000)) {
         isDropshipOrder = true;
