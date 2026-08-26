@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Product, Language, Theme, CartItem, Order, User, Review, WheelSettings, WheelSegment, StoreSettings } from './types';
 import PrelaunchBanner from './components/PrelaunchBanner';
 import PrelaunchModal from './components/PrelaunchModal';
@@ -9,7 +9,7 @@ import { formatPrice } from './utils/price';
 import { ConfirmationProvider } from './components/ConfirmationDialog';
 import socket from './utils/socket';
 import { smartFetch } from './utils/smartFetch';
-import { checkOAuthRedirectResult } from './lib/firebase';
+import { checkOAuthRedirectResult, logoutClientAuth, subscribeAuthState, clearClientAuthStorage } from './lib/firebase';
 
 // Components (Critical Render Path - Loaded synchronously)
 import Navbar from './components/Navbar';
@@ -132,60 +132,84 @@ export default function App() {
     return [];
   });
 
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('ryvo_user');
-    if (saved) {
-      try {
-        const u = JSON.parse(saved);
-        if (u && (u.email?.toLowerCase() === 'ryvo.shopa@gmail.com')) {
-          u.role = 'admin';
-        }
-        return u;
-      } catch (e) {
-        // ignore
-      }
-    }
-    return null;
-  });
+  // User state - strictly governed by Firebase Auth and server session validation
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const authGenerationRef = useRef<number>(0);
 
-  // Verify and sync active session role with backend /api/auth/me on mount
+  // Authentication Lifecycle: Source of Truth = Firebase Auth & Server Token Verification
   useEffect(() => {
-    // Check if user is returning from OAuth redirect
-    checkOAuthRedirectResult().then(redirectRes => {
-      if (redirectRes && redirectRes.success && redirectRes.user) {
-        console.log("==========================================");
-        console.log("🎉 [APP MOUNT] Successfully signed in from OAuth Redirect:", redirectRes.user.email);
-        console.log("==========================================");
-        setCurrentUser(redirectRes.user);
-        localStorage.setItem('ryvo_user', JSON.stringify(redirectRes.user));
+    let isMounted = true;
+    const currentGeneration = ++authGenerationRef.current;
+
+    async function syncAuthSession() {
+      // 1. Check if user is returning from OAuth redirect
+      try {
+        const redirectRes = await checkOAuthRedirectResult();
+        if (!isMounted || currentGeneration !== authGenerationRef.current) return;
+        if (redirectRes && redirectRes.success && redirectRes.user) {
+          console.log("🎉 [AUTH REDIRECT] Successfully signed in from OAuth Redirect:", redirectRes.user.email);
+          setCurrentUser(redirectRes.user);
+          localStorage.setItem('ryvo_user', JSON.stringify(redirectRes.user));
+          return;
+        }
+      } catch (err) {
+        console.warn("⚠️ [AUTH REDIRECT SYNC WARN]", err);
       }
-    }).catch(() => {});
 
-    const token = localStorage.getItem('ryvo_session_token');
-    if (token) {
-      fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // 2. Check active server session token in localStorage
+      const token = localStorage.getItem('ryvo_session_token');
+      if (token) {
+        try {
+          const res = await fetch('/api/auth/me', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'x-session-token': token
+            }
+          });
+          if (!isMounted || currentGeneration !== authGenerationRef.current) return;
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.user) {
+              const verifiedUser: User = data.user;
+              console.log("👤 [AUTH SESSION SYNC]: Verified active user:", verifiedUser.email, `(${verifiedUser.role})`);
+              setCurrentUser(verifiedUser);
+              localStorage.setItem('ryvo_user', JSON.stringify(verifiedUser));
+              return;
+            }
+          }
+          // Server reported token is invalid or expired
+          console.warn("⚠️ [AUTH SESSION INVALID] Server revoked or expired session token. Resetting to guest.");
+          clearClientAuthStorage();
+          setCurrentUser(null);
+        } catch (fetchErr) {
+          console.warn("⚠️ [AUTH SESSION ME FETCH FAILED]", fetchErr);
         }
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.user) {
-          const verifiedUser = data.user;
-          console.log("==========================================");
-          console.log("👤 [APP MOUNT /API/AUTH/ME SYNC DEBUG]:");
-          console.log(" - user.id:", verifiedUser.id || verifiedUser.email);
-          console.log(" - user.email:", verifiedUser.email);
-          console.log(" - user.role:", verifiedUser.role);
-          console.log(" - isAdmin:", verifiedUser.role === 'admin');
-          console.log("==========================================");
-
-          setCurrentUser(verifiedUser);
-          localStorage.setItem('ryvo_user', JSON.stringify(verifiedUser));
-        }
-      })
-      .catch(() => {});
+      } else {
+        // No session token -> ensure clean guest state
+        clearClientAuthStorage();
+        setCurrentUser(null);
+      }
     }
+
+    syncAuthSession();
+
+    // 3. Subscribe to Firebase onAuthStateChanged as primary auth state observer
+    const unsubscribeAuth = subscribeAuthState((firebaseUser) => {
+      if (!isMounted || currentGeneration !== authGenerationRef.current) return;
+      if (!firebaseUser) {
+        // When Firebase confirms user is null and no session token exists, stay strictly logged out
+        const hasSession = localStorage.getItem('ryvo_session_token');
+        if (!hasSession) {
+          setCurrentUser(null);
+          clearClientAuthStorage();
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeAuth();
+    };
   }, []);
 
    // UI Active visibility states
@@ -1203,7 +1227,11 @@ export default function App() {
   }, [favorites]);
 
   useEffect(() => {
-    localStorage.setItem('ryvo_user', currentUser ? JSON.stringify(currentUser) : '');
+    if (currentUser) {
+      localStorage.setItem('ryvo_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('ryvo_user');
+    }
   }, [currentUser]);
 
   // Load data from Firestore backend on mount
@@ -1541,6 +1569,7 @@ export default function App() {
 
   // Auth Callbacks
   const handleAuthSuccess = (user: User) => {
+    authGenerationRef.current += 1;
     const cleanEmail = (user.email || '').toLowerCase().trim();
     const isAdmin = cleanEmail === 'ryvo.shopa@gmail.com' || user.role === 'admin' || user.role === 'super_admin';
     const finalUser = isAdmin ? { ...user, role: 'admin' as const } : user;
@@ -1563,13 +1592,48 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (_) {}
+    console.log("🚪 [LOGOUT ACTION TRIGGERED] Terminating user session completely...");
+    // 1. Invalidate current auth request generation to discard any in-flight async auth responses
+    authGenerationRef.current += 1;
+
+    // 2. Capture token before clearing
+    const currentToken = localStorage.getItem('ryvo_session_token') || '';
+
+    // 3. Immediately reset React state to logged out / guest
     setCurrentUser(null);
-    localStorage.removeItem('ryvo_user');
     setFavorites([]);
     setActiveView('home');
+
+    // 4. Disconnect & cleanup Socket.IO user connection and listeners
+    try {
+      if (socket) {
+        socket.emit('leave_conversation');
+        socket.disconnect();
+      }
+    } catch (sockErr) {
+      console.warn("⚠️ [SOCKET DISCONNECT WARN]", sockErr);
+    }
+
+    // 5. Notify server to invalidate and delete session from activeSessions & cookies
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': currentToken ? `Bearer ${currentToken}` : '',
+          'x-session-token': currentToken
+        },
+        body: JSON.stringify({ token: currentToken })
+      });
+      console.log("✅ [SERVER LOGOUT] Session revoked on backend.");
+    } catch (netErr) {
+      console.warn('⚠️ [SERVER LOGOUT NETWORK WARN]', netErr);
+    }
+
+    // 6. Complete client-side Firebase Auth signOut & storage cleanup
+    await logoutClientAuth();
+
+    // 7. Feedback toast
     triggerToast(language === 'ar' ? 'تم تسجيل الخروج بنجاح 👋' : 'Signed out successfully 👋');
   };
 

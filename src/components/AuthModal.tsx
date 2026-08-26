@@ -256,6 +256,9 @@ export default function AuthModal({
       const data = await res.json();
 
       if (data.success || data.verified) {
+        if (data.token) {
+          localStorage.setItem('ryvo_session_token', data.token);
+        }
         setFeedback({
           type: 'success',
           text: isRtl ? 'تم التحقق من الكود وتأكيد الحساب بنجاح! 🔓' : 'Code verified and account activated successfully! 🔓'

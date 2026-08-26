@@ -3074,14 +3074,33 @@ app.post("/api/auth/login", async (req, res) => {
 app.post("/api/auth/logout", async (req, res) => {
   try {
     const session = getSessionFromReq(req);
-    if (session) {
+    if (session && session.token) {
       activeSessions.delete(session.token);
     }
+    const bodyToken = req.body?.token;
+    if (bodyToken && typeof bodyToken === 'string') {
+      activeSessions.delete(bodyToken.trim());
+    }
+    const authHeader = req.headers["authorization"] || req.headers["Authorization"];
+    if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+      const hToken = authHeader.substring(7).trim();
+      if (hToken) activeSessions.delete(hToken);
+    }
+    const xSessionToken = req.headers["x-session-token"] || req.headers["x-auth-token"];
+    if (xSessionToken && typeof xSessionToken === "string") {
+      activeSessions.delete(xSessionToken.trim());
+    }
+    const qToken = req.query?.token;
+    if (qToken && typeof qToken === "string") {
+      activeSessions.delete(qToken.trim());
+    }
+
     res.setHeader("Set-Cookie", [
-      "session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
-      "ryvo_user_role=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+      "session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
+      "ryvo_user_role=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=Lax",
+      "token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax"
     ]);
-    return res.json({ success: true, message: "Logged out successfully" });
+    return res.json({ success: true, message: "Logged out successfully and session terminated." });
   } catch (e: any) {
     return res.status(500).json({ error: e.message || "Internal server error" });
   }

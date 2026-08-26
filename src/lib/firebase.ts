@@ -7,6 +7,11 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  signOut,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  User as FirebaseUser,
   Auth
 } from 'firebase/auth';
 
@@ -318,6 +323,63 @@ export async function checkOAuthRedirectResult(): Promise<{ success: boolean; us
   } catch (err: any) {
     console.log('⚠️ [OAUTH REDIRECT CHECK DEBUG]', err?.code, err?.message);
     return null;
+  }
+}
+
+/**
+ * Completely purges all user sessions, authentication tokens, and cached credentials from browser storage.
+ */
+export function clearClientAuthStorage(): void {
+  try {
+    const authKeys = [
+      'ryvo_session_token',
+      'ryvo_user',
+      'ryvo_auth_token',
+      'admin_session',
+      'ryvo_session_id',
+      'ryvo_oauth_in_progress'
+    ];
+    authKeys.forEach(k => {
+      try {
+        localStorage.removeItem(k);
+        sessionStorage.removeItem(k);
+      } catch (_) {}
+    });
+  } catch (e) {
+    console.warn('⚠️ [STORAGE PURGE WARN]', e);
+  }
+}
+
+/**
+ * Performs a complete, clean sign-out from Firebase Auth and purges local storage.
+ * Guarantees auth.currentUser becomes null and prevents session revival.
+ */
+export async function logoutClientAuth(): Promise<void> {
+  console.log('🔒 [AUTH LOGOUT] Terminating client authentication session...');
+  try {
+    const auth = getClientAuthSync();
+    if (auth) {
+      await signOut(auth);
+      console.log('✅ [FIREBASE AUTH SIGN OUT] Firebase Auth signOut succeeded (currentUser is null).');
+    }
+  } catch (err: any) {
+    console.warn('⚠️ [FIREBASE AUTH SIGN OUT WARN]', err?.message || err);
+  } finally {
+    clearClientAuthStorage();
+  }
+}
+
+/**
+ * Subscribes to Firebase onAuthStateChanged as the primary source of truth.
+ */
+export function subscribeAuthState(callback: (user: FirebaseUser | null) => void): () => void {
+  try {
+    const auth = getClientAuthSync();
+    if (!auth) return () => {};
+    return onAuthStateChanged(auth, callback);
+  } catch (e) {
+    console.warn('⚠️ [SUBSCRIBE AUTH STATE ERROR]', e);
+    return () => {};
   }
 }
 
