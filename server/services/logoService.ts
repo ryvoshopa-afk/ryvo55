@@ -11,24 +11,42 @@ if (!fs.existsSync(publicDir)) {
 }
 
 /**
- * Creates an ICO container file wrapping a 32x32 PNG buffer
+ * Creates an ICO container file wrapping 16x16, 32x32, and 48x48 PNG buffers
  */
-export function createIcoFromPng(pngBuf: Buffer): Buffer {
-  const header = Buffer.alloc(6 + 16);
+export function createIcoFromPng(png16: Buffer, png32: Buffer, png48: Buffer): Buffer {
+  const count = 3;
+  const header = Buffer.alloc(6);
   header.writeUInt16LE(0, 0); // Reserved
   header.writeUInt16LE(1, 2); // Type 1 = ICO
-  header.writeUInt16LE(1, 4); // Count = 1
+  header.writeUInt16LE(count, 4); // Count = 3 images
 
-  header.writeUInt8(32, 6);        // Width 32
-  header.writeUInt8(32, 7);        // Height 32
-  header.writeUInt8(0, 8);         // Color palette
-  header.writeUInt8(0, 9);         // Reserved
-  header.writeUInt16LE(1, 10);     // Color planes
-  header.writeUInt16LE(32, 12);    // Bits per pixel
-  header.writeUInt32LE(pngBuf.length, 14); // Image size
-  header.writeUInt32LE(22, 18);    // Offset (6 + 16 = 22)
+  const dirEntrySize = 16;
+  const dirSize = count * dirEntrySize;
+  let currentOffset = 6 + dirSize;
 
-  return Buffer.concat([header, pngBuf]);
+  const entries: Buffer[] = [];
+
+  const images = [
+    { buf: png16, w: 16, h: 16 },
+    { buf: png32, w: 32, h: 32 },
+    { buf: png48, w: 48, h: 48 }
+  ];
+
+  for (const img of images) {
+    const entry = Buffer.alloc(16);
+    entry.writeUInt8(img.w === 256 ? 0 : img.w, 0);
+    entry.writeUInt8(img.h === 256 ? 0 : img.h, 1);
+    entry.writeUInt8(0, 2); // Palette
+    entry.writeUInt8(0, 3); // Reserved
+    entry.writeUInt16LE(1, 4); // Color planes
+    entry.writeUInt16LE(32, 6); // Bits per pixel
+    entry.writeUInt32LE(img.buf.length, 8); // Image size in bytes
+    entry.writeUInt32LE(currentOffset, 12); // Offset
+    entries.push(entry);
+    currentOffset += img.buf.length;
+  }
+
+  return Buffer.concat([header, ...entries, png16, png32, png48]);
 }
 
 /**
@@ -135,6 +153,7 @@ export function resizePngImage(
 export function generateFaviconsFromPngBuffer(masterPngBuffer: Buffer): {
   fav16: Buffer;
   fav32: Buffer;
+  fav48: Buffer;
   fav180: Buffer;
   fav192: Buffer;
   fav512: Buffer;
@@ -144,23 +163,29 @@ export function generateFaviconsFromPngBuffer(masterPngBuffer: Buffer): {
 
   const fav16Png = resizePngImage(srcPng, 16, 16, true);
   const fav32Png = resizePngImage(srcPng, 32, 32, true);
+  const fav48Png = resizePngImage(srcPng, 48, 48, true);
   const fav180Png = resizePngImage(srcPng, 180, 180, true);
   const fav192Png = resizePngImage(srcPng, 192, 192, true);
   const fav512Png = resizePngImage(srcPng, 512, 512, true);
 
   const fav16Buf = PNG.sync.write(fav16Png);
   const fav32Buf = PNG.sync.write(fav32Png);
+  const fav48Buf = PNG.sync.write(fav48Png);
   const fav180Buf = PNG.sync.write(fav180Png);
   const fav192Buf = PNG.sync.write(fav192Png);
   const fav512Buf = PNG.sync.write(fav512Png);
-  const icoBuf = createIcoFromPng(fav32Buf);
+  const icoBuf = createIcoFromPng(fav16Buf, fav32Buf, fav48Buf);
 
   const filesMap: Record<string, Buffer> = {
     'favicon-16x16.png': fav16Buf,
     'favicon-32x32.png': fav32Buf,
+    'favicon-48x48.png': fav48Buf,
     'apple-touch-icon.png': fav180Buf,
+    'apple-touch-icon-precomposed.png': fav180Buf,
     'icon-192.png': fav192Buf,
+    'android-chrome-192x192.png': fav192Buf,
     'icon-512.png': fav512Buf,
+    'android-chrome-512x512.png': fav512Buf,
     'favicon.ico': icoBuf,
   };
 
@@ -181,6 +206,7 @@ export function generateFaviconsFromPngBuffer(masterPngBuffer: Buffer): {
   return {
     fav16: fav16Buf,
     fav32: fav32Buf,
+    fav48: fav48Buf,
     fav180: fav180Buf,
     fav192: fav192Buf,
     fav512: fav512Buf,

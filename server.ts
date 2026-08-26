@@ -3909,22 +3909,41 @@ function serveStaticAsset(res: any, filename: string, mimeType: string) {
   return res.status(404).send(`${filename} not found`);
 }
 
-app.get(["/ryvo-logo.png", "/assets/ryvo-logo.png"], (req, res) => {
-  return serveStaticAsset(res, "ryvo-logo.png", "image/png");
-});
-
-app.get(["/logo.png", "/assets/logo.png"], (req, res) => {
+app.get(["/ryvo-logo.png", "/assets/ryvo-logo.png", "/logo.png", "/assets/logo.png"], (req, res) => {
   return serveStaticAsset(res, "logo.png", "image/png");
 });
 
-app.get(["/favicon.ico", "/favicon-16x16.png", "/favicon-32x32.png", "/apple-touch-icon.png", "/icon-192.png", "/icon-512.png"], (req, res) => {
+app.get(["/ryvo-logo.svg", "/assets/ryvo-logo.svg", "/logo.svg", "/assets/logo.svg"], (req, res) => {
+  return serveStaticAsset(res, "logo.svg", "image/svg+xml");
+});
+
+app.get(["/og-image.png", "/ryvo-social-card.png"], (req, res) => {
+  return serveStaticAsset(res, "og-image.png", "image/png");
+});
+
+app.get(["/favicon.svg"], (req, res) => {
+  return serveStaticAsset(res, "favicon.svg", "image/svg+xml");
+});
+
+app.get([
+  "/favicon.ico",
+  "/favicon-16x16.png",
+  "/favicon-32x32.png",
+  "/favicon-48x48.png",
+  "/apple-touch-icon.png",
+  "/apple-touch-icon-precomposed.png",
+  "/icon-192.png",
+  "/android-chrome-192x192.png",
+  "/icon-512.png",
+  "/android-chrome-512x512.png"
+], (req, res) => {
   const filename = path.basename(req.path);
   const ext = path.extname(filename);
-  const contentType = ext === ".ico" ? "image/x-icon" : "image/png";
+  const contentType = ext === ".ico" ? "image/x-icon" : ext === ".svg" ? "image/svg+xml" : "image/png";
   return serveStaticAsset(res, filename, contentType);
 });
 
-app.get("/manifest.webmanifest", (req, res) => {
+app.get(["/manifest.webmanifest", "/manifest.json"], (req, res) => {
   return serveStaticAsset(res, "manifest.webmanifest", "application/manifest+json");
 });
 

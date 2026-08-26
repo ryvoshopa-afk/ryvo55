@@ -1,0 +1,34 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220">
+  <defs>
+    <linearGradient id="hRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF3838" />
+      <stop offset="50%" stop-color="#E53E3E" />
+      <stop offset="100%" stop-color="#B91C1C" />
+    </linearGradient>
+    <linearGradient id="hWhite" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F1F5F9" />
+    </linearGradient>
+    <filter id="hGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="8" flood-color="#E53E3E" flood-opacity="0.4" />
+    </filter>
+  </defs>
+
+  <!-- RYVO Big Typography -->
+  <!-- R -->
+  <path d="M 120 30 L 210 30 C 250 30 274 52 274 88 C 274 118 254 138 226 144 L 280 200 L 226 200 L 178 148 L 168 148 L 168 200 L 120 200 Z M 168 70 L 168 108 L 206 108 C 220 108 228 98 228 89 C 228 80 220 70 206 70 Z" fill="url(#hWhite)" />
+
+  <!-- Y -->
+  <path d="M 284 30 L 332 108 L 332 200 L 376 200 L 376 108 L 424 30 L 376 30 L 354 74 L 332 30 Z" fill="url(#hWhite)" />
+
+  <!-- V -->
+  <path d="M 424 30 L 482 200 L 526 200 L 584 30 L 538 30 L 504 140 L 470 30 Z" fill="url(#hRed)" filter="url(#hGlow)" />
+
+  <!-- O -->
+  <path d="M 648 30 C 598 30 570 72 570 144 C 570 216 598 258 648 258 C 698 258 726 216 726 144 C 726 72 698 30 648 30 Z M 648 70 C 672 70 682 98 682 144 C 682 190 672 218 648 218 C 624 218 614 190 614 144 C 614 98 624 70 648 70 Z" transform="matrix(1 0 0 0.74 0 7.8)" fill="url(#hWhite)" />
+  
+  <!-- Red Bottom Accent Under V/O -->
+  <path d="M 450 210 L 720 210" stroke="url(#hRed)" stroke-width="4" stroke-linecap="round" />
+  <circle cx="720" cy="210" r="4" fill="#FF3838" />
+</svg>
