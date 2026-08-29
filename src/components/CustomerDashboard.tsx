@@ -108,10 +108,12 @@ Track or check history anytime at our verified portal.
   const [profilePhone, setProfilePhone] = useState(currentUser?.phone || '');
   const [profileCity, setProfileCity] = useState(currentUser?.city || '');
   const [profileDistrict, setProfileDistrict] = useState(currentUser?.district || '');
-  const [profileStreet, setProfileStreet] = useState(currentUser?.street || '');
-  const [profilePostalCode, setProfilePostalCode] = useState(currentUser?.postal_code || '');
+  const [profileStreet, setProfileStreet] = useState(currentUser?.street || currentUser?.address || '');
+  const [profilePostalCode, setProfilePostalCode] = useState(currentUser?.postal_code || currentUser?.postalCode || '');
   const [profilePassword, setProfilePassword] = useState(currentUser?.password || '');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSaveError, setProfileSaveError] = useState('');
 
   // Affiliate states
   const [affiliateTab, setAffiliateTab] = useState<'overview' | 'settings'>('overview');
@@ -125,8 +127,8 @@ Track or check history anytime at our verified portal.
       setProfilePhone(currentUser.phone || '');
       setProfileCity(currentUser.city || '');
       setProfileDistrict(currentUser.district || '');
-      setProfileStreet(currentUser.street || '');
-      setProfilePostalCode(currentUser.postal_code || '');
+      setProfileStreet(currentUser.street || currentUser.address || '');
+      setProfilePostalCode(currentUser.postal_code || currentUser.postalCode || '');
       setProfilePassword(currentUser.password || '');
 
       if (currentUser.role === 'affiliate') {
@@ -339,20 +341,72 @@ Track or check history anytime at our verified portal.
 
   const inboxEmails = getInboxEmails();
 
-  const handleProfileSave = (e: React.FormEvent) => {
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profileName.trim()) return;
+    if (!profileName.trim() || !currentUser) return;
 
-    if (currentUser) {
-      const updated: User = {
+    setIsSavingProfile(true);
+    setProfileSaveError('');
+
+    const targetUid = currentUser.uid || currentUser.id || null;
+    const cleanStreet = profileStreet.trim();
+    const cleanDistrict = profileDistrict.trim();
+    const cleanCity = profileCity.trim();
+    const cleanPostal = profilePostalCode.trim();
+    const cleanPhone = profilePhone.trim();
+    const cleanName = profileName.trim();
+    const fullAddress = [cleanStreet, cleanDistrict, cleanCity].filter(Boolean).join(', ');
+
+    console.log('📝 [PROFILE SAVE ACTION]', {
+      uid: targetUid,
+      email: currentUser.email,
+      name: cleanName,
+      phone: cleanPhone,
+      city: cleanCity,
+      district: cleanDistrict,
+      street: cleanStreet,
+      address: fullAddress,
+      postal_code: cleanPostal
+    });
+
+    const payload = {
+      uid: targetUid,
+      id: targetUid,
+      email: currentUser.email,
+      name: cleanName,
+      phone: cleanPhone,
+      city: cleanCity,
+      district: cleanDistrict,
+      street: cleanStreet,
+      address: fullAddress,
+      postal_code: cleanPostal,
+      postalCode: cleanPostal,
+      role: currentUser.role || 'customer'
+    };
+
+    try {
+      const res = await fetch('/api/users/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('ryvo_session_token') || ''}`,
+          'x-firebase-uid': targetUid || '',
+          'x-user-email': currentUser.email
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update profile on Firestore');
+      }
+
+      const mergedUser: User = {
         ...currentUser,
-        name: profileName,
-        phone: profilePhone,
-        city: profileCity,
-        district: profileDistrict,
-        street: profileStreet,
-        postal_code: profilePostalCode,
+        ...(data.user || payload)
       };
+
+      console.log('✅ [PROFILE SAVED TO FIRESTORE]:', mergedUser);
 
       // Sync back to registered users list in local storage
       const savedList = localStorage.getItem('ryvo_registered_users');
@@ -361,20 +415,31 @@ Track or check history anytime at our verified portal.
           const parsed = JSON.parse(savedList);
           const idx = parsed.findIndex((pu: any) => pu.email.toLowerCase() === currentUser.email.toLowerCase());
           if (idx !== -1) {
-            parsed[idx] = updated;
+            parsed[idx] = { ...parsed[idx], ...mergedUser };
             localStorage.setItem('ryvo_registered_users', JSON.stringify(parsed));
           }
         } catch (_) {}
       }
 
+      localStorage.setItem('ryvo_user', JSON.stringify(mergedUser));
+
       if (onUpdateUser) {
-        onUpdateUser(updated);
+        onUpdateUser(mergedUser);
       } else {
-        onUpdateUserName(profileName);
+        onUpdateUserName(cleanName);
       }
 
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2500);
+      setToastMessage(isRtl ? '✅ تم حفظ وتحديث بيانات الملف الشخصي وعنوان التوصيل بنجاح في السحابة!' : '✅ Profile and delivery details saved successfully in cloud!');
+      setTimeout(() => {
+        setSaveSuccess(false);
+        setToastMessage('');
+      }, 3500);
+    } catch (err: any) {
+      console.error('💥 [PROFILE SAVE ERROR]:', err);
+      setProfileSaveError(isRtl ? 'تعذر حفظ البيانات في السحابة. يرجى التحقق من الاتصال والمحاولة مرة أخرى.' : 'Unable to save profile to cloud. Please check connection and try again.');
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -1199,6 +1264,14 @@ Track or check history anytime at our verified portal.
                 </div>
               </div>
 
+              {/* Save error message */}
+              {profileSaveError && (
+                <div className="p-3 bg-rose-500/10 text-rose-500 rounded-xl text-xs font-bold border border-rose-500/20 text-center flex items-center justify-center gap-1.5">
+                  <span>⚠️</span>
+                  <span>{profileSaveError}</span>
+                </div>
+              )}
+
               <div className="flex items-center gap-1 text-[10px] text-slate-400">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                 <span>{t.csrf_protective}</span>
@@ -1207,9 +1280,21 @@ Track or check history anytime at our verified portal.
               <button
                 id="btn-settings-save"
                 type="submit"
-                className="w-full py-3 bg-[var(--primary-color)] hover:opacity-90 text-slate-950 font-black text-xs uppercase cursor-pointer rounded-xl transition-all active:scale-95 shadow-md font-sans"
+                disabled={isSavingProfile}
+                className={`w-full py-3.5 rounded-xl font-black text-xs uppercase transition-all shadow-md font-sans flex items-center justify-center gap-2 ${
+                  isSavingProfile
+                    ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                    : 'bg-[var(--primary-color)] hover:opacity-90 text-slate-950 cursor-pointer active:scale-95'
+                }`}
               >
-                {t.save_changes}
+                {isSavingProfile ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-slate-900 dark:border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span>{isRtl ? 'جاري حفظ البيانات في السحابة...' : 'Saving to cloud...'}</span>
+                  </>
+                ) : (
+                  <span>{t.save_changes}</span>
+                )}
               </button>
             </form>
 

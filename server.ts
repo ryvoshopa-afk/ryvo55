@@ -692,12 +692,15 @@ async function saveUserProfile(firestoreDb: any, uid: string | null, email: stri
   if (!firestoreDb) return profileData;
   const cleanEmail = (email || "").toLowerCase().trim();
   const targetId = uid || cleanEmail;
-  const cleanData = { ...profileData, email: cleanEmail, updatedAt: new Date().toISOString() };
+  const cleanData: any = { ...profileData, email: cleanEmail, updatedAt: new Date().toISOString() };
   delete cleanData.password; // NEVER store passwords in Firestore
 
   if (uid) {
     cleanData.uid = uid;
+    cleanData.id = uid;
   }
+
+  console.log(`💾 [FIRESTORE USER WRITE] Path: users/${targetId} | UID: ${uid} | Email: ${cleanEmail} | Phone: ${cleanData.phone || 'none'} | Address: ${cleanData.address || cleanData.street || 'none'}`);
 
   try {
     const docRef = doc(firestoreDb, "users", targetId);
@@ -713,6 +716,15 @@ async function saveUserProfile(firestoreDb: any, uid: string | null, email: stri
         }
       } catch (_) {}
     }
+
+    try {
+      const savedSnap = await getDoc(docRef);
+      if (savedSnap && savedSnap.exists && savedSnap.exists()) {
+        const fullData = savedSnap.data();
+        delete fullData.password;
+        return { ...fullData, uid: targetId, id: targetId };
+      }
+    } catch (_) {}
   } catch (err: any) {
     console.error(`⚠️ Failed saving user profile for [${targetId}]:`, err.message);
     throw err;
@@ -1310,7 +1322,7 @@ const defaultSettings: GlobalSettings = {
   emailConfig: {
     senderEmail: process.env.SENDER_EMAIL || "orders@ryvo.shop",
     senderName: process.env.SENDER_NAME || "متجر RYVO الرسمي",
-    resendApiKey: process.env.RESEND_API_KEY || "re_iMozkbCq_8tTAFzUrx4fo7HWco43JQeoP",
+    resendApiKey: process.env.RESEND_API_KEY || "",
     smtpHost: process.env.SMTP_HOST || "",
     smtpPort: Number(process.env.SMTP_PORT || 587),
     smtpSecure: process.env.SMTP_SECURE === "true",
@@ -3259,27 +3271,49 @@ app.post("/api/auth/logout", async (req, res) => {
 // Helper for session inspection (/api/auth/me and /api/profile)
 const handleMeAndProfileRequest = async (req: any, res: any) => {
   try {
-    const session = getSessionFromReq(req);
+    let session = getSessionFromReq(req);
+    let targetUid: string | null = session?.uid || null;
+    let cleanEmail: string = (session?.email || "").toLowerCase().trim();
+
+    // Fallback: Check headers if in-memory session was lost or client supplied Firebase auth headers
     if (!session) {
-      return res.status(401).json({ error: "المصادقة مطلوبة (Unauthenticated)" });
+      const headerUid = req.headers["x-firebase-uid"] || req.headers["x-uid"];
+      const headerEmail = req.headers["x-user-email"] || req.headers["x-email"];
+      const bodyUid = req.body?.uid || req.body?.id;
+      const bodyEmail = req.body?.email;
+      const queryEmail = req.query?.email;
+
+      if (headerUid || bodyUid) targetUid = String(headerUid || bodyUid).trim();
+      if (headerEmail || bodyEmail || queryEmail) cleanEmail = String(headerEmail || bodyEmail || queryEmail).toLowerCase().trim();
+
+      if (targetUid || cleanEmail) {
+        console.log(`🔄 [AUTH ME RECOVERY] Restoring session context for UID [${targetUid}] | Email [${cleanEmail}]`);
+      } else {
+        return res.status(401).json({ error: "المصادقة مطلوبة (Unauthenticated)" });
+      }
     }
 
-    const cleanEmail = session.email;
     let userData: any = null;
-
     if (db) {
       try {
-        userData = await resolveAndMigrateUserProfile(db, session.uid, cleanEmail);
+        userData = await resolveAndMigrateUserProfile(db, targetUid, cleanEmail);
       } catch (err: any) {
         console.warn("⚠️ Firestore fetch failed in handleMeAndProfileRequest:", err.message);
       }
+    }
+
+    if (!cleanEmail && userData?.email) {
+      cleanEmail = userData.email.toLowerCase().trim();
+    }
+    if (!targetUid && userData?.uid) {
+      targetUid = userData.uid;
     }
 
     const isSuperAdmin = cleanEmail === 'ryvo.shopa@gmail.com';
     const settings = getSettings();
     const customAdminsEmails = (settings.customAdmins || []).map((ca: any) => ca.email.toLowerCase().trim());
     const isCustomAdmin = customAdminsEmails.includes(cleanEmail);
-    const finalRole = isSuperAdmin ? 'super_admin' : (isCustomAdmin ? 'admin' : (userData?.role || session.role || 'customer'));
+    const finalRole = isSuperAdmin ? 'super_admin' : (isCustomAdmin ? 'admin' : (userData?.role || session?.role || 'customer'));
     const isAdmin = (finalRole === 'admin' || finalRole === 'super_admin');
 
     const safeUser = {
@@ -3287,10 +3321,31 @@ const handleMeAndProfileRequest = async (req: any, res: any) => {
       email: cleanEmail,
       role: finalRole,
       isAdmin,
-      id: session.uid,
-      uid: session.uid
+      id: targetUid || cleanEmail,
+      uid: targetUid || cleanEmail
     };
     delete safeUser.password;
+
+    // Cache active session if not already registered
+    if (!session && targetUid && cleanEmail) {
+      const recoveredToken = crypto.randomUUID ? crypto.randomUUID() : `sess-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      activeSessions.set(recoveredToken, {
+        token: recoveredToken,
+        uid: targetUid,
+        email: cleanEmail,
+        role: finalRole,
+        isAdmin,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000)
+      });
+      return res.json({
+        success: true,
+        user: safeUser,
+        token: recoveredToken,
+        role: finalRole,
+        isAdmin
+      });
+    }
 
     return res.json({
       success: true,

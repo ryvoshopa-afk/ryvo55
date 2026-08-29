@@ -184,8 +184,19 @@ export interface User {
   city?: string;
   district?: string;
   street?: string;
+  address?: string;
+  country?: string;
   postal_code?: string;
+  postalCode?: string;
   phone?: string;
+  additionalAddress?: string;
+  shippingAddress?: string;
+  uid?: string;
+  status?: string;
+  emailVerified?: boolean;
+  provider?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Affiliate {

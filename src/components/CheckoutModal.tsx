@@ -132,14 +132,14 @@ export default function CheckoutModal({
 
   const shippingCost = baseShippingCost + oversizedSurcharge;
 
-  // Form states
-  const [fullname, setFullname] = useState(userName);
-  const [country, setCountry] = useState(isRtl ? 'المملكة العربية السعودية' : 'Saudi Arabia');
-  const [city, setCity] = useState('');
-  const [district, setDistrict] = useState('');
-  const [street, setStreet] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState(userEmail);
+  // Form states - Auto-filled directly from authenticated user profile
+  const [fullname, setFullname] = useState(currentUser?.name || userName || '');
+  const [country, setCountry] = useState(currentUser?.country || (isRtl ? 'المملكة العربية السعودية' : 'Saudi Arabia'));
+  const [city, setCity] = useState(currentUser?.city || '');
+  const [district, setDistrict] = useState(currentUser?.district || '');
+  const [street, setStreet] = useState(currentUser?.street || currentUser?.address || '');
+  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [email, setEmail] = useState(currentUser?.email || userEmail || '');
   const [paymentMethod, setPaymentMethod] = useState(() => {
     if (integrations?.codEnabled && cart.every(item => item.product.cod_available !== false)) return 'cod';
     if (integrations?.stripeEnabled) return 'card';
@@ -147,6 +147,19 @@ export default function CheckoutModal({
     return 'cod';
   });
   const [orderNotes, setOrderNotes] = useState('');
+
+  // Sync profile details when currentUser changes or loads
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.name) setFullname((prev) => prev || currentUser.name);
+      if (currentUser.email) setEmail((prev) => prev || currentUser.email);
+      if (currentUser.phone) setPhone((prev) => prev || currentUser.phone || '');
+      if (currentUser.city) setCity((prev) => prev || currentUser.city || '');
+      if (currentUser.district) setDistrict((prev) => prev || currentUser.district || '');
+      if (currentUser.street || currentUser.address) setStreet((prev) => prev || currentUser.street || currentUser.address || '');
+      if (currentUser.country) setCountry((prev) => prev || currentUser.country || '');
+    }
+  }, [currentUser]);
 
   // COD restrictions: check if all items allow Cash on Delivery
   const codAllowed = cart.every(item => item.product.cod_available !== false);
@@ -315,9 +328,14 @@ export default function CheckoutModal({
 
     const orderPayload = {
       id: tempUniqueId,
+      customer_id: currentUser?.uid || currentUser?.id || undefined,
+      uid: currentUser?.uid || currentUser?.id || undefined,
       customer_name: fullname,
       user_email: email,
       address,
+      city,
+      district,
+      street,
       phone,
       payment_method: displayPaymentMethod,
       items: cart.map(it => {

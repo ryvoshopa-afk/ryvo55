@@ -50,6 +50,13 @@ export function initFirebaseSync(): Auth {
   }
 
   firebaseAuth = getAuth(firebaseApp);
+  try {
+    setPersistence(firebaseAuth, browserLocalPersistence).catch((err) => {
+      console.warn('⚠️ [FIREBASE PERSISTENCE WARN]:', err?.message);
+    });
+  } catch (e: any) {
+    console.warn('⚠️ [FIREBASE PERSISTENCE SYNC WARN]:', e?.message);
+  }
   return firebaseAuth;
 }
 
