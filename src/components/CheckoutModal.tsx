@@ -359,10 +359,18 @@ export default function CheckoutModal({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderPayload)
     })
-      .then(res => res.json())
-      .then(data => {
+      .then(async res => {
+        let data: any = null;
+        try {
+          data = await res.json();
+        } catch {
+          data = { error: `HTTP ${res.status}: Failed to parse JSON response` };
+        }
+        return { ok: res.ok, status: res.status, data };
+      })
+      .then(({ ok, status, data }) => {
         setIsSubmitting(false);
-        if (data.success && data.order) {
+        if (ok && data && data.success && data.order) {
           const finalOrder = data.order;
           
           // If a points coupon or affiliate promo was applied, mark or record usage
@@ -425,22 +433,28 @@ export default function CheckoutModal({
           onOrderSuccess(finalOrder);
           playCheckoutSuccessSound();
         } else {
+          console.error('[ORDER_CREATE_ERROR]', {
+            status,
+            code: data?.code || data?.errorCode || status,
+            message: data?.error || 'Order creation failed',
+            details: data?.details,
+            stack: data?.stack,
+            response: data
+          });
           const rawErr = data?.error;
-          const isTechnical = typeof rawErr === 'string' && /TypeError|ReferenceError|SyntaxError|not a function|Expected type|undefined|null|object|Firestore|Adapter/i.test(rawErr);
-          if (rawErr && !isTechnical) {
-            setFormError(rawErr);
-          } else {
-            setFormError(isRtl ? 'حدث خطأ غير متوقع أثناء معالجة الطلب، يرجى إعادة المحاولة أو التواصل مع الدعم.' : 'An error occurred while processing your order. Please try again.');
-          }
-          if (rawErr) {
-            console.error('Checkout API error:', rawErr);
-          }
+          setFormError(rawErr || (isRtl ? 'حدث خطأ أثناء معالجة طلبك، يرجى المحاولة لاحقاً.' : 'An error occurred while processing your order. Please try again.'));
         }
       })
       .catch(err => {
         setIsSubmitting(false);
+        console.error('[ORDER_CREATE_ERROR]', {
+          status: 0,
+          code: 'NETWORK_OR_CLIENT_ERROR',
+          message: err?.message,
+          stack: err?.stack,
+          err
+        });
         setFormError(isRtl ? 'تعذر الاتصال بالخادم، يرجى التحقق من الشبكة.' : 'Could not connect to the server. Please check your network.');
-        console.error('Error submitting order:', err);
       });
   };
 

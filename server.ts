@@ -521,6 +521,25 @@ async function getDocs(collectionRef: any) {
   };
 }
 
+function sanitizeFirestoreData(data: any): any {
+  if (data === undefined) return null;
+  if (data === null) return null;
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeFirestoreData(item));
+  }
+  if (typeof data === 'object' && !(data instanceof Date)) {
+    const cleaned: any = {};
+    for (const key of Object.keys(data)) {
+      const val = data[key];
+      if (val !== undefined) {
+        cleaned[key] = sanitizeFirestoreData(val);
+      }
+    }
+    return cleaned;
+  }
+  return data;
+}
+
 async function getDoc(docRef: any) {
   if (!docRef) throw new Error("Doc ref not initialized");
   if (typeof docRef.get === "function") {
@@ -532,23 +551,25 @@ async function getDoc(docRef: any) {
 
 async function setDoc(docRef: any, data: any, options?: any) {
   if (!docRef) throw new Error("Doc ref not initialized");
+  const cleanData = sanitizeFirestoreData(data);
   if (typeof docRef.set === "function") {
-    return await docRef.set(data, options);
+    return await docRef.set(cleanData, options);
   }
   if (options && options.merge) {
-    await clientSetDoc(docRef.rawRef || docRef, data, { merge: true });
+    await clientSetDoc(docRef.rawRef || docRef, cleanData, { merge: true });
   } else {
-    await clientSetDoc(docRef.rawRef || docRef, data);
+    await clientSetDoc(docRef.rawRef || docRef, cleanData);
   }
   return { success: true };
 }
 
 async function updateDoc(docRef: any, data: any) {
   if (!docRef) throw new Error("Doc ref not initialized");
+  const cleanData = sanitizeFirestoreData(data);
   if (typeof docRef.update === "function") {
-    return await docRef.update(data);
+    return await docRef.update(cleanData);
   }
-  await clientUpdateDoc(docRef.rawRef || docRef, data);
+  await clientUpdateDoc(docRef.rawRef || docRef, cleanData);
   return { success: true };
 }
 
@@ -563,10 +584,11 @@ async function deleteDoc(docRef: any) {
 
 async function addDoc(collectionRef: any, data: any) {
   if (!collectionRef) throw new Error("Collection ref not initialized");
+  const cleanData = sanitizeFirestoreData(data);
   if (typeof collectionRef.add === "function") {
-    return await collectionRef.add(data);
+    return await collectionRef.add(cleanData);
   }
-  const dRef = await clientAddDoc(collectionRef.rawRef || collectionRef, data);
+  const dRef = await clientAddDoc(collectionRef.rawRef || collectionRef, cleanData);
   return new ClientDocRefWrapper(dRef);
 }
 
@@ -1798,15 +1820,29 @@ app.delete("/api/settings/logo", requireAdmin, async (req, res) => {
 async function seedDatabaseIfNeeded() {
   if (!db) return;
   try {
-    // 1. Seed Products
-    const productsColRef = collection(db, "products");
-    const productsSnap = await getDocs(productsColRef);
-    if (productsSnap.empty) {
-      console.log("Seeding INITIAL_PRODUCTS into Firestore...");
-      for (const p of INITIAL_PRODUCTS) {
-        await setDoc(doc(db, "products", p.id), p);
+    // 1. Seed & Ensure Products exist in Firestore with sufficient stock
+    for (const p of INITIAL_PRODUCTS) {
+      try {
+        const pDocRef = doc(db, "products", p.id);
+        const pSnap = await getDoc(pDocRef);
+        if (!pSnap.exists()) {
+          console.log(`Seeding missing product [${p.id}] into Firestore...`);
+          await setDoc(pDocRef, p);
+        } else {
+          const existingData = pSnap.data();
+          if (existingData.stock === undefined || existingData.stock <= 0) {
+            console.log(`Replenishing default stock for product [${p.id}]...`);
+            await updateDoc(pDocRef, {
+              stock: Math.max(5, p.stock || 10),
+              supplier_stock: Math.max(5, p.supplier_stock || 10)
+            });
+          }
+        }
+      } catch (pErr: any) {
+        console.warn(`Product seeding error for [${p.id}]:`, pErr.message);
       }
     }
+    productsCache = null;
 
     // 2. Seed Default Settings
     const settingsDocRef = doc(db, "settings", "global");
@@ -2153,9 +2189,11 @@ app.post("/api/orders", async (req, res) => {
       return res.status(400).json({ error: "عذراً، لم يتم الافتتاح حتى الآن! (الشراء مغلق مؤقتاً)" });
     }
     const o = req.body;
-    if (!o.user_email) {
-      return res.status(400).json({ error: "يجب تسجيل الدخول لإتمام عملية الشراء!" });
+    const userEmail = o.user_email || o.email || o.customer_email || (o.shipping_address && o.shipping_address.email);
+    if (!userEmail) {
+      return res.status(400).json({ error: "الرجاء إدخال البريد الإلكتروني لإتمام عملية الشراء!" });
     }
+    o.user_email = String(userEmail).toLowerCase().trim();
     if (!o.id) {
       o.id = "RYVO-ORD-" + Math.floor(1000 + Math.random() * 9000);
     }
@@ -2407,9 +2445,17 @@ app.post("/api/orders", async (req, res) => {
     sendAdminNewOrderNotification(o, db, getSettings)
       .catch(err => console.error("Admin new order alert email send error:", err));
 
+    // 3. Real-time WebSocket broadcasting for live Admin Panel orders feed
+    if (io) {
+      io.emit("order_created", o);
+      io.emit("new_order", o);
+    }
+
+    console.log(`✅ [ORDER CREATED] Successfully created order #${o.id} for ${o.user_email} (Total: ${o.total} SAR, Payment: ${o.payment_method})`);
     res.json({ success: true, order: o });
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    console.error("❌ [API ORDERS ERROR]:", e);
+    res.status(500).json({ success: false, error: e.message, stack: e.stack });
   }
 });
 
