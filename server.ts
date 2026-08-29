@@ -1514,6 +1514,301 @@ app.post("/api/welcome-coupon/track-click", async (req, res) => {
   }
 });
 
+// Centralized Coupon Validation Logic
+export async function validateCouponInternal(
+  rawCode: string,
+  subtotal: number,
+  userEmail?: string,
+  welcomeSessionId?: string
+) {
+  const enteredCode = (rawCode || "").toString();
+  const normalizedCode = enteredCode.trim().toUpperCase();
+
+  let couponFound = false;
+  let couponData: any = null;
+  let isWelcomeCoupon = false;
+  let source = "";
+
+  const settings = getSettings();
+  const welcomeConfig = settings.welcomeCoupon || defaultSettings.welcomeCoupon;
+  const globalWelcomeCode = (welcomeConfig.code || "WELCOME15").trim().toUpperCase();
+
+  // 1. Search in Firestore coupons collection
+  if (db && normalizedCode) {
+    try {
+      const directSnap = await getDoc(doc(db, "coupons", normalizedCode));
+      if (directSnap.exists()) {
+        couponFound = true;
+        couponData = directSnap.data();
+        source = "firestore_coupons";
+        if (couponData.welcomeCoupon || couponData.is_welcome || couponData.welcome) {
+          isWelcomeCoupon = true;
+        }
+      } else {
+        const allCouponsSnap = await getDocs(collection(db, "coupons"));
+        const matched = allCouponsSnap.docs.find(d => {
+          const dData = d.data();
+          const dCode = (dData.code || d.id || "").toString().trim().toUpperCase();
+          return dCode === normalizedCode;
+        });
+        if (matched) {
+          couponFound = true;
+          couponData = matched.data();
+          source = "firestore_coupons";
+          if (couponData.welcomeCoupon || couponData.is_welcome || couponData.welcome) {
+            isWelcomeCoupon = true;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Firestore coupons query warning:", err);
+    }
+  }
+
+  // 2. Check Global Welcome Coupon configured in store settings
+  if (!couponFound && (normalizedCode === globalWelcomeCode || (!normalizedCode && welcomeSessionId))) {
+    if (welcomeConfig.enabled !== false) {
+      couponFound = true;
+      isWelcomeCoupon = true;
+      source = "store_settings_welcome";
+      couponData = {
+        code: globalWelcomeCode,
+        discountType: "percent",
+        discountPercent: Number(welcomeConfig.discountPercent || 15),
+        isActive: true,
+        welcomeCoupon: true,
+        targetUsers: welcomeConfig.targetUsers || "new",
+        description_ar: welcomeConfig.messageAr || "خصم ترحيبي خاص بالعملاء الجدد",
+        description_en: welcomeConfig.messageEn || "Welcome discount for new customers"
+      };
+    }
+  }
+
+  // 3. Check welcome_coupon_sessions
+  if (!couponFound && welcomeSessionId && db) {
+    try {
+      const sessSnap = await getDoc(doc(db, "welcome_coupon_sessions", welcomeSessionId));
+      if (sessSnap.exists()) {
+        const sData = sessSnap.data();
+        if (sData.status === "active") {
+          couponFound = true;
+          isWelcomeCoupon = true;
+          source = "welcome_coupon_session";
+          couponData = {
+            code: (sData.code || globalWelcomeCode).toUpperCase(),
+            discountType: "percent",
+            discountPercent: Number(sData.discountPercent || welcomeConfig.discountPercent || 15),
+            isActive: true,
+            welcomeCoupon: true,
+            targetUsers: welcomeConfig.targetUsers || "new",
+            sessionId: welcomeSessionId
+          };
+        }
+      }
+    } catch (err) {
+      console.warn("Firestore welcome sessions query warning:", err);
+    }
+  }
+
+  // 4. Built-in promotional coupons fallback
+  if (!couponFound && normalizedCode) {
+    if (normalizedCode === "SARA10") {
+      couponFound = true; couponData = { code: "SARA10", discountType: "percent", discountPercent: 10, isActive: true };
+    } else if (normalizedCode === "FAISAL20") {
+      couponFound = true; couponData = { code: "FAISAL20", discountType: "percent", discountPercent: 20, isActive: true };
+    } else if (normalizedCode === "RYVO2026") {
+      couponFound = true; couponData = { code: "RYVO2026", discountType: "percent", discountPercent: 10, isActive: true };
+    } else if (normalizedCode === "AI-BOOST2026" || normalizedCode === "AI-BOOST") {
+      couponFound = true; couponData = { code: "AI-BOOST2026", discountType: "percent", discountPercent: 15, isActive: true };
+    } else if (normalizedCode === "LUCKY5") {
+      couponFound = true; couponData = { code: "LUCKY5", discountType: "percent", discountPercent: 5, isActive: true };
+    } else if (normalizedCode === "LUCKY10") {
+      couponFound = true; couponData = { code: "LUCKY10", discountType: "percent", discountPercent: 10, isActive: true };
+    } else if (normalizedCode === "LUCKY15") {
+      couponFound = true; couponData = { code: "LUCKY15", discountType: "percent", discountPercent: 15, isActive: true };
+    } else if (normalizedCode === "LUCKY25") {
+      couponFound = true; couponData = { code: "LUCKY25", discountType: "percent", discountPercent: 25, isActive: true };
+    }
+  }
+
+  // Log debug info
+  const isActive = couponData ? (couponData.isActive !== false && couponData.status !== "inactive") : false;
+  const startDate = couponData?.startDate || couponData?.start_date || null;
+  const endDate = couponData?.endDate || couponData?.end_date || null;
+  const usageCount = Number(couponData?.usageCount || couponData?.usage_count || 0);
+  const usageLimit = couponData?.usageLimit !== undefined ? Number(couponData.usageLimit) : (couponData?.usage_limit !== undefined ? Number(couponData.usage_limit) : null);
+
+  console.log(`[COUPON DEBUG]
+enteredCode: ${enteredCode}
+normalizedCode: ${normalizedCode}
+couponFound: ${couponFound ? "YES" : "NO"}
+isActive: ${isActive}
+startDate: ${startDate || "none"}
+endDate: ${endDate || "none"}
+currentTime: ${new Date().toISOString()}
+usageCount: ${usageCount}
+usageLimit: ${usageLimit !== null ? usageLimit : "unlimited"}
+`);
+
+  if (!couponFound || !couponData) {
+    return {
+      valid: false,
+      reason: "coupon_not_found",
+      messageAr: "كوبون الخصم غير موجود أو غير صالح",
+      messageEn: "Coupon code does not exist or is invalid"
+    };
+  }
+
+  if (!isActive) {
+    return {
+      valid: false,
+      reason: "coupon_inactive",
+      messageAr: "هذا الكوبون غير مفعّل حالياً",
+      messageEn: "This coupon is currently inactive"
+    };
+  }
+
+  const now = Date.now();
+
+  // Validate startDate if present
+  if (startDate) {
+    const sMs = typeof startDate === "number" ? startDate : new Date(startDate).getTime();
+    if (!isNaN(sMs) && now < sMs) {
+      return {
+        valid: false,
+        reason: "coupon_not_started",
+        messageAr: "هذا الكوبون لم يبدأ بعد",
+        messageEn: "This coupon has not started yet"
+      };
+    }
+  }
+
+  // Validate endDate if present (do not treat undefined, null, or empty as expired)
+  if (endDate && String(endDate).trim() !== "") {
+    const eMs = typeof endDate === "number" ? endDate : new Date(endDate).getTime();
+    if (!isNaN(eMs) && now > eMs) {
+      return {
+        valid: false,
+        reason: "coupon_expired",
+        messageAr: "عذراً، انتهت صلاحية هذا الكوبون",
+        messageEn: "Sorry, this coupon has expired"
+      };
+    }
+  }
+
+  // Validate minimum order
+  const minOrder = Number(couponData.minimumOrder || couponData.min_order || couponData.minimum_order || 0);
+  if (minOrder > 0 && subtotal < minOrder) {
+    return {
+      valid: false,
+      reason: "minimum_order_not_met",
+      messageAr: `الحد الأدنى للطلب لتطبيق هذا الكوبون هو ${minOrder} ريال`,
+      messageEn: `Minimum order subtotal for this coupon is ${minOrder} SAR`
+    };
+  }
+
+  // Validate usage limit
+  if (usageLimit !== null && usageLimit > 0 && usageCount >= usageLimit) {
+    return {
+      valid: false,
+      reason: "usage_limit_exceeded",
+      messageAr: "تم استنفاد الحد الأقصى لاستخدام هذا الكوبون",
+      messageEn: "This coupon has reached its maximum usage limit"
+    };
+  }
+
+  // Validate welcome coupon eligibility
+  if (isWelcomeCoupon && userEmail) {
+    const cleanEmail = userEmail.toLowerCase().trim();
+    if (cleanEmail) {
+      if (db) {
+        try {
+          const userData = await resolveAndMigrateUserProfile(db, null, cleanEmail);
+          if (userData && (userData.welcome_coupon_used || userData.welcomeCouponUsed)) {
+            return {
+              valid: false,
+              reason: "welcome_already_used",
+              messageAr: "لقد سبق لك استخدام كوبون الترحيب من قبل على هذا الحساب",
+              messageEn: "Welcome coupon has already been used on this account"
+            };
+          }
+
+          const ordersSnap = await getDocs(collection(db, "orders"));
+          const userOrders = ordersSnap.docs.filter((d: any) => {
+            const oData = d.data();
+            return oData.user_email && oData.user_email.toLowerCase().trim() === cleanEmail && oData.status !== "cancelled";
+          });
+          const targetAudience = couponData.targetUsers || welcomeConfig.targetUsers || "new";
+          if (userOrders.length > 0 && targetAudience === "new") {
+            return {
+              valid: false,
+              reason: "welcome_only_new_users",
+              messageAr: "كوبون الترحيب متاح للعملاء الجدد والطلبات الأولى فقط",
+              messageEn: "Welcome coupon is only available for new customers on first orders"
+            };
+          }
+        } catch (uErr) {
+          console.warn("Welcome user check warning:", uErr);
+        }
+      }
+    }
+  }
+
+  // Calculate discount
+  let discountPercent = Number(couponData.discountPercent || couponData.discount_percent || couponData.discountValue || 0);
+  let discountFlat = Number(couponData.discountFlat || couponData.discount_flat || couponData.discount_sar || 0);
+  const isPercent = couponData.discountType === "percent" || (!couponData.discountType && discountPercent > 0);
+  let discountAmount = 0;
+  if (isPercent) {
+    discountAmount = Math.round((discountPercent / 100) * subtotal);
+  } else {
+    discountAmount = Math.min(discountFlat, subtotal);
+  }
+
+  const finalCode = couponData.code || normalizedCode;
+
+  return {
+    valid: true,
+    code: finalCode,
+    isWelcome: isWelcomeCoupon,
+    discountType: isPercent ? "percent" : "flat",
+    discountPercent: isPercent ? discountPercent : 0,
+    discountFlat: !isPercent ? discountFlat : 0,
+    discountAmount,
+    subtotal,
+    finalTotal: Math.max(0, subtotal - discountAmount),
+    messageAr: isPercent 
+      ? `تم تفعيل الكوبون [ ${finalCode} ] بنجاح! خصم ${discountPercent}% (-${discountAmount} ريال)`
+      : `تم تفعيل الكوبون [ ${finalCode} ] بنجاح! خصم ${discountFlat} ريال`,
+    messageEn: isPercent 
+      ? `Coupon [ ${finalCode} ] applied! ${discountPercent}% OFF (-${discountAmount} SAR)`
+      : `Coupon [ ${finalCode} ] applied! (-${discountFlat} SAR)`,
+    couponData,
+    source
+  };
+}
+
+// API endpoint for coupon validation
+app.post(["/api/coupons/validate", "/api/validate-coupon"], async (req, res) => {
+  try {
+    const { code, couponCode, promoCode, subtotal, userId, userEmail, email, welcomeSessionId } = req.body;
+    const resolvedCode = code || couponCode || promoCode || "";
+    const resolvedEmail = userEmail || email || req.headers["x-user-email"] || "";
+    const result = await validateCouponInternal(
+      resolvedCode,
+      Number(subtotal) || 0,
+      resolvedEmail as string,
+      welcomeSessionId
+    );
+    if (!result.valid) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (e: any) {
+    return res.status(500).json({ valid: false, error: e.message });
+  }
+});
+
 // 4. Welcome Coupon: Load / Create Authoritative Session
 app.post("/api/welcome-coupon/session", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not connected" });
@@ -2276,60 +2571,84 @@ app.post("/api/orders", async (req, res) => {
 
     o.items = validatedItems;
 
-    // 3. Server-side Coupon & Discount Calculation
-    let welcomeDiscountAmount = 0;
-    let welcomeSessData: any = null;
-    if (o.welcomeSessionId) {
-      const sessDocRef = doc(db, "welcome_coupon_sessions", o.welcomeSessionId);
-      const sessSnap = await getDoc(sessDocRef);
-      if (!sessSnap.exists()) {
-        return res.status(400).json({ error: "كوبون الترحيب غير موجود أو منتهي الصلاحية" });
-      }
-      welcomeSessData = sessSnap.data();
-      if (welcomeSessData.status !== "active") {
-        return res.status(400).json({ error: "تم استخدام كوبون الترحيب هذا مسبقاً أو أنه منتهي الصلاحية" });
-      }
-      if (welcomeSessData.expiresAt < Date.now()) {
-        // Mark as expired
-        await setDoc(doc(db, "welcome_coupon_sessions_archive", o.welcomeSessionId), {
-          ...welcomeSessData,
-          archivedAt: Date.now(),
-          status: "expired"
+    // 3. Server-side Authoritative Coupon & Discount Calculation
+    let authoritativeDiscount = 0;
+    let validatedCouponData: any = null;
+    const requestedCouponCode = (o.couponCode || o.coupon_code || o.appliedPromo || "").toString().trim().toUpperCase();
+
+    if (requestedCouponCode || o.welcomeSessionId) {
+      const couponCheck = await validateCouponInternal(
+        requestedCouponCode,
+        calculatedSubtotal,
+        o.user_email,
+        o.welcomeSessionId
+      );
+
+      if (!couponCheck.valid) {
+        return res.status(400).json({ 
+          error: couponCheck.messageAr || couponCheck.messageEn || "كوبون الخصم غير صالح أو منتهي الصلاحية",
+          reason: couponCheck.reason 
         });
-        await deleteDoc(sessDocRef);
-        await addAuditLog("system", "System", "COUPON_REJECTED", `Rejected checkout: Welcome coupon session ${o.welcomeSessionId} expired.`, o.welcomeSessionId, req);
-        return res.status(400).json({ error: "عذراً، انتهت صلاحية كوبون الترحيب الخاص بك!" });
       }
 
-      // Calculate authoritative savings
-      welcomeDiscountAmount = Math.round(calculatedSubtotal * (welcomeSessData.discountPercent / 100));
+      authoritativeDiscount = couponCheck.discountAmount;
+      validatedCouponData = couponCheck;
+      o.coupon_code = couponCheck.code;
+      o.discount = authoritativeDiscount;
 
-      // Mark session as used
-      await setDoc(doc(db, "welcome_coupon_sessions_archive", o.welcomeSessionId), {
-        ...welcomeSessData,
-        archivedAt: Date.now(),
-        status: "used",
-        orderId: o.id,
-        discountAmount: welcomeDiscountAmount,
-        totalSales: calculatedSubtotal - welcomeDiscountAmount
-      });
-      await deleteDoc(sessDocRef);
-
-      // Track statistics
-      await incrementStatField("usedCount", 1);
-      await incrementStatField("totalSavings", welcomeDiscountAmount);
-      await incrementStatField("totalSales", calculatedSubtotal - welcomeDiscountAmount);
-
-      // Log success audit
-      await addAuditLog(o.user_email || "guest", "Guest", "COUPON_USED", `Successfully completed checkout using welcome coupon ${welcomeSessData.code} saving ${welcomeDiscountAmount} SAR on Order #${o.id}`, o.id, req);
+      if (couponCheck.isWelcome) {
+        if (o.welcomeSessionId && db) {
+          try {
+            const sessDocRef = doc(db, "welcome_coupon_sessions", o.welcomeSessionId);
+            const sessSnap = await getDoc(sessDocRef);
+            if (sessSnap.exists()) {
+              const sessData = sessSnap.data();
+              await setDoc(doc(db, "welcome_coupon_sessions_archive", o.welcomeSessionId), {
+                ...sessData,
+                archivedAt: Date.now(),
+                status: "used",
+                orderId: o.id,
+                discountAmount: authoritativeDiscount,
+                totalSales: calculatedSubtotal - authoritativeDiscount
+              });
+              await deleteDoc(sessDocRef);
+            }
+          } catch (sErr) {
+            console.warn("Error archiving welcome session:", sErr);
+          }
+        }
+        await incrementStatField("usedCount", 1);
+        await incrementStatField("totalSavings", authoritativeDiscount);
+        await incrementStatField("totalSales", calculatedSubtotal - authoritativeDiscount);
+        await addAuditLog(o.user_email || "guest", "Guest", "COUPON_USED", `Successfully completed checkout using welcome coupon ${couponCheck.code} saving ${authoritativeDiscount} SAR on Order #${o.id}`, o.id, req);
+      } else {
+        // Increment usageCount in Firestore coupons collection
+        if (couponCheck.couponData && couponCheck.couponData.code && db) {
+          try {
+            const coupDocRef = doc(db, "coupons", couponCheck.couponData.code.toUpperCase());
+            const coupSnap = await getDoc(coupDocRef);
+            if (coupSnap.exists()) {
+              const currentCount = Number(coupSnap.data().usageCount || coupSnap.data().usage_count || 0) + 1;
+              await updateDoc(coupDocRef, {
+                usageCount: currentCount,
+                usage_count: currentCount,
+                lastUsedAt: new Date().toISOString()
+              });
+            }
+          } catch (cErr) {
+            console.warn("Failed to increment coupon usageCount:", cErr);
+          }
+        }
+        await addAuditLog(o.user_email || "guest", "Guest", "COUPON_USED", `Successfully completed checkout using coupon ${couponCheck.code} saving ${authoritativeDiscount} SAR on Order #${o.id}`, o.id, req);
+      }
     }
 
     // 4. Final Total Calculation
     const calculatedShipping = calculatedSubtotal >= (settings.freeShippingThreshold || 300) ? 0 : (settings.shippingFee || 25);
-    const calculatedTotal = Math.max(0, calculatedSubtotal - welcomeDiscountAmount + calculatedShipping);
+    const calculatedTotal = Math.max(0, calculatedSubtotal - authoritativeDiscount + calculatedShipping);
 
     o.subtotal = calculatedSubtotal;
-    o.discount = welcomeDiscountAmount;
+    o.discount = authoritativeDiscount;
     o.shipping = calculatedShipping;
     o.total = calculatedTotal;
 
@@ -2421,14 +2740,14 @@ app.post("/api/orders", async (req, res) => {
           order_history: [...(userData.order_history || []), { id: o.id, total: o.total, date: o.date, status: o.status }]
         };
 
-        if (welcomeSessData) {
+        if (validatedCouponData?.isWelcome) {
           userUpdatePayload.welcome_coupon_used = true;
         }
 
         await saveUserProfile(db, userData.uid || null, cleanEmail, userUpdatePayload);
       } else {
         // Automatically create new customer record in CRM database
-        const newCustomerRecord = {
+        const newCustomerRecord: any = {
           email: cleanEmail,
           name: o.customer_name || o.shipping_address?.name || cleanEmail.split('@')[0],
           phone: o.customer_phone || o.phone || o.shipping_address?.phone || "",
@@ -2447,6 +2766,9 @@ app.post("/api/orders", async (req, res) => {
           wallet_history: [],
           order_history: [{ id: o.id, total: o.total, date: o.date, status: o.status }]
         };
+        if (validatedCouponData?.isWelcome) {
+          newCustomerRecord.welcome_coupon_used = true;
+        }
         await saveUserProfile(db, null, cleanEmail, newCustomerRecord);
       }
     }

@@ -209,72 +209,96 @@ export default function CheckoutModal({
   const finalWalletUsed = Math.min(walletAmountUsed, maxWalletAvailable);
   const remainingPayable = Math.max(0, total - finalWalletUsed);
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     setPromoError('');
     setPromoSuccess('');
-    const code = promoInput.trim().toUpperCase();
-    if (!code) return;
+    const rawCode = promoInput.trim();
+    if (!rawCode) return;
+    const code = rawCode.toUpperCase();
 
-    let matchedPercent = 0;
-    let matchedFlat = 0;
+    try {
+      const userEmail = currentUser?.email || email.trim() || '';
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: rawCode,
+          subtotal,
+          userId: currentUser?.uid || currentUser?.id,
+          userEmail,
+          welcomeSessionId: welcomeCouponSession?.id
+        })
+      });
 
-    // Check built-in codes
-    if (code === 'SARA10') matchedPercent = 10;
-    else if (code === 'FAISAL20') matchedPercent = 20;
-    else if (code === 'RYVO2026') matchedPercent = 10;
-    else if (code === 'AI-BOOST2026' || code === 'AI-BOOST') matchedPercent = 15;
-    else {
-      // Check ryvo_affiliates info
-      try {
-        const savedAff = localStorage.getItem('ryvo_affiliates');
-        if (savedAff) {
-          const parsed = JSON.parse(savedAff);
-          const matched = parsed.find((a: any) => a.code.toUpperCase() === code);
-          if (matched) {
-            matchedPercent = matched.discount_percent;
+      const data = await res.json();
+
+      if (res.ok && data.valid) {
+        setDiscountAmount(data.discountAmount);
+        setAppliedPromo(data.code || code);
+        setPromoSuccess(
+          isRtl 
+            ? (data.messageAr || `تم تفعيل الكوبون [ ${data.code || code} ] بنجاح! (-${data.discountAmount} ريال)`)
+            : (data.messageEn || `Coupon [ ${data.code || code} ] applied! (-${formatPrice(data.discountAmount, currentLanguage)})`)
+        );
+        return;
+      } else {
+        // Fallback check for local points or affiliate coupons if offline/client-only
+        let matchedPercent = 0;
+        let matchedFlat = 0;
+
+        try {
+          const savedAff = localStorage.getItem('ryvo_affiliates');
+          if (savedAff) {
+            const parsed = JSON.parse(savedAff);
+            const matched = parsed.find((a: any) => (a.code || '').toUpperCase() === code);
+            if (matched) matchedPercent = matched.discount_percent;
           }
-        }
-      } catch (_) {}
+        } catch (_) {}
 
-      // Check ryvo_points_coupons info
-      try {
-        const savedPt = localStorage.getItem('ryvo_points_coupons');
-        if (savedPt) {
-          const parsed = JSON.parse(savedPt);
-          const matched = parsed.find((c: any) => c.code.toUpperCase() === code && !c.used);
-          if (matched) {
-            if (matched.value) {
-              matchedPercent = matched.value;
-            } else {
-              matchedFlat = matched.discount_sar;
+        try {
+          const savedPt = localStorage.getItem('ryvo_points_coupons');
+          if (savedPt) {
+            const parsed = JSON.parse(savedPt);
+            const matched = parsed.find((c: any) => (c.code || '').toUpperCase() === code && !c.used);
+            if (matched) {
+              if (matched.value) matchedPercent = matched.value;
+              else matchedFlat = matched.discount_sar;
             }
           }
-        }
-      } catch (_) {}
-    }
+        } catch (_) {}
 
-    if (matchedPercent > 0) {
-      const calcDiscount = Math.round((matchedPercent / 100) * subtotal);
-      setDiscountAmount(calcDiscount);
-      setAppliedPromo(code);
-      setPromoSuccess(
-        isRtl 
-          ? `تم تفعيل الكود [ ${code} ] بنجاح! تم خصم ${matchedPercent}% (-${calcDiscount} ريال)` 
-          : `Promo code [ ${code} ] active! Saved ${matchedPercent}% (-${formatPrice(calcDiscount, currentLanguage)})`
-      );
-    } else if (matchedFlat > 0) {
-      setDiscountAmount(matchedFlat);
-      setAppliedPromo(code);
-      setPromoSuccess(
-        isRtl 
-          ? `تم تفعيل كوبون النقاط [ ${code} ] بنجاح! تم خصم ${matchedFlat} ريال سعودي` 
-          : `Points voucher [ ${code} ] active! Saved -${formatPrice(matchedFlat, currentLanguage)}`
-      );
-    } else {
+        if (matchedPercent > 0) {
+          const calcDiscount = Math.round((matchedPercent / 100) * subtotal);
+          setDiscountAmount(calcDiscount);
+          setAppliedPromo(code);
+          setPromoSuccess(
+            isRtl 
+              ? `تم تفعيل الكود [ ${code} ] بنجاح! تم خصم ${matchedPercent}% (-${calcDiscount} ريال)` 
+              : `Promo code [ ${code} ] active! Saved ${matchedPercent}% (-${formatPrice(calcDiscount, currentLanguage)})`
+          );
+        } else if (matchedFlat > 0) {
+          setDiscountAmount(matchedFlat);
+          setAppliedPromo(code);
+          setPromoSuccess(
+            isRtl 
+              ? `تم تفعيل كوبون النقاط [ ${code} ] بنجاح! تم خصم ${matchedFlat} ريال سعودي` 
+              : `Points voucher [ ${code} ] active! Saved -${formatPrice(matchedFlat, currentLanguage)}`
+          );
+        } else {
+          setDiscountAmount(0);
+          setAppliedPromo(null);
+          setPromoError(
+            isRtl 
+              ? (data.messageAr || data.error || 'عذراً، هذا الكود غير صحيح، منتهي، أو تم استخدامه مسبقاً!') 
+              : (data.messageEn || data.error || 'Invalid, expired, or already used promotional code!')
+          );
+        }
+      }
+    } catch (err: any) {
       setPromoError(
         isRtl 
-          ? 'عذراً، هذا الكود غير صحيح، منتهي، أو تم استخدامه مسبقاً!' 
-          : 'Invalid, expired, or already used promotional code!'
+          ? 'حدث خطأ أثناء التحقق من الكوبون، يرجى المحاولة لاحقاً.' 
+          : 'An error occurred while validating coupon. Please try again.'
       );
     }
   };
@@ -356,7 +380,11 @@ export default function CheckoutModal({
         };
       }),
       total,
-      welcomeSessionId: welcomeCouponSession && appliedPromo === welcomeCouponSession.code ? welcomeCouponSession.id : undefined,
+      discount: discountAmount,
+      coupon_code: appliedPromo || undefined,
+      couponCode: appliedPromo || undefined,
+      appliedPromo: appliedPromo || undefined,
+      welcomeSessionId: welcomeCouponSession ? welcomeCouponSession.id : undefined,
       payment_method_raw: paymentMethod,
       wallet_used: finalWalletUsed,
       total_weight: totalWeight,
