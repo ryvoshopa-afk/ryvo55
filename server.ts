@@ -459,12 +459,12 @@ function doc(dbInstanceOrCol: any, pathOrId: string, docId?: string) {
   if (docId) {
     if (typeof dbInstanceOrCol.collection === "function") {
       const col = dbInstanceOrCol.collection(pathOrId);
-      if (typeof col.doc === "function") {
+      if (col && typeof col.doc === "function") {
         return col.doc(docId);
       }
     }
     if (typeof dbInstanceOrCol.doc === "function") {
-      return dbInstanceOrCol.doc(`${pathOrId}/${docId}`);
+      return dbInstanceOrCol.doc(pathOrId, docId);
     }
     const rawFs = dbInstanceOrCol.rawFirestore || dbInstanceOrCol;
     const dRef = clientDoc(rawFs, pathOrId, docId);
@@ -482,7 +482,13 @@ function doc(dbInstanceOrCol: any, pathOrId: string, docId?: string) {
     if (parts.length >= 2) {
       const colName = parts[0];
       const docName = parts.slice(1).join("/");
-      return dbInstanceOrCol.collection(colName).doc(docName);
+      const col = dbInstanceOrCol.collection(colName);
+      if (col && typeof col.doc === "function") {
+        return col.doc(docName);
+      }
+      const rawFs = dbInstanceOrCol.rawFirestore || dbInstanceOrCol;
+      const dRef = clientDoc(rawFs, colName, docName);
+      return new ClientDocRefWrapper(dRef);
     }
   }
 
@@ -1374,7 +1380,7 @@ async function saveSettingsAsync(settings: GlobalSettings): Promise<{ diskSaved:
 
   if (db) {
     try {
-      await db.collection("settings").doc("global").set(settings, { merge: true });
+      await setDoc(doc(db, "settings", "global"), settings, { merge: true });
       firestoreSaved = true;
       console.log("🔥 [SETTINGS SAVE] Saved to Firestore ('settings/global') successfully.");
     } catch (fErr: any) {
@@ -1705,21 +1711,21 @@ app.post("/api/global-settings", requireAdmin, async (req, res) => {
         );
         for (const deleted of deletedAdmins) {
           if (deleted.email && deleted.email.toLowerCase() !== 'ryvo.shopa@gmail.com') {
-            await db.collection("users").doc(deleted.email.toLowerCase().trim()).delete();
+            await deleteDoc(doc(db, "users", deleted.email.toLowerCase().trim()));
             console.log(`Deleted sub-admin ${deleted.email} from Firestore`);
           }
         }
 
         for (const adm of newSettings.customAdmins) {
           if (adm.email) {
-            const userRef = db.collection("users").doc(adm.email.toLowerCase().trim());
+            const userRef = doc(db, "users", adm.email.toLowerCase().trim());
             const adminPayload: any = {
               email: adm.email.toLowerCase().trim(),
               name: adm.name || "Staff Member",
               role: adm.role || "admin",
               allowedPanels: adm.allowedPanels || {}
             };
-            await userRef.set(adminPayload, { merge: true });
+            await setDoc(userRef, adminPayload, { merge: true });
             console.log(`Synced sub-admin ${adm.email} with role ${adm.role || 'admin'} to Firestore`);
           }
         }
@@ -2445,6 +2451,8 @@ app.post("/api/orders", async (req, res) => {
       }
     }
 
+    console.log(`[ORDER CREATE]\ndocumentPath: orders/${o.id}\norderId: ${o.id}`);
+    console.log(`[FIRESTORE]\noperation: setDoc(orders/${o.id})`);
     await setDoc(doc(db, "orders", o.id), o);
 
     // 1. Send real automated order confirmation email to customer
@@ -2466,7 +2474,7 @@ app.post("/api/orders", async (req, res) => {
     console.log(`✅ [ORDER CREATED] Successfully created order #${o.id} for ${o.user_email} (Total: ${o.total} SAR, Payment: ${o.payment_method})`);
     res.json({ success: true, order: o });
   } catch (e: any) {
-    console.error("❌ [API ORDERS ERROR]:", e);
+    console.error(`[ORDER ERROR]\ncode: ${e.code || 500}\nmessage: ${e.message}\nstack: ${e.stack}`);
     res.status(500).json({ success: false, error: e.message, stack: e.stack });
   }
 });
@@ -4019,7 +4027,7 @@ app.post("/api/prelaunch/subscribe", async (req, res) => {
 
     if (db) {
       try {
-        await db.collection("prelaunch_subscribers").doc(subId).set(subscriberData, { merge: true });
+        await setDoc(doc(db, "prelaunch_subscribers", subId), subscriberData, { merge: true });
       } catch (fErr: any) {
         console.warn("⚠️ Firestore prelaunch subscription save warning:", fErr.message);
       }
@@ -4101,7 +4109,7 @@ app.post("/api/prelaunch/broadcast", requireAdmin, async (req, res) => {
 
         if (db) {
           try {
-            await db.collection("prelaunch_subscribers").doc(sub.id).update({ status: 'notified', notifiedAt: new Date().toISOString() });
+            await updateDoc(doc(db, "prelaunch_subscribers", sub.id), { status: 'notified', notifiedAt: new Date().toISOString() });
           } catch (_) {}
         }
       }
@@ -4448,8 +4456,8 @@ const SupplierService = {
     if (!db) throw new Error("Database not connected");
     try {
       const id = data.id || "sup-" + Date.now();
-      const docRef = db.collection("suppliers").doc(id);
-      const snap = await docRef.get();
+      const docRef = doc(db, "suppliers", id);
+      const snap = await getDoc(docRef);
       const now = new Date().toISOString();
       
       const apiTokenRaw = data.api_token !== undefined ? data.api_token : (data.apiKey || "");
@@ -4498,8 +4506,8 @@ const SupplierService = {
   async updateSupplier(id: string, data: any) {
     if (!db) throw new Error("Database not connected");
     try {
-      const docRef = db.collection("suppliers").doc(id);
-      const snap = await docRef.get();
+      const docRef = doc(db, "suppliers", id);
+      const snap = await getDoc(docRef);
       if (!snap.exists()) {
         throw new Error(`Supplier with id ${id} not found`);
       }
@@ -4548,7 +4556,7 @@ const SupplierService = {
   async deleteSupplier(id: string) {
     if (!db) throw new Error("Database not connected");
     try {
-      await db.collection("suppliers").doc(id).delete();
+      await deleteDoc(doc(db, "suppliers", id));
       return { success: true };
     } catch (err: any) {
       console.error("🔥 Firestore error in deleteSupplier():", err);
@@ -5465,8 +5473,8 @@ app.get("/api/sessions", async (req, res) => {
       docs = docs.filter((s: any) => s.userId === email.toLowerCase());
     } else if (adminEmail) {
       // Check if this is an admin checking all sessions
-      const userDocRef = db.collection("users").doc(adminEmail.toLowerCase());
-      const userSnap = await userDocRef.get();
+      const userDocRef = doc(db, "users", adminEmail.toLowerCase());
+      const userSnap = await getDoc(userDocRef);
       if (userSnap.exists() && userSnap.data().role === "admin") {
         // Allow reading all sessions
       } else {
@@ -6388,7 +6396,7 @@ async function getSupportSettings() {
   let settings: any = null;
   if (db) {
     try {
-      const snap = await db.collection("settings").doc("support_chat").get();
+      const snap = await getDoc(doc(db, "settings", "support_chat"));
       if (snap.exists() && snap.data()) {
         settings = snap.data();
       }
@@ -6419,7 +6427,7 @@ async function getSupportSettings() {
 async function saveSupportSettings(settings: any) {
   if (db) {
     try {
-      await db.collection("settings").doc("support_chat").set(settings);
+      await setDoc(doc(db, "settings", "support_chat"), settings, { merge: true });
     } catch (e) {
       console.error("Error saving support settings to Firestore:", e);
     }
@@ -6817,7 +6825,7 @@ app.post("/api/support/request-human", async (req, res) => {
     // 1. Push document to 'support_requests' Firestore collection
     if (db) {
       try {
-        await db.collection("support_requests").doc(requestId).set(supportRequestDoc);
+        await setDoc(doc(db, "support_requests", requestId), supportRequestDoc);
         console.log(`✅ [FIRESTORE API] Saved document to 'support_requests' with ID: ${requestId}`);
       } catch (err: any) {
         console.error("❌ [FIRESTORE API] Failed to setDoc in support_requests:", err.message);
@@ -6926,7 +6934,7 @@ app.patch("/api/support/requests/:id", requireAdmin, async (req, res) => {
   const updates = req.body;
   try {
     if (db) {
-      await db.collection("support_requests").doc(id).update({
+      await updateDoc(doc(db, "support_requests", id), {
         ...updates,
         updatedAt: new Date().toISOString()
       });
@@ -6962,7 +6970,7 @@ app.get("/api/notifications", async (req, res) => {
     let conversation: any = null;
     if (db) {
       try {
-        const snap = await db.collection("support_conversations").doc(decodedId).get();
+        const snap = await getDoc(doc(db, "support_conversations", decodedId));
         if (snap.exists() && snap.data()) {
           conversation = snap.data();
         }

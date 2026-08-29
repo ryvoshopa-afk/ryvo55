@@ -385,7 +385,16 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
 
   if (options.db) {
     try {
-      await options.db.collection('email_logs').doc(logId).set(logEntry);
+      if (typeof options.db.collection === 'function') {
+        const col = options.db.collection('email_logs');
+        if (col && typeof col.doc === 'function') {
+          await col.doc(logId).set(logEntry);
+        } else if (typeof options.db.doc === 'function') {
+          await options.db.doc('email_logs', logId).set(logEntry);
+        }
+      } else if (typeof options.db.doc === 'function') {
+        await options.db.doc('email_logs/' + logId).set(logEntry);
+      }
     } catch (dbErr: any) {
       console.warn("⚠️ Could not persist email log to Firestore:", dbErr.message);
     }
@@ -404,11 +413,16 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
 export async function fetchEmailLogs(db?: any): Promise<EmailLogEntry[]> {
   if (db) {
     try {
-      const snap = await db.collection('email_logs').get();
-      if (snap && snap.docs && snap.docs.length > 0) {
-        const docs = snap.docs.map((d: any) => d.data() as EmailLogEntry);
-        docs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        return docs;
+      if (typeof db.collection === 'function') {
+        const col = db.collection('email_logs');
+        if (col && typeof col.get === 'function') {
+          const snap = await col.get();
+          if (snap && snap.docs && snap.docs.length > 0) {
+            const docs = snap.docs.map((d: any) => (typeof d.data === 'function' ? d.data() : d) as EmailLogEntry);
+            docs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            return docs;
+          }
+        }
       }
     } catch (err: any) {
       console.warn("⚠️ Failed fetching email logs from DB:", err.message);

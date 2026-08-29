@@ -326,6 +326,8 @@ export default function CheckoutModal({
 
     const uniqueVendors = Array.from(new Set(cart.map(it => it.product.supplier_id || 'ryvo-main')));
 
+    console.log(`[CHECKOUT]\nuserId: ${currentUser?.uid || currentUser?.id || 'guest'}\ncartItems: ${cart.map(i => `${i.product.id} (x${i.quantity})`).join(', ')}\npaymentMethod: ${displayPaymentMethod}`);
+
     const orderPayload = {
       id: tempUniqueId,
       customer_id: currentUser?.uid || currentUser?.id || undefined,
@@ -451,27 +453,14 @@ export default function CheckoutModal({
           onOrderSuccess(finalOrder);
           playCheckoutSuccessSound();
         } else {
-          console.error('[ORDER_CREATE_ERROR]', {
-            status,
-            code: data?.code || data?.errorCode || status,
-            message: data?.error || 'Order creation failed',
-            details: data?.details,
-            stack: data?.stack,
-            response: data
-          });
+          console.error(`[ORDER ERROR]\ncode: ${data?.code || data?.errorCode || status}\nmessage: ${data?.error || 'Order creation failed'}\nstack: ${data?.stack || 'N/A'}`);
           const rawErr = data?.error;
           setFormError(rawErr || (isRtl ? 'حدث خطأ أثناء معالجة طلبك، يرجى المحاولة لاحقاً.' : 'An error occurred while processing your order. Please try again.'));
         }
       })
       .catch(err => {
         setIsSubmitting(false);
-        console.error('[ORDER_CREATE_ERROR]', {
-          status: 0,
-          code: 'NETWORK_OR_CLIENT_ERROR',
-          message: err?.message,
-          stack: err?.stack,
-          err
-        });
+        console.error(`[ORDER ERROR]\ncode: NETWORK_OR_CLIENT_ERROR\nmessage: ${err?.message || 'Network error'}\nstack: ${err?.stack || 'N/A'}`);
         setFormError(isRtl ? 'تعذر الاتصال بالخادم، يرجى التحقق من الشبكة.' : 'Could not connect to the server. Please check your network.');
       });
   };

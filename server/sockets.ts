@@ -282,7 +282,14 @@ export function initSockets(io: Server, dbInstance?: any, settingsProvider?: () 
       // 1. Push document to 'support_requests' Firestore collection
       if (globalDb) {
         try {
-          await globalDb.collection('support_requests').doc(requestId).set(supportRequestDoc);
+          if (typeof globalDb.doc === 'function') {
+            await globalDb.doc('support_requests', requestId).set(supportRequestDoc);
+          } else if (typeof globalDb.collection === 'function') {
+            const col = globalDb.collection('support_requests');
+            if (col && typeof col.doc === 'function') {
+              await col.doc(requestId).set(supportRequestDoc);
+            }
+          }
           console.log(`✅ [FIRESTORE] Document written to 'support_requests' collection with ID: ${requestId}`);
         } catch (dbErr: any) {
           console.error("❌ [FIRESTORE] Error writing to 'support_requests':", dbErr.message);
