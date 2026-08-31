@@ -11,7 +11,7 @@ import {
   onAuthStateChanged,
   setPersistence,
   browserLocalPersistence,
-  type User as FirebaseUser,
+  User as FirebaseUser,
   Auth
 } from 'firebase/auth';
 

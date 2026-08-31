@@ -3605,40 +3605,8 @@ const handleMeAndProfileRequest = async (req: any, res: any) => {
     let targetUid: string | null = session?.uid || null;
     let cleanEmail: string = (session?.email || "").toLowerCase().trim();
 
-    // Fallback: Check headers if in-memory session was lost or client supplied Firebase auth headers / idToken
+    // Fallback: Check headers if in-memory session was lost or client supplied Firebase auth headers
     if (!session) {
-      let bearerToken: string | null = null;
-      const authHeader = req.headers["authorization"] || req.headers["Authorization"];
-      if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
-        bearerToken = authHeader.substring(7).trim();
-      }
-      if (!bearerToken && req.headers["x-session-token"]) {
-        bearerToken = String(req.headers["x-session-token"]).trim();
-      }
-
-      // If token looks like a JWT or Firebase token, verify with Identity Toolkit
-      if (bearerToken && bearerToken.length > 40 && (!targetUid || !cleanEmail)) {
-        const apiKey = firebaseConfig?.apiKey || process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY;
-        if (apiKey && apiKey.length > 10) {
-          try {
-            const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ idToken: bearerToken })
-            });
-            const verifyData = await verifyRes.json();
-            if (verifyRes.ok && verifyData.users && verifyData.users.length > 0) {
-              const fbUser = verifyData.users[0];
-              targetUid = fbUser.localId;
-              if (fbUser.email) cleanEmail = fbUser.email.toLowerCase().trim();
-              console.log(`✅ [AUTH ME FIREBASE ID TOKEN VERIFIED] Extracted UID [${targetUid}] | Email [${cleanEmail}]`);
-            }
-          } catch (e: any) {
-            console.warn("⚠️ [AUTH ME ID TOKEN VERIFY WARN]", e.message);
-          }
-        }
-      }
-
       const headerUid = req.headers["x-firebase-uid"] || req.headers["x-uid"];
       const headerEmail = req.headers["x-user-email"] || req.headers["x-email"];
       const bodyUid = req.body?.uid || req.body?.id;
