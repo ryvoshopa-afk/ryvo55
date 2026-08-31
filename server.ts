@@ -454,9 +454,10 @@ function collection(dbInstance: any, path: string) {
 
 function doc(dbInstanceOrCol: any, pathOrId: string, docId?: string) {
   if (!dbInstanceOrCol) throw new Error("Firestore DB/Col not initialized");
+  if (!pathOrId) throw new Error("Document path or collection name is required");
 
-  // 1. If 3 arguments provided: doc(db, "orders", "123")
-  if (docId) {
+  // 1. If docId is explicitly provided (or 3-argument call: doc(db, "orders", "123"))
+  if (docId !== undefined && docId !== null && docId !== "") {
     if (typeof dbInstanceOrCol.collection === "function") {
       const col = dbInstanceOrCol.collection(pathOrId);
       if (col && typeof col.doc === "function") {
@@ -469,6 +470,11 @@ function doc(dbInstanceOrCol: any, pathOrId: string, docId?: string) {
     const rawFs = dbInstanceOrCol.rawFirestore || dbInstanceOrCol;
     const dRef = clientDoc(rawFs, pathOrId, docId);
     return new ClientDocRefWrapper(dRef);
+  }
+
+  // If 3 arguments were intended but docId is undefined/null/empty
+  if (arguments.length >= 3 && (docId === undefined || docId === null || docId === "")) {
+    throw new Error(`Document ID is undefined or missing for collection [${pathOrId}]`);
   }
 
   // 2. If 2 arguments provided: doc(colRef, "123") OR doc(db, "orders/123")
@@ -2804,7 +2810,12 @@ app.post("/api/orders", async (req, res) => {
 app.post("/api/orders/update-status", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not connected" });
   try {
-    const { id, status, tracking_number, cart } = req.body;
+    const id = req.body.id || req.body.orderId;
+    if (!id) {
+      return res.status(400).json({ error: "معرف الطلب مطلوب (Order ID is required)" });
+    }
+    const { status, cart } = req.body;
+    const tracking_number = req.body.tracking_number || req.body.trackingNumber;
     const docRef = doc(db, "orders", id);
     const snap = await getDoc(docRef);
     if (!snap.exists()) {
@@ -4725,7 +4736,7 @@ async function logCjOperation(action: string, status: "success" | "failed", deta
       timestamp,
       requestId
     };
-    await db.collection("cj_logs").doc(logId).set(logDoc);
+    await setDoc(doc(db, "cj_logs", logId), logDoc);
   } catch (err: any) {
     console.error("⚠️ Failed to write CJ log to Firestore:", err.message);
   }
@@ -5031,8 +5042,8 @@ app.get("/api/suppliers/:id/test-connection", requireAdmin, async (req, res) => 
   if (!db) return res.status(500).json({ error: "Database not connected" });
   try {
     const { id } = req.params;
-    const docRef = db.collection("suppliers").doc(id);
-    const snap = await docRef.get();
+    const docRef = doc(db, "suppliers", id);
+    const snap = await getDoc(docRef);
     if (!snap.exists()) {
       return res.status(404).json({ success: false, status: "failed", error: "Supplier not found in database" });
     }
@@ -5301,8 +5312,8 @@ async function getCjCredentials() {
     }
     
     // 3. Fallback to doc 'sup-cj'
-    const docRef = db.collection("suppliers").doc("sup-cj");
-    const snap = await docRef.get();
+    const docRef = doc(db, "suppliers", "sup-cj");
+    const snap = await getDoc(docRef);
     if (snap.exists()) {
       const data = snap.data();
       const loadedEmail = (data.email || "").trim();
@@ -5434,11 +5445,11 @@ app.post("/api/dropshipping/cj/import", requireAdmin, async (req, res) => {
       });
     } else {
       // Fallback to sup-cj
-      const supplierRef = db.collection("suppliers").doc("sup-cj");
-      const supplierSnap = await supplierRef.get();
+      const supplierRef = doc(db, "suppliers", "sup-cj");
+      const supplierSnap = await getDoc(supplierRef);
       if (supplierSnap.exists()) {
         const currentTotal = supplierSnap.data().totalSynced || 0;
-        await supplierRef.update({
+        await updateDoc(supplierRef, {
           totalSynced: currentTotal + 1,
           status: "connected",
           updated_at: new Date().toISOString()

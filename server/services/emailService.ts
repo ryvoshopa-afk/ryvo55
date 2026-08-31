@@ -43,6 +43,34 @@ export interface EmailLogEntry {
 // Memory buffer for logs if DB is loading
 let inMemoryLogs: EmailLogEntry[] = [];
 
+function getSafeDoc(db: any, colName: string, docId: string) {
+  if (!db) return null;
+  if (typeof db.doc === 'function') {
+    try {
+      return db.doc(colName, docId);
+    } catch (_) {}
+  }
+  if (typeof db.collection === 'function') {
+    try {
+      const col = db.collection(colName);
+      if (col && typeof col.doc === 'function') {
+        return col.doc(docId);
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
+function getSafeCol(db: any, colName: string) {
+  if (!db) return null;
+  if (typeof db.collection === 'function') {
+    try {
+      return db.collection(colName);
+    } catch (_) {}
+  }
+  return null;
+}
+
 // Primary default admin email & Resend credentials
 export const PRIMARY_ADMIN_EMAIL = 'ryvo.shopa@gmail.com';
 export const DEFAULT_RESEND_API_KEY = '';
@@ -400,15 +428,9 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
         dbEntry.errorMessage = errorMessage;
       }
 
-      if (typeof options.db.collection === 'function') {
-        const col = options.db.collection('email_logs');
-        if (col && typeof col.doc === 'function') {
-          await col.doc(logId).set(dbEntry);
-        } else if (typeof options.db.doc === 'function') {
-          await options.db.doc('email_logs', logId).set(dbEntry);
-        }
-      } else if (typeof options.db.doc === 'function') {
-        await options.db.doc('email_logs/' + logId).set(dbEntry);
+      const docRef = getSafeDoc(options.db, 'email_logs', logId);
+      if (docRef && typeof docRef.set === 'function') {
+        await docRef.set(dbEntry);
       }
     } catch (dbErr: any) {
       console.warn("⚠️ Could not persist email log to Firestore:", dbErr.message);
