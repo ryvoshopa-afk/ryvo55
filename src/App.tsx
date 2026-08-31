@@ -9,7 +9,8 @@ import { formatPrice } from './utils/price';
 import { ConfirmationProvider } from './components/ConfirmationDialog';
 import socket from './utils/socket';
 import { smartFetch } from './utils/smartFetch';
-import { checkOAuthRedirectResult, logoutClientAuth, subscribeAuthState, clearClientAuthStorage, FirebaseUser } from './lib/firebase';
+import { checkOAuthRedirectResult, logoutClientAuth, subscribeAuthState, clearClientAuthStorage } from './lib/firebase';
+import type { User as FirebaseUser } from 'firebase/auth';
 
 // Components (Critical Render Path - Loaded synchronously)
 import Navbar from './components/Navbar';

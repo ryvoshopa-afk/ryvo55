@@ -11,11 +11,9 @@ import {
   onAuthStateChanged,
   setPersistence,
   browserLocalPersistence,
-  User as FirebaseUser,
+  type User as FirebaseUser,
   Auth
 } from 'firebase/auth';
-
-export type { FirebaseUser };
 
 import { smartFetch } from '../utils/smartFetch';
 
