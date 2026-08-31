@@ -20,6 +20,22 @@ let getDbInstance: () => any = () => {
   return dbGetter();
 };
 
+function getSafeDoc(db: any, colName: string, docId: string) {
+  if (!db) return null;
+  if (typeof db.doc === 'function') return db.doc(colName, docId);
+  if (typeof db.collection === 'function') {
+    const col = db.collection(colName);
+    if (col && typeof col.doc === 'function') return col.doc(docId);
+  }
+  return null;
+}
+
+function getSafeCol(db: any, colName: string) {
+  if (!db) return null;
+  if (typeof db.collection === 'function') return db.collection(colName);
+  return null;
+}
+
 let aiInstance: GoogleGenAI | null = null;
 let modelsLoggedSupport = false;
 let cachedAvailableModels: string[] | null = null;
@@ -350,18 +366,21 @@ async function checkLoyaltyPointsAndCoupons(email: string) {
 
   try {
     const cleanEmail = email.toLowerCase().trim();
-    const userDoc = await db.collection("users").doc(cleanEmail).get();
+    const userDocRef = getSafeDoc(db, "users", cleanEmail);
+    if (!userDocRef) return `Could not access user record for email: ${email}.`;
     
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      const couponsSnap = await db.collection("coupons").get();
-      const coupons = couponsSnap.docs.map((d: any) => d.data()).slice(0, 3);
+    const userDoc = await userDocRef.get();
+    if (userDoc && (typeof userDoc.exists === "function" ? userDoc.exists() : userDoc.exists)) {
+      const userData = typeof userDoc.data === "function" ? userDoc.data() : userDoc.data;
+      const couponsCol = getSafeCol(db, "coupons");
+      const couponsSnap = couponsCol ? await couponsCol.get() : { docs: [] };
+      const coupons = (couponsSnap.docs || []).map((d: any) => typeof d.data === "function" ? d.data() : d.data).slice(0, 3);
       
       return JSON.stringify({
         email: cleanEmail,
-        name: userData.name,
-        loyaltyPoints: userData.points || 0,
-        walletBalance: userData.wallet_balance || 0,
+        name: userData?.name || "Customer",
+        loyaltyPoints: userData?.points || 0,
+        walletBalance: userData?.wallet_balance || 0,
         activeCoupons: coupons.map((c: any) => `${c.code} (${c.discount_percent}% off)`).join(", ")
       });
     }
@@ -531,20 +550,24 @@ export async function generateAIResponse(
       try {
         const db = getDbInstance();
         if (db) {
-          const userDoc = await db.collection("users").doc(conversation.clientEmail.toLowerCase().trim()).get();
+          const userDocRef = getSafeDoc(db, "users", conversation.clientEmail.toLowerCase().trim());
           let name = conversation.clientName || "Guest";
           let points = 0;
           let wallet = 0;
-          if (userDoc.exists()) {
-            const ud = userDoc.data();
-            name = ud.name || name;
-            points = ud.points || 0;
-            wallet = ud.wallet_balance || 0;
+          if (userDocRef) {
+            const userDoc = await userDocRef.get();
+            if (userDoc && (typeof userDoc.exists === "function" ? userDoc.exists() : userDoc.exists)) {
+              const ud = typeof userDoc.data === "function" ? userDoc.data() : userDoc.data;
+              name = ud?.name || name;
+              points = ud?.points || 0;
+              wallet = ud?.wallet_balance || 0;
+            }
           }
           
-          const ordersSnap = await db.collection("orders").get();
-          const userOrders = ordersSnap.docs
-            .map((d: any) => d.data())
+          const ordersCol = getSafeCol(db, "orders");
+          const ordersSnap = ordersCol ? await ordersCol.get() : { docs: [] };
+          const userOrders = (ordersSnap.docs || [])
+            .map((d: any) => typeof d.data === "function" ? d.data() : d.data)
             .filter((o: any) => o.user_email?.toLowerCase() === conversation.clientEmail.toLowerCase().trim());
           
           let lastOrderInfo = "لا توجد طلبات سابقة.";

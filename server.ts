@@ -362,7 +362,7 @@ class ClientCollectionRefWrapper {
   constructor(public rawRef: any, private firestoreInstance: any) {}
 
   doc(id: string) {
-    const dRef = clientDoc(this.firestoreInstance, this.rawRef.path, id);
+    const dRef = clientDoc(this.rawRef, id);
     return new ClientDocRefWrapper(dRef);
   }
 

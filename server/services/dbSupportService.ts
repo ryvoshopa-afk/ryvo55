@@ -20,6 +20,28 @@ function getFirestore() {
   return null;
 }
 
+function getDocRef(fDb: any, colName: string, docId: string) {
+  if (!fDb) return null;
+  if (typeof fDb.doc === 'function') {
+    return fDb.doc(colName, docId);
+  }
+  if (typeof fDb.collection === 'function') {
+    const col = fDb.collection(colName);
+    if (col && typeof col.doc === 'function') {
+      return col.doc(docId);
+    }
+  }
+  return null;
+}
+
+function getColRef(fDb: any, colName: string) {
+  if (!fDb) return null;
+  if (typeof fDb.collection === 'function') {
+    return fDb.collection(colName);
+  }
+  return null;
+}
+
 const LOCAL_CONVERSATIONS_FILE = path.join(process.cwd(), 'support_conversations.json');
 const KNOWLEDGE_FILE = path.join(process.cwd(), 'support_knowledge.json');
 const LOGS_FILE = path.join(process.cwd(), 'support_operations_logs.json');
@@ -126,58 +148,60 @@ export async function getOrCreateConversation(sessionId: string, clientMetadata:
   // 1. Primary: Firestore Database
   if (fDb) {
     try {
-      const docRef = fDb.collection("support_conversations").doc(sessionKey);
-      const snap = await docRef.get();
+      const docRef = getDocRef(fDb, "support_conversations", sessionKey);
+      if (docRef) {
+        const snap = await docRef.get();
 
-      if (snap.exists) {
-        const data = snap.data();
-        const sanitized = sanitizeStatus(data.status);
-        if (sanitized !== data.status) {
-          data.status = sanitized;
-          await docRef.set({ status: sanitized, updatedAt: new Date().toISOString() }, { merge: true });
+        if (snap.exists) {
+          const data = snap.data();
+          const sanitized = sanitizeStatus(data.status);
+          if (sanitized !== data.status) {
+            data.status = sanitized;
+            await docRef.set({ status: sanitized, updatedAt: new Date().toISOString() }, { merge: true });
+          }
+          return {
+            id: data.id || sessionKey,
+            sessionId: sessionKey,
+            clientEmail: data.clientEmail || (sessionKey.includes('@') ? sessionKey : 'guest@ryvo.co'),
+            clientName: data.clientName || sessionKey.split('@')[0] || 'عميل المتجر',
+            clientPhone: data.clientPhone || clientMetadata.phone || '',
+            country: data.country || clientMetadata.country || 'SA',
+            language: data.language || clientMetadata.language || 'ar',
+            device: data.device || clientMetadata.device || 'Desktop',
+            os: data.os || clientMetadata.os || 'Windows',
+            browser: data.browser || clientMetadata.browser || 'Chrome',
+            ip: data.ip || clientMetadata.ip || '127.0.0.1',
+            createdAt: data.createdAt || new Date().toISOString(),
+            lastActive: data.lastActive || Date.now(),
+            status: sanitized,
+            ai_summary: data.ai_summary || '',
+            transfer_reason: data.transfer_reason || '',
+            messages: (data.messages || []).map(mapMessage)
+          };
+        } else {
+          const newConv = {
+            id: sessionKey,
+            sessionId: sessionKey,
+            clientEmail: sessionKey.includes('@') ? sessionKey : 'guest@ryvo.co',
+            clientName: sessionKey.split('@')[0] || 'عميل رايفو',
+            clientPhone: clientMetadata.phone || '',
+            country: clientMetadata.country || 'SA',
+            language: clientMetadata.language || 'ar',
+            device: clientMetadata.device || 'Desktop',
+            os: clientMetadata.os || 'Windows',
+            browser: clientMetadata.browser || 'Chrome',
+            ip: clientMetadata.ip || '127.0.0.1',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            lastActive: Date.now(),
+            status: 'AI_HANDLING',
+            ai_summary: '',
+            transfer_reason: '',
+            messages: []
+          };
+          await docRef.set(newConv);
+          return newConv;
         }
-        return {
-          id: data.id || sessionKey,
-          sessionId: sessionKey,
-          clientEmail: data.clientEmail || (sessionKey.includes('@') ? sessionKey : 'guest@ryvo.co'),
-          clientName: data.clientName || sessionKey.split('@')[0] || 'عميل المتجر',
-          clientPhone: data.clientPhone || clientMetadata.phone || '',
-          country: data.country || clientMetadata.country || 'SA',
-          language: data.language || clientMetadata.language || 'ar',
-          device: data.device || clientMetadata.device || 'Desktop',
-          os: data.os || clientMetadata.os || 'Windows',
-          browser: data.browser || clientMetadata.browser || 'Chrome',
-          ip: data.ip || clientMetadata.ip || '127.0.0.1',
-          createdAt: data.createdAt || new Date().toISOString(),
-          lastActive: data.lastActive || Date.now(),
-          status: sanitized,
-          ai_summary: data.ai_summary || '',
-          transfer_reason: data.transfer_reason || '',
-          messages: (data.messages || []).map(mapMessage)
-        };
-      } else {
-        const newConv = {
-          id: sessionKey,
-          sessionId: sessionKey,
-          clientEmail: sessionKey.includes('@') ? sessionKey : 'guest@ryvo.co',
-          clientName: sessionKey.split('@')[0] || 'عميل رايفو',
-          clientPhone: clientMetadata.phone || '',
-          country: clientMetadata.country || 'SA',
-          language: clientMetadata.language || 'ar',
-          device: clientMetadata.device || 'Desktop',
-          os: clientMetadata.os || 'Windows',
-          browser: clientMetadata.browser || 'Chrome',
-          ip: clientMetadata.ip || '127.0.0.1',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          lastActive: Date.now(),
-          status: 'AI_HANDLING',
-          ai_summary: '',
-          transfer_reason: '',
-          messages: []
-        };
-        await docRef.set(newConv);
-        return newConv;
       }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore getOrCreateConversation error:", fsErr.message);
@@ -275,29 +299,31 @@ export async function getConversationById(id: string) {
 
   if (fDb) {
     try {
-      const docRef = fDb.collection("support_conversations").doc(sessionKey);
-      const snap = await docRef.get();
-      if (snap.exists) {
-        const data = snap.data();
-        return {
-          id: data.id || sessionKey,
-          sessionId: sessionKey,
-          clientEmail: data.clientEmail || (sessionKey.includes('@') ? sessionKey : 'guest@ryvo.co'),
-          clientName: data.clientName || sessionKey.split('@')[0] || 'عميل المتجر',
-          clientPhone: data.clientPhone || '',
-          country: data.country || 'SA',
-          language: data.language || 'ar',
-          device: data.device || 'Desktop',
-          os: data.os || 'Windows',
-          browser: data.browser || 'Chrome',
-          ip: data.ip || '127.0.0.1',
-          createdAt: data.createdAt || new Date().toISOString(),
-          lastActive: data.lastActive || Date.now(),
-          status: sanitizeStatus(data.status),
-          ai_summary: data.ai_summary || '',
-          transfer_reason: data.transfer_reason || '',
-          messages: (data.messages || []).map(mapMessage)
-        };
+      const docRef = getDocRef(fDb, "support_conversations", sessionKey);
+      if (docRef) {
+        const snap = await docRef.get();
+        if (snap.exists) {
+          const data = snap.data();
+          return {
+            id: data.id || sessionKey,
+            sessionId: sessionKey,
+            clientEmail: data.clientEmail || (sessionKey.includes('@') ? sessionKey : 'guest@ryvo.co'),
+            clientName: data.clientName || sessionKey.split('@')[0] || 'عميل المتجر',
+            clientPhone: data.clientPhone || '',
+            country: data.country || 'SA',
+            language: data.language || 'ar',
+            device: data.device || 'Desktop',
+            os: data.os || 'Windows',
+            browser: data.browser || 'Chrome',
+            ip: data.ip || '127.0.0.1',
+            createdAt: data.createdAt || new Date().toISOString(),
+            lastActive: data.lastActive || Date.now(),
+            status: sanitizeStatus(data.status),
+            ai_summary: data.ai_summary || '',
+            transfer_reason: data.transfer_reason || '',
+            messages: (data.messages || []).map(mapMessage)
+          };
+        }
       }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore getConversationById error:", fsErr.message);
@@ -358,32 +384,35 @@ export async function getConversationsForAgent() {
 
   if (fDb) {
     try {
-      const snap = await fDb.collection("support_conversations").get();
-      if (snap && snap.docs) {
-        const list = snap.docs.map((docSnap: any) => {
-          const d = docSnap.data();
-          return {
-            id: d.id || docSnap.id,
-            sessionId: d.sessionId || docSnap.id,
-            clientEmail: d.clientEmail || (docSnap.id.includes('@') ? docSnap.id : 'guest@ryvo.co'),
-            clientName: d.clientName || docSnap.id.split('@')[0] || 'عميل المتجر',
-            clientPhone: d.clientPhone || '',
-            country: d.country || 'SA',
-            language: d.language || 'ar',
-            device: d.device || 'Desktop',
-            os: d.os || 'Windows',
-            browser: d.browser || 'Chrome',
-            ip: d.ip || '127.0.0.1',
-            createdAt: d.createdAt || new Date().toISOString(),
-            lastActive: d.lastActive || Date.now(),
-            status: sanitizeStatus(d.status),
-            ai_summary: d.ai_summary || '',
-            transfer_reason: d.transfer_reason || '',
-            messages: (d.messages || []).map(mapMessage)
-          };
-        });
-        list.sort((a: any, b: any) => (b.lastActive || 0) - (a.lastActive || 0));
-        return list;
+      const colRef = getColRef(fDb, "support_conversations");
+      if (colRef) {
+        const snap = await colRef.get();
+        if (snap && snap.docs) {
+          const list = snap.docs.map((docSnap: any) => {
+            const d = docSnap.data();
+            return {
+              id: d.id || docSnap.id,
+              sessionId: d.sessionId || docSnap.id,
+              clientEmail: d.clientEmail || (docSnap.id.includes('@') ? docSnap.id : 'guest@ryvo.co'),
+              clientName: d.clientName || docSnap.id.split('@')[0] || 'عميل المتجر',
+              clientPhone: d.clientPhone || '',
+              country: d.country || 'SA',
+              language: d.language || 'ar',
+              device: d.device || 'Desktop',
+              os: d.os || 'Windows',
+              browser: d.browser || 'Chrome',
+              ip: d.ip || '127.0.0.1',
+              createdAt: d.createdAt || new Date().toISOString(),
+              lastActive: d.lastActive || Date.now(),
+              status: sanitizeStatus(d.status),
+              ai_summary: d.ai_summary || '',
+              transfer_reason: d.transfer_reason || '',
+              messages: (d.messages || []).map(mapMessage)
+            };
+          });
+          list.sort((a: any, b: any) => (b.lastActive || 0) - (a.lastActive || 0));
+          return list;
+        }
       }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore getConversationsForAgent error:", fsErr.message);
@@ -441,15 +470,17 @@ export async function updateConversationStatus(id: string, status: string) {
 
   if (fDb) {
     try {
-      const docRef = fDb.collection("support_conversations").doc(sessionKey);
-      await docRef.set({
-        status: cleanStatus,
-        lastActive: Date.now(),
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      const docRef = getDocRef(fDb, "support_conversations", sessionKey);
+      if (docRef) {
+        await docRef.set({
+          status: cleanStatus,
+          lastActive: Date.now(),
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
 
-      const snap = await docRef.get();
-      return snap.data();
+        const snap = await docRef.get();
+        return snap.data();
+      }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore updateConversationStatus error:", fsErr.message);
     }
@@ -494,15 +525,17 @@ export async function updateConversationSummary(id: string, summary: string) {
 
   if (fDb) {
     try {
-      const docRef = fDb.collection("support_conversations").doc(sessionKey);
-      await docRef.set({
-        ai_summary: summary,
-        lastActive: Date.now(),
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      const docRef = getDocRef(fDb, "support_conversations", sessionKey);
+      if (docRef) {
+        await docRef.set({
+          ai_summary: summary,
+          lastActive: Date.now(),
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
 
-      const snap = await docRef.get();
-      return snap.data();
+        const snap = await docRef.get();
+        return snap.data();
+      }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore updateConversationSummary error:", fsErr.message);
     }
@@ -547,15 +580,17 @@ export async function updateConversationTransferReason(id: string, reason: strin
 
   if (fDb) {
     try {
-      const docRef = fDb.collection("support_conversations").doc(sessionKey);
-      await docRef.set({
-        transfer_reason: reason,
-        lastActive: Date.now(),
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      const docRef = getDocRef(fDb, "support_conversations", sessionKey);
+      if (docRef) {
+        await docRef.set({
+          transfer_reason: reason,
+          lastActive: Date.now(),
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
 
-      const snap = await docRef.get();
-      return snap.data();
+        const snap = await docRef.get();
+        return snap.data();
+      }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore updateConversationTransferReason error:", fsErr.message);
     }
@@ -628,32 +663,34 @@ export async function addMessage(
   const fDb = getFirestore();
   if (fDb) {
     try {
-      const docRef = fDb.collection("support_conversations").doc(sessionKey);
-      const snap = await docRef.get();
+      const docRef = getDocRef(fDb, "support_conversations", sessionKey);
+      if (docRef) {
+        const snap = await docRef.get();
 
-      if (snap.exists) {
-        const data = snap.data();
-        const existingMessages = data.messages || [];
-        const updatedMessages = [...existingMessages, newMsg];
-        await docRef.set({
-          messages: updatedMessages,
-          lastActive: timestamp,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-      } else {
-        await docRef.set({
-          id: sessionKey,
-          sessionId: sessionKey,
-          clientEmail: sessionKey.includes('@') ? sessionKey : 'guest@ryvo.co',
-          clientName: sessionKey.split('@')[0] || 'عميل رايفو',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          lastActive: timestamp,
-          status: 'AI_HANDLING',
-          messages: [newMsg]
-        });
+        if (snap.exists) {
+          const data = snap.data();
+          const existingMessages = data.messages || [];
+          const updatedMessages = [...existingMessages, newMsg];
+          await docRef.set({
+            messages: updatedMessages,
+            lastActive: timestamp,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        } else {
+          await docRef.set({
+            id: sessionKey,
+            sessionId: sessionKey,
+            clientEmail: sessionKey.includes('@') ? sessionKey : 'guest@ryvo.co',
+            clientName: sessionKey.split('@')[0] || 'عميل رايفو',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            lastActive: timestamp,
+            status: 'AI_HANDLING',
+            messages: [newMsg]
+          });
+        }
+        return newMsg;
       }
-      return newMsg;
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore addMessage error:", fsErr.message);
     }
@@ -715,8 +752,11 @@ export async function addSupportLog(action: string, operator: string) {
   const fDb = getFirestore();
   if (fDb) {
     try {
-      await fDb.collection("support_operations_logs").doc(logId).set(logEntry);
-      return;
+      const docRef = getDocRef(fDb, "support_operations_logs", logId);
+      if (docRef) {
+        await docRef.set(logEntry);
+        return;
+      }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore addSupportLog error:", fsErr.message);
     }
@@ -750,11 +790,14 @@ export async function getSupportLogs() {
   const fDb = getFirestore();
   if (fDb) {
     try {
-      const snap = await fDb.collection("support_operations_logs").get();
-      if (snap && snap.docs) {
-        const logs = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-        logs.sort((a: any, b: any) => (b.timestamp || new Date(b.created_at).getTime() || 0) - (a.timestamp || new Date(a.created_at).getTime() || 0));
-        return logs.slice(0, 200);
+      const colRef = getColRef(fDb, "support_operations_logs");
+      if (colRef) {
+        const snap = await colRef.get();
+        if (snap && snap.docs) {
+          const logs = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+          logs.sort((a: any, b: any) => (b.timestamp || new Date(b.created_at).getTime() || 0) - (a.timestamp || new Date(a.created_at).getTime() || 0));
+          return logs.slice(0, 200);
+        }
       }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore getSupportLogs error:", fsErr.message);
@@ -798,8 +841,11 @@ export async function addKnowledgeSuggestion(question: string, answer: string) {
   const fDb = getFirestore();
   if (fDb) {
     try {
-      await fDb.collection("knowledge_suggestions").doc(sugId).set(sugEntry);
-      return;
+      const docRef = getDocRef(fDb, "knowledge_suggestions", sugId);
+      if (docRef) {
+        await docRef.set(sugEntry);
+        return;
+      }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore addKnowledgeSuggestion error:", fsErr.message);
     }
@@ -842,11 +888,14 @@ export async function approveKnowledgeSuggestion(id: string) {
 
   if (fDb) {
     try {
-      await fDb.collection("knowledge_suggestions").doc(id).update({
-        status: 'APPROVED',
-        updatedAt: new Date().toISOString()
-      });
-      return;
+      const docRef = getDocRef(fDb, "knowledge_suggestions", id);
+      if (docRef) {
+        await docRef.update({
+          status: 'APPROVED',
+          updatedAt: new Date().toISOString()
+        });
+        return;
+      }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore approveKnowledgeSuggestion error:", fsErr.message);
     }
@@ -876,11 +925,14 @@ export async function rejectKnowledgeSuggestion(id: string) {
 
   if (fDb) {
     try {
-      await fDb.collection("knowledge_suggestions").doc(id).update({
-        status: 'REJECTED',
-        updatedAt: new Date().toISOString()
-      });
-      return;
+      const docRef = getDocRef(fDb, "knowledge_suggestions", id);
+      if (docRef) {
+        await docRef.update({
+          status: 'REJECTED',
+          updatedAt: new Date().toISOString()
+        });
+        return;
+      }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore rejectKnowledgeSuggestion error:", fsErr.message);
     }
@@ -908,11 +960,14 @@ export async function getKnowledgeSuggestions() {
   const fDb = getFirestore();
   if (fDb) {
     try {
-      const snap = await fDb.collection("knowledge_suggestions").get();
-      if (snap && snap.docs) {
-        const list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-        list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
-        return list;
+      const colRef = getColRef(fDb, "knowledge_suggestions");
+      if (colRef) {
+        const snap = await colRef.get();
+        if (snap && snap.docs) {
+          const list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+          list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+          return list;
+        }
       }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore getKnowledgeSuggestions error:", fsErr.message);
@@ -943,11 +998,14 @@ export async function getApprovedKnowledge() {
   const fDb = getFirestore();
   if (fDb) {
     try {
-      const snap = await fDb.collection("knowledge_suggestions").get();
-      if (snap && snap.docs) {
-        return snap.docs
-          .map((d: any) => ({ id: d.id, ...d.data() }))
-          .filter((s: any) => s.status === 'APPROVED');
+      const colRef = getColRef(fDb, "knowledge_suggestions");
+      if (colRef) {
+        const snap = await colRef.get();
+        if (snap && snap.docs) {
+          return snap.docs
+            .map((d: any) => ({ id: d.id, ...d.data() }))
+            .filter((s: any) => s.status === 'APPROVED');
+        }
       }
     } catch (fsErr: any) {
       console.warn("⚠️ [Support Service] Firestore getApprovedKnowledge error:", fsErr.message);
