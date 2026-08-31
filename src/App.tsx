@@ -132,8 +132,15 @@ export default function App() {
     return [];
   });
 
-  // User state - strictly governed by Firebase Auth and server session validation
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // User state - initialized from persistent storage if available, strictly synchronized with Firebase Auth
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('ryvo_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (_) {
+      return null;
+    }
+  });
   const authGenerationRef = useRef<number>(0);
 
   // Authentication Lifecycle: Source of Truth = Firebase Auth & Server Token Verification
@@ -141,22 +148,38 @@ export default function App() {
     let isMounted = true;
     const currentGeneration = ++authGenerationRef.current;
 
-    async function syncAuthSession() {
-      // 1. Check if user is returning from OAuth redirect
-      try {
-        const redirectRes = await checkOAuthRedirectResult();
-        if (!isMounted || currentGeneration !== authGenerationRef.current) return;
-        if (redirectRes && redirectRes.success && redirectRes.user) {
-          console.log("🎉 [AUTH REDIRECT] Successfully signed in from OAuth Redirect:", redirectRes.user.email);
-          setCurrentUser(redirectRes.user);
-          localStorage.setItem('ryvo_user', JSON.stringify(redirectRes.user));
-          return;
-        }
-      } catch (err) {
-        console.warn("⚠️ [AUTH REDIRECT SYNC WARN]", err);
+    // 1. Subscribe to Firebase onAuthStateChanged as primary auth state observer
+    const unsubscribeAuth = subscribeAuthState(async (firebaseUser) => {
+      if (!isMounted || currentGeneration !== authGenerationRef.current) return;
+
+      if (firebaseUser && firebaseUser.email) {
+        const cleanEmail = firebaseUser.email.toLowerCase().trim();
+        const isSuperAdmin = cleanEmail === 'ryvo.shopa@gmail.com';
+
+        let savedUser: any = null;
+        try {
+          const raw = localStorage.getItem('ryvo_user');
+          if (raw) savedUser = JSON.parse(raw);
+        } catch (_) {}
+
+        const activeUser: User = {
+          ...(savedUser || {}),
+          id: firebaseUser.uid || savedUser?.id || cleanEmail,
+          uid: firebaseUser.uid || savedUser?.uid || cleanEmail,
+          email: cleanEmail,
+          name: firebaseUser.displayName || savedUser?.name || cleanEmail.split('@')[0],
+          role: isSuperAdmin ? 'admin' : (savedUser?.role || 'customer'),
+          favorites: savedUser?.favorites || [],
+          points: savedUser?.points ?? 100
+        };
+
+        console.log("🔥 [FIREBASE AUTH RECOVERED ON REFRESH]:", activeUser.email, `(${activeUser.role})`);
+        setCurrentUser(activeUser);
+        localStorage.setItem('ryvo_user', JSON.stringify(activeUser));
+        return;
       }
 
-      // 2. Check active server session token in localStorage
+      // 2. If no Firebase user, check active server session token in localStorage
       const token = localStorage.getItem('ryvo_session_token');
       if (token) {
         try {
@@ -177,33 +200,38 @@ export default function App() {
               return;
             }
           }
-          // Server reported token is invalid or expired
-          console.warn("⚠️ [AUTH SESSION INVALID] Server revoked or expired session token. Resetting to guest.");
-          clearClientAuthStorage();
-          setCurrentUser(null);
         } catch (fetchErr) {
           console.warn("⚠️ [AUTH SESSION ME FETCH FAILED]", fetchErr);
         }
-      } else {
-        // No session token -> ensure clean guest state
-        clearClientAuthStorage();
-        setCurrentUser(null);
       }
-    }
 
-    syncAuthSession();
-
-    // 3. Subscribe to Firebase onAuthStateChanged as primary auth state observer
-    const unsubscribeAuth = subscribeAuthState((firebaseUser) => {
-      if (!isMounted || currentGeneration !== authGenerationRef.current) return;
-      if (!firebaseUser) {
-        // When Firebase confirms user is null and no session token exists, stay strictly logged out
-        const hasSession = localStorage.getItem('ryvo_session_token');
-        if (!hasSession) {
-          setCurrentUser(null);
-          clearClientAuthStorage();
+      // 3. Fallback: check if valid email user is cached in ryvo_user
+      try {
+        const savedRaw = localStorage.getItem('ryvo_user');
+        if (savedRaw) {
+          const parsed = JSON.parse(savedRaw);
+          if (parsed && parsed.email) {
+            console.log("💾 [LOCAL STORAGE SESSION PERSISTED]:", parsed.email);
+            setCurrentUser(parsed);
+            return;
+          }
         }
+      } catch (_) {}
+
+      // If neither Firebase user nor saved session exists, user is guest
+      setCurrentUser(null);
+    });
+
+    // 2. Check if user is returning from OAuth redirect
+    checkOAuthRedirectResult().then((redirectRes) => {
+      if (!isMounted || currentGeneration !== authGenerationRef.current) return;
+      if (redirectRes && redirectRes.success && redirectRes.user) {
+        console.log("🎉 [AUTH REDIRECT] Successfully signed in from OAuth Redirect:", redirectRes.user.email);
+        setCurrentUser(redirectRes.user);
+        localStorage.setItem('ryvo_user', JSON.stringify(redirectRes.user));
       }
+    }).catch((err) => {
+      console.warn("⚠️ [AUTH REDIRECT SYNC WARN]", err);
     });
 
     return () => {
@@ -1229,8 +1257,6 @@ export default function App() {
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('ryvo_user', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('ryvo_user');
     }
   }, [currentUser]);
 

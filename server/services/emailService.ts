@@ -365,7 +365,7 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
     originalErrorMsg = undefined;
   }
 
-  errorMessage = logStatus === 'Sent' ? undefined : (originalErrorMsg || 'Email delivery failed on both RESEND and SMTP.');
+  errorMessage = logStatus === 'Sent' ? '' : (originalErrorMsg || 'Email delivery failed on both RESEND and SMTP.');
 
   const logEntry: EmailLogEntry = {
     id: logId,
@@ -375,7 +375,7 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
     subject: options.subject,
     triggerEvent: options.triggerEvent,
     status: logStatus,
-    errorMessage,
+    errorMessage: errorMessage || undefined,
     timestamp,
     bodyPreview: plainPreview
   };
@@ -385,15 +385,30 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
 
   if (options.db) {
     try {
+      const dbEntry: any = {
+        id: logId,
+        to: options.to,
+        senderEmail: finalFromAddress,
+        senderName,
+        subject: options.subject,
+        triggerEvent: options.triggerEvent,
+        status: logStatus,
+        timestamp,
+        bodyPreview: plainPreview
+      };
+      if (errorMessage) {
+        dbEntry.errorMessage = errorMessage;
+      }
+
       if (typeof options.db.collection === 'function') {
         const col = options.db.collection('email_logs');
         if (col && typeof col.doc === 'function') {
-          await col.doc(logId).set(logEntry);
+          await col.doc(logId).set(dbEntry);
         } else if (typeof options.db.doc === 'function') {
-          await options.db.doc('email_logs', logId).set(logEntry);
+          await options.db.doc('email_logs', logId).set(dbEntry);
         }
       } else if (typeof options.db.doc === 'function') {
-        await options.db.doc('email_logs/' + logId).set(logEntry);
+        await options.db.doc('email_logs/' + logId).set(dbEntry);
       }
     } catch (dbErr: any) {
       console.warn("⚠️ Could not persist email log to Firestore:", dbErr.message);
