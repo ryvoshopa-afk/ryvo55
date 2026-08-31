@@ -15,6 +15,8 @@ import {
   Auth
 } from 'firebase/auth';
 
+export type { FirebaseUser };
+
 import { smartFetch } from '../utils/smartFetch';
 
 // Default non-sensitive Firebase web client configuration (project: ryvo-shop-v3)

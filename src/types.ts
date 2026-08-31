@@ -195,6 +195,7 @@ export interface User {
   status?: string;
   emailVerified?: boolean;
   provider?: string;
+  photoURL?: string;
   createdAt?: string;
   updatedAt?: string;
 }

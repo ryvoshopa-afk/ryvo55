@@ -9,7 +9,7 @@ import { formatPrice } from './utils/price';
 import { ConfirmationProvider } from './components/ConfirmationDialog';
 import socket from './utils/socket';
 import { smartFetch } from './utils/smartFetch';
-import { checkOAuthRedirectResult, logoutClientAuth, subscribeAuthState, clearClientAuthStorage } from './lib/firebase';
+import { checkOAuthRedirectResult, logoutClientAuth, subscribeAuthState, clearClientAuthStorage, FirebaseUser } from './lib/firebase';
 
 // Components (Critical Render Path - Loaded synchronously)
 import Navbar from './components/Navbar';
@@ -132,8 +132,20 @@ export default function App() {
     return [];
   });
 
-  // User state - strictly governed by Firebase Auth and server session validation
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // User state - strictly initialized from cached session for zero-flicker reload
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('ryvo_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && (parsed.email || parsed.uid || parsed.id)) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return null;
+  });
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const authGenerationRef = useRef<number>(0);
 
   // Authentication Lifecycle: Source of Truth = Firebase Auth & Server Token Verification
@@ -141,7 +153,7 @@ export default function App() {
     let isMounted = true;
     const currentGeneration = ++authGenerationRef.current;
 
-    async function syncAuthSession() {
+    async function syncAuthWithServer(firebaseUser?: FirebaseUser | null) {
       // 1. Check if user is returning from OAuth redirect
       try {
         const redirectRes = await checkOAuthRedirectResult();
@@ -150,13 +162,73 @@ export default function App() {
           console.log("🎉 [AUTH REDIRECT] Successfully signed in from OAuth Redirect:", redirectRes.user.email);
           setCurrentUser(redirectRes.user);
           localStorage.setItem('ryvo_user', JSON.stringify(redirectRes.user));
+          if (redirectRes.token) {
+            localStorage.setItem('ryvo_session_token', redirectRes.token);
+          }
+          setIsAuthLoading(false);
           return;
         }
       } catch (err) {
         console.warn("⚠️ [AUTH REDIRECT SYNC WARN]", err);
       }
 
-      // 2. Check active server session token in localStorage
+      // 2. If Firebase user is active and authenticated
+      if (firebaseUser) {
+        try {
+          const idToken = await firebaseUser.getIdToken();
+          const savedToken = localStorage.getItem('ryvo_session_token') || '';
+          const res = await fetch('/api/auth/me', {
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+              'x-session-token': savedToken,
+              'x-firebase-uid': firebaseUser.uid,
+              'x-user-email': firebaseUser.email || ''
+            }
+          });
+
+          if (!isMounted || currentGeneration !== authGenerationRef.current) return;
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.user) {
+              const verifiedUser: User = data.user;
+              console.log("👤 [AUTH FIREBASE SYNC]: Verified live user from Firebase:", verifiedUser.email, `(${verifiedUser.role})`);
+              setCurrentUser(verifiedUser);
+              localStorage.setItem('ryvo_user', JSON.stringify(verifiedUser));
+              if (data.token) {
+                localStorage.setItem('ryvo_session_token', data.token);
+              }
+              setIsAuthLoading(false);
+              return;
+            }
+          }
+        } catch (fbSyncErr) {
+          console.warn("⚠️ [AUTH FIREBASE SYNC FETCH WARN]", fbSyncErr);
+        }
+
+        // Fallback with live Firebase user instance if server endpoint had temporary network hiccup
+        if (!isMounted || currentGeneration !== authGenerationRef.current) return;
+        const cachedStr = localStorage.getItem('ryvo_user');
+        let cachedObj: any = {};
+        try { if (cachedStr) cachedObj = JSON.parse(cachedStr); } catch (_) {}
+
+        const fallbackLiveUser: User = {
+          uid: firebaseUser.uid,
+          id: firebaseUser.uid,
+          email: (firebaseUser.email || cachedObj.email || '').toLowerCase().trim(),
+          name: firebaseUser.displayName || cachedObj.name || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'),
+          photoURL: firebaseUser.photoURL || cachedObj.photoURL || undefined,
+          role: (firebaseUser.email?.toLowerCase().trim() === 'ryvo.shopa@gmail.com' ? 'admin' : (cachedObj.role || 'customer')),
+          favorites: cachedObj.favorites || [],
+          points: cachedObj.points ?? 100,
+          wallet_balance: cachedObj.wallet_balance ?? 0
+        };
+        setCurrentUser(fallbackLiveUser);
+        localStorage.setItem('ryvo_user', JSON.stringify(fallbackLiveUser));
+        setIsAuthLoading(false);
+        return;
+      }
+
+      // 3. If Firebase user is null, check active server session token in localStorage (e.g. Email/Password login)
       const token = localStorage.getItem('ryvo_session_token');
       if (token) {
         try {
@@ -171,39 +243,45 @@ export default function App() {
             const data = await res.json();
             if (data.success && data.user) {
               const verifiedUser: User = data.user;
-              console.log("👤 [AUTH SESSION SYNC]: Verified active user:", verifiedUser.email, `(${verifiedUser.role})`);
+              console.log("👤 [AUTH SESSION SYNC]: Verified active user via session token:", verifiedUser.email, `(${verifiedUser.role})`);
               setCurrentUser(verifiedUser);
               localStorage.setItem('ryvo_user', JSON.stringify(verifiedUser));
+              setIsAuthLoading(false);
               return;
             }
           }
-          // Server reported token is invalid or expired
-          console.warn("⚠️ [AUTH SESSION INVALID] Server revoked or expired session token. Resetting to guest.");
-          clearClientAuthStorage();
-          setCurrentUser(null);
+
+          if (res.status === 401) {
+            // Explicitly 401 from server -> session is revoked
+            console.warn("⚠️ [AUTH SESSION REVOKED] Session token is invalid or expired.");
+            localStorage.removeItem('ryvo_session_token');
+            localStorage.removeItem('ryvo_user');
+            setCurrentUser(null);
+            setIsAuthLoading(false);
+            return;
+          }
         } catch (fetchErr) {
           console.warn("⚠️ [AUTH SESSION ME FETCH FAILED]", fetchErr);
+          // Network error: keep cached user session if available
+          setIsAuthLoading(false);
+          return;
         }
-      } else {
-        // No session token -> ensure clean guest state
-        clearClientAuthStorage();
+      }
+
+      // 4. No Firebase user and no valid session token -> Guest
+      if (!isMounted || currentGeneration !== authGenerationRef.current) return;
+      const hasLocalUser = localStorage.getItem('ryvo_user');
+      if (!hasLocalUser) {
         setCurrentUser(null);
       }
+      setIsAuthLoading(false);
     }
 
-    syncAuthSession();
-
-    // 3. Subscribe to Firebase onAuthStateChanged as primary auth state observer
+    // Subscribe to Firebase onAuthStateChanged as primary auth state observer
     const unsubscribeAuth = subscribeAuthState((firebaseUser) => {
       if (!isMounted || currentGeneration !== authGenerationRef.current) return;
-      if (!firebaseUser) {
-        // When Firebase confirms user is null and no session token exists, stay strictly logged out
-        const hasSession = localStorage.getItem('ryvo_session_token');
-        if (!hasSession) {
-          setCurrentUser(null);
-          clearClientAuthStorage();
-        }
-      }
+      console.log("🔥 [FIREBASE AUTH STATE OBSERVER]:", firebaseUser ? `User: ${firebaseUser.email}` : "No user in Firebase Auth");
+      syncAuthWithServer(firebaseUser);
     });
 
     return () => {
@@ -1229,8 +1307,6 @@ export default function App() {
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('ryvo_user', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('ryvo_user');
     }
   }, [currentUser]);
 
