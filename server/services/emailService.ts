@@ -99,9 +99,12 @@ export function getBaseUrl(req?: any): string {
   return 'https://ryvo.shop';
 }
 
+const invalidResendKeys = new Set<string>();
+
 export function isDummyResendKey(key?: string): boolean {
   if (!key) return true;
   const clean = key.trim();
+  if (invalidResendKeys.has(clean)) return true;
   return (
     !clean ||
     clean.length < 15 ||
@@ -114,6 +117,12 @@ export function isDummyResendKey(key?: string): boolean {
     clean === 're_' ||
     clean === 're_123'
   );
+}
+
+export function markResendKeyInvalid(key: string) {
+  if (key) {
+    invalidResendKeys.add(key.trim());
+  }
 }
 
 let defaultGetSettingsFn: (() => any) | null = null;
@@ -252,8 +261,10 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
         const errStr = originalErrorMsg.toLowerCase();
         const isInvalidKey = errStr.includes('api key is invalid') || errStr.includes('validation_error') || (errObj as any).name === 'validation_error' || httpStatus === 401;
 
-        if (!isInvalidKey) {
-          // SAFE SERVER LOG - NO API KEYS OR SECRETS
+        if (isInvalidKey) {
+          markResendKeyInvalid(resendApiKey);
+          console.warn(`⚠️ [RESEND NOTICE] Provided Resend API key is invalid or unauthorized (${originalErrorMsg}). Provider status: EMAIL_PROVIDER_ERROR.`);
+        } else {
           const isBulk = options.triggerEvent === 'bulk_email';
           console.log(`================ [${isBulk ? 'BULK EMAIL AUDIT' : 'EMAIL SERVER DISPATCH AUDIT'}] ================`);
           console.log("Provider: RESEND");
@@ -263,8 +274,6 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
           console.log("HTTP Status:", httpStatus);
           console.log("Resend Error:", originalErrorMsg);
           console.log("===============================================================");
-        } else {
-          console.warn(`⚠️ [RESEND NOTICE] Provided Resend API key is not active or invalid. Falling back to sandbox simulation / SMTP.`);
         }
 
         // If unverified domain error on custom domain (noreply@ryvo.shop), try onboarding@resend.dev as fallback (only if key is valid)
@@ -309,7 +318,10 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
       httpStatus = resendCatchErr?.status || resendCatchErr?.statusCode || 500;
       originalErrorMsg = resendCatchErr?.message || String(resendCatchErr);
       const isInvalidKey = originalErrorMsg.toLowerCase().includes('api key') || originalErrorMsg.toLowerCase().includes('validation_error');
-      if (!isInvalidKey) {
+      if (isInvalidKey) {
+        markResendKeyInvalid(resendApiKey);
+        console.warn(`⚠️ [RESEND NOTICE] Resend request caught invalid key: ${originalErrorMsg}`);
+      } else {
         const isBulk = options.triggerEvent === 'bulk_email';
         console.log(`================ [${isBulk ? 'BULK EMAIL AUDIT' : 'EMAIL SERVER DISPATCH AUDIT'}] ================`);
         console.log("Provider: RESEND");
@@ -319,8 +331,6 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
         console.log("HTTP Status:", httpStatus);
         console.log("Resend Error:", originalErrorMsg);
         console.log("===============================================================");
-      } else {
-        console.warn(`⚠️ [RESEND NOTICE] Resend request caught: ${originalErrorMsg}`);
       }
     }
   }
@@ -381,19 +391,18 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
   }
 
   // --------------------------------------------------------------------------
-  // PATH 3: HIGH-FIDELITY SANDBOX SIMULATION (DEV / PREVIEW MODE FALLBACK)
+  // PATH 3: NO ACTIVE LIVE PROVIDER CONFIGURED
   // --------------------------------------------------------------------------
-  if (logStatus !== 'Sent' && (!smtpHost || !smtpUser || !smtpPass)) {
-    // When live credentials are not set or inactive in the current environment,
-    // simulate delivery cleanly so that user registration, OTP, checkout, and admin alerts proceed seamlessly.
-    console.log(`✉️ [EMAIL DISPATCH SANDBOX] Simulated delivery to: ${options.to} | Subject: "${options.subject}" | Event: ${options.triggerEvent}`);
-    logStatus = 'Sent';
+  if (logStatus !== 'Sent') {
     providerUsed = 'NONE';
-    httpStatus = 200;
-    originalErrorMsg = undefined;
+    logStatus = 'Failed';
+    if (!originalErrorMsg) {
+      originalErrorMsg = 'Email Provider: NOT CONFIGURED (No active Resend API Key or SMTP credentials configured)';
+    }
+    console.log(`ℹ️ [EMAIL DISPATCH AUDIT] Email to ${options.to} not dispatched (${originalErrorMsg}). Primary business workflow continues normally.`);
   }
 
-  errorMessage = logStatus === 'Sent' ? '' : (originalErrorMsg || 'Email delivery failed on both RESEND and SMTP.');
+  errorMessage = logStatus === 'Sent' ? '' : originalErrorMsg;
 
   const logEntry: EmailLogEntry = {
     id: logId,

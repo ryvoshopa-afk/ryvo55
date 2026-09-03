@@ -1,17 +1,22 @@
 {
-  "logoUpdatedAt": 1786467045976,
-  "emailConfig": {
-    "senderEmail": "onboarding@resend.dev",
-    "senderName": "متجر RYVO الرسمي",
-    "resendApiKey": "re_STwDkaCe_CU2mJyDXRejPaU4RZdwvN9h7",
-    "smtpHost": "",
-    "smtpPort": 587,
-    "smtpSecure": false,
-    "smtpUser": "",
-    "smtpPass": ""
-  },
-  "purchasingDisabled": false,
+  "customAdmins": [],
   "announcementTextAr": "تسوق بثقة تامة مع حماية وضمان متكامل لجميع المشتريات 🔒",
+  "announcementTextEn": "Shop with 100% confidence & guaranteed safety index 🔒",
+  "storeSettings": {
+    "storeMode": "open",
+    "preLaunchMessageAr": "🚀 ترقبوا افتتاح متجر RYVO قريباً - نجهز لكم تجربة شراء استثنائية!",
+    "preLaunchMessageEn": "🚀 Stay tuned for the official launch of RYVO Store coming soon!",
+    "preLaunchMessageFr": "🚀 Restez à l’écoute pour le lancement officiel du magasin RYVO !",
+    "launchDate": "2026-08-15T03:27:13.354Z",
+    "showCountdown": true,
+    "showTopBanner": true,
+    "showNotifyMe": true
+  },
+  "announcementTextFr": "Achetez en toute confiance avec une sécurité garantie 🔒",
+  "heroSlides": null,
+  "logoUpdatedAt": 1786467045976,
+  "brandColor": "#E53E3E",
+  "storeLogoUrl": "/logo.png?v=1786467045976",
   "integrations": {
     "stripeEnabled": false,
     "stripeSecretKey": "",
@@ -27,32 +32,6 @@
     "codEnabled": true,
     "cjApiKey": "YOUR_CJ_API_KEY"
   },
-  "heroSlides": null,
-  "customAdmins": [],
-  "announcementTextEn": "Shop with 100% confidence & guaranteed safety index 🔒",
-  "shopLogo": "/logo.png?v=1786467045976",
-  "announcementLink": "",
-  "storeLogoUrl": "/logo.png?v=1786467045976",
-  "brandColor": "#E53E3E",
-  "storeSettings": {
-    "storeMode": "open",
-    "preLaunchMessageAr": "🚀 ترقبوا افتتاح متجر RYVO قريباً - نجهز لكم تجربة شراء استثنائية!",
-    "preLaunchMessageEn": "🚀 Stay tuned for the official launch of RYVO Store coming soon!",
-    "preLaunchMessageFr": "🚀 Restez à l’écoute pour le lancement officiel du magasin RYVO !",
-    "launchDate": "2026-08-15T03:27:13.354Z",
-    "showCountdown": true,
-    "showTopBanner": true,
-    "showNotifyMe": true
-  },
-  "socialLinks": {
-    "facebook": "https://facebook.com",
-    "twitter": "https://twitter.com",
-    "instagram": "https://instagram.com",
-    "youtube": "https://youtube.com",
-    "snapchat": "",
-    "tiktok": ""
-  },
-  "announcementTextFr": "Achetez en toute confiance avec une sécurité garantie 🔒",
   "welcomeCoupon": {
     "enabled": true,
     "code": "WELCOME15",
@@ -72,5 +51,26 @@
     "ctaTextAr": "اشتري الآن واستفد من الخصم 🛍️",
     "ctaTextEn": "Checkout & Save Now 🛍️",
     "ctaTextFr": "Achetez et économisez 🛍️"
+  },
+  "purchasingDisabled": false,
+  "socialLinks": {
+    "facebook": "https://facebook.com",
+    "twitter": "https://twitter.com",
+    "instagram": "https://instagram.com",
+    "youtube": "https://youtube.com",
+    "snapchat": "",
+    "tiktok": ""
+  },
+  "announcementLink": "",
+  "shopLogo": "/logo.png?v=1786467045976",
+  "emailConfig": {
+    "senderEmail": "onboarding@resend.dev",
+    "senderName": "متجر RYVO الرسمي",
+    "resendApiKey": "re_STwDkaCe_CU2mJyDXRejPaU4RZdwvN9h7",
+    "smtpHost": "",
+    "smtpPort": 587,
+    "smtpSecure": false,
+    "smtpUser": "",
+    "smtpPass": ""
   }
 }

@@ -140,6 +140,22 @@ function isUuid(str: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim());
 }
 
+function isSnapExisting(snap: any): boolean {
+  if (!snap) return false;
+  if (typeof snap.exists === 'function') {
+    return Boolean(snap.exists());
+  }
+  return Boolean(snap.exists);
+}
+
+function getSnapData(snap: any): any {
+  if (!snap) return undefined;
+  if (typeof snap.data === 'function') {
+    return snap.data();
+  }
+  return snap.data || undefined;
+}
+
 // Get active conversation for a user session
 export async function getOrCreateConversation(sessionId: string, clientMetadata: any = {}) {
   const sessionKey = (sessionId || 'guest@ryvo.co').toLowerCase().trim();
@@ -151,9 +167,10 @@ export async function getOrCreateConversation(sessionId: string, clientMetadata:
       const docRef = getDocRef(fDb, "support_conversations", sessionKey);
       if (docRef) {
         const snap = await docRef.get();
+        const exists = isSnapExisting(snap);
+        const data = getSnapData(snap);
 
-        if (snap.exists) {
-          const data = snap.data();
+        if (exists && data) {
           const sanitized = sanitizeStatus(data.status);
           if (sanitized !== data.status) {
             data.status = sanitized;
@@ -204,7 +221,7 @@ export async function getOrCreateConversation(sessionId: string, clientMetadata:
         }
       }
     } catch (fsErr: any) {
-      console.warn("⚠️ [Support Service] Firestore getOrCreateConversation error:", fsErr.message);
+      console.warn("⚠️ [Support Service] Firestore getOrCreateConversation error:", fsErr?.message || fsErr);
     }
   }
 
@@ -302,8 +319,10 @@ export async function getConversationById(id: string) {
       const docRef = getDocRef(fDb, "support_conversations", sessionKey);
       if (docRef) {
         const snap = await docRef.get();
-        if (snap.exists) {
-          const data = snap.data();
+        const exists = isSnapExisting(snap);
+        const data = getSnapData(snap);
+
+        if (exists && data) {
           return {
             id: data.id || sessionKey,
             sessionId: sessionKey,
@@ -326,7 +345,7 @@ export async function getConversationById(id: string) {
         }
       }
     } catch (fsErr: any) {
-      console.warn("⚠️ [Support Service] Firestore getConversationById error:", fsErr.message);
+      console.warn("⚠️ [Support Service] Firestore getConversationById error:", fsErr?.message || fsErr);
     }
   }
 
@@ -666,9 +685,10 @@ export async function addMessage(
       const docRef = getDocRef(fDb, "support_conversations", sessionKey);
       if (docRef) {
         const snap = await docRef.get();
+        const exists = isSnapExisting(snap);
+        const data = getSnapData(snap);
 
-        if (snap.exists) {
-          const data = snap.data();
+        if (exists && data) {
           const existingMessages = data.messages || [];
           const updatedMessages = [...existingMessages, newMsg];
           await docRef.set({
@@ -692,7 +712,7 @@ export async function addMessage(
         return newMsg;
       }
     } catch (fsErr: any) {
-      console.warn("⚠️ [Support Service] Firestore addMessage error:", fsErr.message);
+      console.warn("⚠️ [Support Service] Firestore addMessage error:", fsErr?.message || fsErr);
     }
   }
 
