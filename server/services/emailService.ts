@@ -40,35 +40,29 @@ export interface EmailLogEntry {
   bodyPreview: string;
 }
 
+import { doc as unifiedDoc, collection as unifiedCollection, logFirestoreError } from './firestoreLayer.js';
+
 // Memory buffer for logs if DB is loading
 let inMemoryLogs: EmailLogEntry[] = [];
 
 function getSafeDoc(db: any, colName: string, docId: string) {
   if (!db) return null;
-  if (typeof db.doc === 'function') {
-    try {
-      return db.doc(colName, docId);
-    } catch (_) {}
+  try {
+    return unifiedDoc(db, colName, docId);
+  } catch (err: any) {
+    logFirestoreError("emailService.getSafeDoc", colName, docId, err);
+    return null;
   }
-  if (typeof db.collection === 'function') {
-    try {
-      const col = db.collection(colName);
-      if (col && typeof col.doc === 'function') {
-        return col.doc(docId);
-      }
-    } catch (_) {}
-  }
-  return null;
 }
 
 function getSafeCol(db: any, colName: string) {
   if (!db) return null;
-  if (typeof db.collection === 'function') {
-    try {
-      return db.collection(colName);
-    } catch (_) {}
+  try {
+    return unifiedCollection(db, colName);
+  } catch (err: any) {
+    logFirestoreError("emailService.getSafeCol", colName, undefined, err);
+    return null;
   }
-  return null;
 }
 
 // Primary default admin email & Resend credentials
@@ -459,19 +453,17 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
 export async function fetchEmailLogs(db?: any): Promise<EmailLogEntry[]> {
   if (db) {
     try {
-      if (typeof db.collection === 'function') {
-        const col = db.collection('email_logs');
-        if (col && typeof col.get === 'function') {
-          const snap = await col.get();
-          if (snap && snap.docs && snap.docs.length > 0) {
-            const docs = snap.docs.map((d: any) => (typeof d.data === 'function' ? d.data() : d) as EmailLogEntry);
-            docs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-            return docs;
-          }
+      const col = getSafeCol(db, 'email_logs');
+      if (col && typeof col.get === 'function') {
+        const snap = await col.get();
+        if (snap && snap.docs && snap.docs.length > 0) {
+          const docs = snap.docs.map((d: any) => (typeof d.data === 'function' ? d.data() : d) as EmailLogEntry);
+          docs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          return docs;
         }
       }
     } catch (err: any) {
-      console.warn("⚠️ Failed fetching email logs from DB:", err.message);
+      logFirestoreError("emailService.fetchEmailLogs", "email_logs", undefined, err);
     }
   }
   return inMemoryLogs;

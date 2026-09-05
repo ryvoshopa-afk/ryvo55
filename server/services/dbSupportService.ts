@@ -1,6 +1,7 @@
 import { query, getDbStatus } from '../db';
 import fs from 'fs';
 import path from 'path';
+import { doc as unifiedDoc, collection as unifiedCollection, logFirestoreError } from './firestoreLayer';
 
 let firestoreDbGetter: (() => any) | null = null;
 
@@ -22,24 +23,22 @@ function getFirestore() {
 
 function getDocRef(fDb: any, colName: string, docId: string) {
   if (!fDb) return null;
-  if (typeof fDb.doc === 'function') {
-    return fDb.doc(colName, docId);
+  try {
+    return unifiedDoc(fDb, colName, docId);
+  } catch (err: any) {
+    logFirestoreError("getDocRef", colName, docId, err);
+    return null;
   }
-  if (typeof fDb.collection === 'function') {
-    const col = fDb.collection(colName);
-    if (col && typeof col.doc === 'function') {
-      return col.doc(docId);
-    }
-  }
-  return null;
 }
 
 function getColRef(fDb: any, colName: string) {
   if (!fDb) return null;
-  if (typeof fDb.collection === 'function') {
-    return fDb.collection(colName);
+  try {
+    return unifiedCollection(fDb, colName);
+  } catch (err: any) {
+    logFirestoreError("getColRef", colName, undefined, err);
+    return null;
   }
-  return null;
 }
 
 const LOCAL_CONVERSATIONS_FILE = path.join(process.cwd(), 'support_conversations.json');

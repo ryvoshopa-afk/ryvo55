@@ -17,30 +17,14 @@ import { sendAdminSupportRequestNotification } from './services/emailService';
 
 export const connectedAdmins = new Set<string>();
 
+import { doc, setDoc, logFirestoreError } from "./services/firestoreLayer";
+
 export function isAnyAdminOnline(): boolean {
   return connectedAdmins.size > 0;
 }
 
 let globalDb: any = null;
 let globalSettingsProvider: (() => any) | null = null;
-
-function getSafeDoc(db: any, colName: string, docId: string) {
-  if (!db) return null;
-  if (typeof db.doc === 'function') {
-    try {
-      return db.doc(colName, docId);
-    } catch (_) {}
-  }
-  if (typeof db.collection === 'function') {
-    try {
-      const col = db.collection(colName);
-      if (col && typeof col.doc === 'function') {
-        return col.doc(docId);
-      }
-    } catch (_) {}
-  }
-  return null;
-}
 
 export function setSocketDbAndSettings(db: any, settingsProvider?: () => any) {
   globalDb = db;
@@ -300,13 +284,11 @@ export function initSockets(io: Server, dbInstance?: any, settingsProvider?: () 
       // 1. Push document to 'support_requests' Firestore collection
       if (globalDb) {
         try {
-          const docRef = getSafeDoc(globalDb, 'support_requests', requestId);
-          if (docRef && typeof docRef.set === 'function') {
-            await docRef.set(supportRequestDoc);
-            console.log(`✅ [FIRESTORE] Document written to 'support_requests' collection with ID: ${requestId}`);
-          }
+          const docRef = doc(globalDb, 'support_requests', requestId);
+          await setDoc(docRef, supportRequestDoc);
+          console.log(`✅ [FIRESTORE] Document written to 'support_requests' collection with ID: ${requestId}`);
         } catch (dbErr: any) {
-          console.error("❌ [FIRESTORE] Error writing to 'support_requests':", dbErr.message);
+          logFirestoreError("support_requests.write", "support_requests", requestId, dbErr);
         }
       }
 

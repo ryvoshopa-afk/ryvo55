@@ -12,6 +12,8 @@ const MAX_CONSECUTIVE_FAILURES = 3;
 
 let dbGetter: () => any = () => null;
 
+import { doc as unifiedDoc, collection as unifiedCollection, logFirestoreError } from './firestoreLayer';
+
 export function setAiSupportDbGetter(getter: () => any) {
   dbGetter = getter;
 }
@@ -22,18 +24,22 @@ let getDbInstance: () => any = () => {
 
 function getSafeDoc(db: any, colName: string, docId: string) {
   if (!db) return null;
-  if (typeof db.doc === 'function') return db.doc(colName, docId);
-  if (typeof db.collection === 'function') {
-    const col = db.collection(colName);
-    if (col && typeof col.doc === 'function') return col.doc(docId);
+  try {
+    return unifiedDoc(db, colName, docId);
+  } catch (err: any) {
+    logFirestoreError("getSafeDoc", colName, docId, err);
+    return null;
   }
-  return null;
 }
 
 function getSafeCol(db: any, colName: string) {
   if (!db) return null;
-  if (typeof db.collection === 'function') return db.collection(colName);
-  return null;
+  try {
+    return unifiedCollection(db, colName);
+  } catch (err: any) {
+    logFirestoreError("getSafeCol", colName, undefined, err);
+    return null;
+  }
 }
 
 let aiInstance: GoogleGenAI | null = null;
@@ -305,7 +311,9 @@ async function trackOrderAndShipping(orderId: string) {
 
   try {
     const cleanId = orderId.toUpperCase().trim();
-    const snap = await db.collection("orders").get();
+    const ordersCol = getSafeCol(db, "orders");
+    if (!ordersCol) return "Orders collection not accessible.";
+    const snap = await ordersCol.get();
     const orderDoc = snap.docs.find((d: any) => d.id.toUpperCase() === cleanId || (d.data().id && d.data().id.toUpperCase() === cleanId));
     
     if (orderDoc) {
@@ -331,7 +339,9 @@ async function searchProducts(queryText: string) {
   if (!db) return "Database not connected. Cannot search products.";
 
   try {
-    const snap = await db.collection("products").get();
+    const productsCol = getSafeCol(db, "products");
+    if (!productsCol) return "Products collection not accessible.";
+    const snap = await productsCol.get();
     const term = queryText.toLowerCase().trim();
     const results = snap.docs
       .map((d: any) => d.data())

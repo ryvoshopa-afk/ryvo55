@@ -1,37 +1,5 @@
 {
-  "customAdmins": [],
-  "announcementTextAr": "تسوق بثقة تامة مع حماية وضمان متكامل لجميع المشتريات 🔒",
-  "announcementTextEn": "Shop with 100% confidence & guaranteed safety index 🔒",
-  "storeSettings": {
-    "storeMode": "open",
-    "preLaunchMessageAr": "🚀 ترقبوا افتتاح متجر RYVO قريباً - نجهز لكم تجربة شراء استثنائية!",
-    "preLaunchMessageEn": "🚀 Stay tuned for the official launch of RYVO Store coming soon!",
-    "preLaunchMessageFr": "🚀 Restez à l’écoute pour le lancement officiel du magasin RYVO !",
-    "launchDate": "2026-08-15T03:27:13.354Z",
-    "showCountdown": true,
-    "showTopBanner": true,
-    "showNotifyMe": true
-  },
   "announcementTextFr": "Achetez en toute confiance avec une sécurité garantie 🔒",
-  "heroSlides": null,
-  "logoUpdatedAt": 1786467045976,
-  "brandColor": "#E53E3E",
-  "storeLogoUrl": "/logo.png?v=1786467045976",
-  "integrations": {
-    "stripeEnabled": false,
-    "stripeSecretKey": "",
-    "stripePublishableKey": "",
-    "applePayEnabled": false,
-    "applePayMerchantId": "",
-    "aramexEnabled": false,
-    "aramexAccountNumber": "",
-    "aramexUsername": "",
-    "aramexPassword": "",
-    "smsaEnabled": false,
-    "smsaApiKey": "",
-    "codEnabled": true,
-    "cjApiKey": "YOUR_CJ_API_KEY"
-  },
   "welcomeCoupon": {
     "enabled": true,
     "code": "WELCOME15",
@@ -52,17 +20,18 @@
     "ctaTextEn": "Checkout & Save Now 🛍️",
     "ctaTextFr": "Achetez et économisez 🛍️"
   },
-  "purchasingDisabled": false,
-  "socialLinks": {
-    "facebook": "https://facebook.com",
-    "twitter": "https://twitter.com",
-    "instagram": "https://instagram.com",
-    "youtube": "https://youtube.com",
-    "snapchat": "",
-    "tiktok": ""
+  "storeSettings": {
+    "storeMode": "open",
+    "preLaunchMessageAr": "🚀 ترقبوا افتتاح متجر RYVO قريباً - نجهز لكم تجربة شراء استثنائية!",
+    "preLaunchMessageEn": "🚀 Stay tuned for the official launch of RYVO Store coming soon!",
+    "preLaunchMessageFr": "🚀 Restez à l’écoute pour le lancement officiel du magasin RYVO !",
+    "launchDate": "2026-08-15T03:27:13.354Z",
+    "showCountdown": true,
+    "showTopBanner": true,
+    "showNotifyMe": true
   },
-  "announcementLink": "",
-  "shopLogo": "/logo.png?v=1786467045976",
+  "purchasingDisabled": false,
+  "heroSlides": null,
   "emailConfig": {
     "senderEmail": "onboarding@resend.dev",
     "senderName": "متجر RYVO الرسمي",
@@ -72,5 +41,36 @@
     "smtpSecure": false,
     "smtpUser": "",
     "smtpPass": ""
-  }
+  },
+  "socialLinks": {
+    "facebook": "https://facebook.com",
+    "twitter": "https://twitter.com",
+    "instagram": "https://instagram.com",
+    "youtube": "https://youtube.com",
+    "snapchat": "",
+    "tiktok": ""
+  },
+  "integrations": {
+    "stripeEnabled": false,
+    "stripeSecretKey": "",
+    "stripePublishableKey": "",
+    "applePayEnabled": false,
+    "applePayMerchantId": "",
+    "aramexEnabled": false,
+    "aramexAccountNumber": "",
+    "aramexUsername": "",
+    "aramexPassword": "",
+    "smsaEnabled": false,
+    "smsaApiKey": "",
+    "codEnabled": true,
+    "cjApiKey": "YOUR_CJ_API_KEY"
+  },
+  "announcementTextEn": "Shop with 100% confidence & guaranteed safety index 🔒",
+  "logoUpdatedAt": 1786467045976,
+  "shopLogo": "/logo.png?v=1786467045976",
+  "announcementLink": "",
+  "customAdmins": [],
+  "announcementTextAr": "تسوق بثقة تامة مع حماية وضمان متكامل لجميع المشتريات 🔒",
+  "storeLogoUrl": "/logo.png?v=1786467045976",
+  "brandColor": "#E53E3E"
 }
