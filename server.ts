@@ -2012,6 +2012,20 @@ app.post("/api/orders", async (req, res) => {
       o.id = "RYVO-ORD-" + Math.floor(1000 + Math.random() * 9000);
     }
 
+    // Customer Identity & Address Fields Extraction
+    const customerUid = o.uid || o.customer_id || o.userId || null;
+    o.uid = customerUid || undefined;
+    o.customer_id = customerUid || undefined;
+    o.customer_name = (o.customer_name || o.name || (o.shipping_address && o.shipping_address.name) || o.user_email.split('@')[0]).trim();
+    o.phone = (o.phone || o.customer_phone || (o.shipping_address && o.shipping_address.phone) || "").trim();
+    o.address = (o.address || "").trim();
+    o.street = (o.street || (o.shipping_address && o.shipping_address.street) || "").trim();
+    o.city = (o.city || (o.shipping_address && o.shipping_address.city) || "").trim();
+    o.district = (o.district || (o.shipping_address && o.shipping_address.district) || "").trim();
+    o.postal_code = (o.postal_code || (o.shipping_address && o.shipping_address.postal_code) || "").trim();
+    o.notes = (o.notes || o.order_notes || o.orderNotes || "").trim();
+    o.payment_method = o.payment_method || "الدفع عند الاستلام (COD)";
+
     // 1. Idempotency / Duplicate Order Protection
     const existingOrderSnap = await getDoc(doc(db, "orders", o.id));
     if (existingOrderSnap.exists()) {
@@ -2210,7 +2224,7 @@ app.post("/api/orders", async (req, res) => {
     if (o.user_email) {
       const cleanEmail = o.user_email.toLowerCase().trim();
       const pointsEarned = Math.floor((o.total || 0) * 0.05);
-      const userData = await resolveAndMigrateUserProfile(db, null, cleanEmail);
+      const userData = await resolveAndMigrateUserProfile(db, customerUid, cleanEmail);
 
       if (userData) {
         const currentPoints = (userData.points || 0) + pointsEarned;
@@ -2241,11 +2255,15 @@ app.post("/api/orders", async (req, res) => {
           order_history: [...(userData.order_history || []), { id: o.id, total: o.total, date: o.date, status: o.status }]
         };
 
+        if (customerUid) {
+          userUpdatePayload.uid = customerUid;
+        }
+
         if (validatedCouponData?.isWelcome) {
           userUpdatePayload.welcome_coupon_used = true;
         }
 
-        await saveUserProfile(db, userData.uid || null, cleanEmail, userUpdatePayload);
+        await saveUserProfile(db, customerUid || userData.uid || null, cleanEmail, userUpdatePayload);
       } else {
         // Automatically create new customer record in CRM database
         const newCustomerRecord: any = {
@@ -2267,10 +2285,13 @@ app.post("/api/orders", async (req, res) => {
           wallet_history: [],
           order_history: [{ id: o.id, total: o.total, date: o.date, status: o.status }]
         };
+        if (customerUid) {
+          newCustomerRecord.uid = customerUid;
+        }
         if (validatedCouponData?.isWelcome) {
           newCustomerRecord.welcome_coupon_used = true;
         }
-        await saveUserProfile(db, null, cleanEmail, newCustomerRecord);
+        await saveUserProfile(db, customerUid, cleanEmail, newCustomerRecord);
       }
     }
 
@@ -2297,7 +2318,7 @@ app.post("/api/orders", async (req, res) => {
     console.log(`✅ [ORDER CREATED] Successfully created order #${o.id} for ${o.user_email} (Total: ${o.total} SAR, Payment: ${o.payment_method})`);
     res.json({ success: true, order: o });
   } catch (e: any) {
-    console.error(`[ORDER ERROR]\ncode: ${e.code || 500}\nmessage: ${e.message}\nstack: ${e.stack}`);
+    console.error('[ORDER_CREATION_ERROR]', e);
     res.status(500).json({ success: false, error: e.message, stack: e.stack });
   }
 });

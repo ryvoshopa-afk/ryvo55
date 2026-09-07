@@ -319,6 +319,21 @@ export default function CheckoutModal({
       return;
     }
 
+    if (remainingPayable > 0) {
+      if (paymentMethod === 'card' && !integrations?.stripeEnabled) {
+        setFormError(isRtl ? 'بوابة الدفع ببطاقة مدى / الائتمان غير مفعّلة حالياً، يرجى اختيار الدفع عند الاستلام (COD).' : 'Credit card payment is currently not active. Please choose Cash on Delivery (COD).');
+        return;
+      }
+      if (paymentMethod === 'apple' && !integrations?.applePayEnabled) {
+        setFormError(isRtl ? 'بوابة Apple Pay غير مفعّلة حالياً، يرجى اختيار الدفع عند الاستلام (COD).' : 'Apple Pay is currently not active. Please choose Cash on Delivery (COD).');
+        return;
+      }
+      if (paymentMethod === 'cod' && (!codAllowed || !integrations?.codEnabled)) {
+        setFormError(isRtl ? 'الدفع عند الاستلام غير متاح لهذا الطلب.' : 'Cash on delivery is not available for this order.');
+        return;
+      }
+    }
+
     const address = [street.trim(), district.trim(), city.trim(), country.trim()].filter(Boolean).join(', ');
 
     setIsSubmitting(true);
@@ -356,13 +371,17 @@ export default function CheckoutModal({
       id: tempUniqueId,
       customer_id: currentUser?.uid || currentUser?.id || undefined,
       uid: currentUser?.uid || currentUser?.id || undefined,
-      customer_name: fullname,
-      user_email: email,
+      customer_name: fullname.trim(),
+      user_email: email.trim().toLowerCase(),
       address,
-      city,
-      district,
-      street,
-      phone,
+      country: country.trim(),
+      city: city.trim(),
+      district: district.trim(),
+      street: street.trim(),
+      phone: phone.trim(),
+      postal_code: currentUser?.postal_code || undefined,
+      notes: orderNotes.trim() || undefined,
+      order_notes: orderNotes.trim() || undefined,
       payment_method: displayPaymentMethod,
       items: cart.map(it => {
         const itemCost = it.product.cost_price || it.product.supplier_purchase_price || (it.product.price * 0.6);

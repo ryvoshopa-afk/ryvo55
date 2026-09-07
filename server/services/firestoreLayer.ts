@@ -71,9 +71,13 @@ export function sanitizeFirestoreData(data: any): any {
 }
 
 // ----------------------------------------------------------------------------
-// 3. TYPE GUARDS FOR FIRESTORE OBJECTS
+// 3. TYPE GUARDS AND UNION TYPES FOR FIRESTORE OBJECTS
 // ----------------------------------------------------------------------------
-export function isRawFirestore(obj: any): boolean {
+export type SupportedDatabase = Firestore | ClientDbAdapter | LocalDbAdapter;
+export type SupportedCollection = CollectionReference | ClientCollectionRefWrapper | LocalCollectionRefWrapper;
+export type SupportedDocument = DocumentReference | ClientDocRefWrapper | LocalDocRefWrapper;
+
+export function isRawFirestore(obj: any): obj is Firestore {
   if (!obj) return false;
   return (
     obj instanceof Firestore ||
@@ -83,7 +87,7 @@ export function isRawFirestore(obj: any): boolean {
   );
 }
 
-export function isRawCollectionRef(obj: any): boolean {
+export function isRawCollectionRef(obj: any): obj is CollectionReference {
   if (!obj) return false;
   return (
     obj instanceof CollectionReference ||
@@ -92,7 +96,7 @@ export function isRawCollectionRef(obj: any): boolean {
   );
 }
 
-export function isRawDocRef(obj: any): boolean {
+export function isRawDocRef(obj: any): obj is DocumentReference {
   if (!obj) return false;
   return (
     obj instanceof DocumentReference ||
@@ -309,7 +313,7 @@ export class ClientDocSnapshotWrapper {
 }
 
 export class ClientDocRefWrapper {
-  constructor(public rawRef: any) {}
+  constructor(public rawRef: DocumentReference) {}
 
   get id(): string {
     return this.rawRef.id;
@@ -319,17 +323,13 @@ export class ClientDocRefWrapper {
     return this.rawRef.path;
   }
 
-  async get(): Promise<ClientDocSnapshotWrapper | LocalDocSnapshotWrapper> {
+  async get(): Promise<ClientDocSnapshotWrapper> {
     try {
       const snap = await clientGetDoc(this.rawRef);
       return new ClientDocSnapshotWrapper(snap);
     } catch (error: any) {
       logFirestoreError("ClientDocRefWrapper.get", this.rawRef.path, undefined, error);
-      const parts = this.rawRef.path.split('/');
-      const docId = parts[parts.length - 1];
-      const colPath = parts.slice(0, parts.length - 1).join('/');
-      const localData = LocalDatabaseFallback.getDoc(colPath, docId);
-      return new LocalDocSnapshotWrapper(docId, localData, this);
+      throw error;
     }
   }
 
@@ -344,11 +344,7 @@ export class ClientDocRefWrapper {
       return { success: true };
     } catch (error: any) {
       logFirestoreError("ClientDocRefWrapper.set", this.rawRef.path, undefined, error);
-      const parts = this.rawRef.path.split('/');
-      const docId = parts[parts.length - 1];
-      const colPath = parts.slice(0, parts.length - 1).join('/');
-      LocalDatabaseFallback.setDoc(colPath, docId, cleanData, options?.merge);
-      return { success: true };
+      throw error;
     }
   }
 
@@ -359,11 +355,7 @@ export class ClientDocRefWrapper {
       return { success: true };
     } catch (error: any) {
       logFirestoreError("ClientDocRefWrapper.update", this.rawRef.path, undefined, error);
-      const parts = this.rawRef.path.split('/');
-      const docId = parts[parts.length - 1];
-      const colPath = parts.slice(0, parts.length - 1).join('/');
-      LocalDatabaseFallback.updateDoc(colPath, docId, cleanData);
-      return { success: true };
+      throw error;
     }
   }
 
@@ -373,11 +365,7 @@ export class ClientDocRefWrapper {
       return { success: true };
     } catch (error: any) {
       logFirestoreError("ClientDocRefWrapper.delete", this.rawRef.path, undefined, error);
-      const parts = this.rawRef.path.split('/');
-      const docId = parts[parts.length - 1];
-      const colPath = parts.slice(0, parts.length - 1).join('/');
-      LocalDatabaseFallback.deleteDoc(colPath, docId);
-      return { success: true };
+      throw error;
     }
   }
 }
@@ -385,7 +373,7 @@ export class ClientDocRefWrapper {
 export class ClientCollectionRefWrapper {
   private queryConstraints: any[] = [];
 
-  constructor(public rawRef: any, public firestoreInstance: any) {}
+  constructor(public rawRef: CollectionReference, public firestoreInstance: Firestore) {}
 
   get id(): string {
     return this.rawRef.id;
@@ -407,10 +395,7 @@ export class ClientCollectionRefWrapper {
       return new ClientDocRefWrapper(dRef);
     } catch (error: any) {
       logFirestoreError("ClientCollectionRefWrapper.add", this.rawRef.path, undefined, error);
-      const id = crypto.randomUUID();
-      LocalDatabaseFallback.setDoc(this.rawRef.path, id, cleanData);
-      const dRef = clientDoc(this.firestoreInstance, this.rawRef.path, id);
-      return new ClientDocRefWrapper(dRef);
+      throw error;
     }
   }
 
@@ -424,7 +409,7 @@ export class ClientCollectionRefWrapper {
     return this;
   }
 
-  async get(): Promise<{ size: number; empty: boolean; docs: (ClientDocSnapshotWrapper | LocalDocSnapshotWrapper)[] }> {
+  async get(): Promise<{ size: number; empty: boolean; docs: ClientDocSnapshotWrapper[] }> {
     try {
       let snap;
       if (this.queryConstraints.length > 0) {
@@ -440,23 +425,13 @@ export class ClientCollectionRefWrapper {
       };
     } catch (error: any) {
       logFirestoreError("ClientCollectionRefWrapper.get", this.rawRef.path, undefined, error);
-      const localItems = LocalDatabaseFallback.getDocs(this.rawRef.path);
-      return {
-        size: localItems.length,
-        empty: localItems.length === 0,
-        docs: localItems.map(item => {
-          const docId = item.id;
-          const { id, ...docData } = item;
-          const dRef = clientDoc(this.firestoreInstance, this.rawRef.path, docId);
-          return new LocalDocSnapshotWrapper(docId, docData, new ClientDocRefWrapper(dRef));
-        })
-      };
+      throw error;
     }
   }
 }
 
 export class ClientDbAdapter {
-  constructor(public rawFirestore: any) {}
+  constructor(public rawFirestore: Firestore) {}
 
   collection(colName: string): ClientCollectionRefWrapper {
     const cRef = clientCollection(this.rawFirestore, colName);
@@ -490,7 +465,20 @@ export class ClientDbAdapter {
  * NEVER assumes or calls `.doc()` directly on any raw Modular Firestore or Collection reference!
  */
 export function doc(
-  target: any,
+  target: SupportedDatabase,
+  collectionPath: string,
+  docId: string
+): ClientDocRefWrapper | LocalDocRefWrapper;
+export function doc(
+  target: SupportedCollection,
+  docId: string
+): ClientDocRefWrapper | LocalDocRefWrapper;
+export function doc(
+  target: SupportedDatabase,
+  fullDocPath: string
+): ClientDocRefWrapper | LocalDocRefWrapper;
+export function doc(
+  target: SupportedDatabase | SupportedCollection | any,
   pathOrCol: string,
   docId?: string
 ): ClientDocRefWrapper | LocalDocRefWrapper {
@@ -587,7 +575,11 @@ export function doc(
 // 8. UNIFIED collection() FUNCTION
 // ----------------------------------------------------------------------------
 export function collection(
-  target: any,
+  target: SupportedDatabase,
+  path: string
+): ClientCollectionRefWrapper | LocalCollectionRefWrapper;
+export function collection(
+  target: SupportedDatabase | any,
   path: string
 ): ClientCollectionRefWrapper | LocalCollectionRefWrapper {
   if (!target) {
@@ -622,7 +614,9 @@ export function collection(
 // ----------------------------------------------------------------------------
 // 9. UNIFIED CRUD HELPER FUNCTIONS
 // ----------------------------------------------------------------------------
-export async function getDoc(docRef: any): Promise<ClientDocSnapshotWrapper | LocalDocSnapshotWrapper> {
+export async function getDoc(
+  docRef: SupportedDocument | any
+): Promise<ClientDocSnapshotWrapper | LocalDocSnapshotWrapper> {
   if (!docRef) {
     throw new Error("[FIRESTORE getDoc()] Document reference is null or undefined");
   }
@@ -639,7 +633,11 @@ export async function getDoc(docRef: any): Promise<ClientDocSnapshotWrapper | Lo
   throw new Error(`[FIRESTORE getDoc()] Unsupported document reference type: ${typeof docRef}`);
 }
 
-export async function setDoc(docRef: any, data: any, options?: { merge?: boolean }): Promise<{ success: boolean }> {
+export async function setDoc(
+  docRef: SupportedDocument | any,
+  data: any,
+  options?: { merge?: boolean }
+): Promise<{ success: boolean }> {
   if (!docRef) {
     throw new Error("[FIRESTORE setDoc()] Document reference is null or undefined");
   }
@@ -661,7 +659,10 @@ export async function setDoc(docRef: any, data: any, options?: { merge?: boolean
   throw new Error(`[FIRESTORE setDoc()] Unsupported document reference type: ${typeof docRef}`);
 }
 
-export async function updateDoc(docRef: any, data: any): Promise<{ success: boolean }> {
+export async function updateDoc(
+  docRef: SupportedDocument | any,
+  data: any
+): Promise<{ success: boolean }> {
   if (!docRef) {
     throw new Error("[FIRESTORE updateDoc()] Document reference is null or undefined");
   }
@@ -679,7 +680,9 @@ export async function updateDoc(docRef: any, data: any): Promise<{ success: bool
   throw new Error(`[FIRESTORE updateDoc()] Unsupported document reference type: ${typeof docRef}`);
 }
 
-export async function deleteDoc(docRef: any): Promise<{ success: boolean }> {
+export async function deleteDoc(
+  docRef: SupportedDocument | any
+): Promise<{ success: boolean }> {
   if (!docRef) {
     throw new Error("[FIRESTORE deleteDoc()] Document reference is null or undefined");
   }
@@ -696,15 +699,17 @@ export async function deleteDoc(docRef: any): Promise<{ success: boolean }> {
   throw new Error(`[FIRESTORE deleteDoc()] Unsupported document reference type: ${typeof docRef}`);
 }
 
-export async function getDocs(colRef: any): Promise<{ size: number; empty: boolean; docs: any[] }> {
+export async function getDocs(
+  colRef: SupportedCollection | any
+): Promise<{ size: number; empty: boolean; docs: any[] }> {
   if (!colRef) {
     throw new Error("[FIRESTORE getDocs()] Collection reference is null or undefined");
   }
   if (colRef instanceof ClientCollectionRefWrapper || colRef instanceof LocalCollectionRefWrapper) {
     return await colRef.get();
   }
-  if (isRawCollectionRef(colRef) || colRef?._delegate) {
-    const snap = await clientGetDocs(colRef.rawRef || colRef);
+  if (isRawCollectionRef(colRef)) {
+    const snap = await clientGetDocs(colRef);
     return {
       size: snap.size,
       empty: snap.empty,
@@ -717,18 +722,23 @@ export async function getDocs(colRef: any): Promise<{ size: number; empty: boole
   throw new Error(`[FIRESTORE getDocs()] Unsupported collection reference type: ${typeof colRef}`);
 }
 
-export async function addDoc(colRef: any, data: any): Promise<ClientDocRefWrapper | LocalDocRefWrapper> {
+export async function addDoc(
+  colRef: SupportedCollection | any,
+  data: any
+): Promise<ClientDocRefWrapper | LocalDocRefWrapper> {
   if (!colRef) {
     throw new Error("[FIRESTORE addDoc()] Collection reference is null or undefined");
   }
   const cleanData = sanitizeFirestoreData(data);
-  if (typeof colRef.add === "function") {
+  if (colRef instanceof ClientCollectionRefWrapper || colRef instanceof LocalCollectionRefWrapper) {
     return await colRef.add(cleanData);
   }
-  if (isClientCollectionWrapper(colRef) || isRawCollectionRef(colRef)) {
-    const raw = colRef.rawRef || colRef;
-    const dRef = await clientAddDoc(raw, cleanData);
+  if (isRawCollectionRef(colRef)) {
+    const dRef = await clientAddDoc(colRef, cleanData);
     return new ClientDocRefWrapper(dRef);
+  }
+  if (typeof colRef.add === "function") {
+    return await colRef.add(cleanData);
   }
   const id = crypto.randomUUID();
   LocalDatabaseFallback.setDoc(colRef.path || "default", id, cleanData);
