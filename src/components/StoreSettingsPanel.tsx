@@ -59,7 +59,7 @@ export default function StoreSettingsPanel({ settings, onSaveSettings, isRtl }: 
   // Email Config State
   const [senderEmail, setSenderEmail] = useState(settings.emailConfig?.senderEmail || 'orders@ryvo.shop');
   const [senderName, setSenderName] = useState(settings.emailConfig?.senderName || 'متجر RYVO الرسمي');
-  const [resendApiKey, setResendApiKey] = useState(settings.emailConfig?.resendApiKey || 're_9681892f-39e9-4bc1-88e6-c6eca8a771b9');
+  const [resendApiKey, setResendApiKey] = useState(settings.emailConfig?.resendApiKey || '');
   const [smtpHost, setSmtpHost] = useState(settings.emailConfig?.smtpHost || 'smtp.gmail.com');
   const [smtpPort, setSmtpPort] = useState(settings.emailConfig?.smtpPort || 465);
   const [smtpSecure, setSmtpSecure] = useState(settings.emailConfig?.smtpSecure !== undefined ? settings.emailConfig.smtpSecure : true);

@@ -103,6 +103,7 @@ export function isDummyResendKey(key?: string): boolean {
     !clean ||
     clean.length < 15 ||
     clean === 're_iMozkbCq_8tTAFzUrx4fo7HWco43JQeoP' ||
+    clean === 're_STwDkaCe_CU2mJyDXRejPaU4RZdwvN9h7' ||
     clean.includes('your-') ||
     clean.includes('dummy') ||
     clean.includes('placeholder') ||
@@ -231,7 +232,9 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
   // --------------------------------------------------------------------------
   // PATH 1: RESEND DISPATCH
   // --------------------------------------------------------------------------
-  if (resendApiKey && !isDummyResendKey(resendApiKey)) {
+  const isResendConfigured = Boolean(resendApiKey && !isDummyResendKey(resendApiKey));
+
+  if (isResendConfigured) {
     providerUsed = 'RESEND';
     try {
       const resend = new Resend(resendApiKey);
@@ -252,12 +255,13 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
         httpStatus = (errObj as any).statusCode || (errObj as any).status || 403;
         originalErrorMsg = errObj.message || JSON.stringify(errObj);
 
+        console.error(`❌ [RESEND API ERROR] Status ${httpStatus}: ${originalErrorMsg}`);
+
         const errStr = originalErrorMsg.toLowerCase();
         const isInvalidKey = errStr.includes('api key is invalid') || errStr.includes('validation_error') || (errObj as any).name === 'validation_error' || httpStatus === 401;
 
         if (isInvalidKey) {
           markResendKeyInvalid(resendApiKey);
-          console.warn(`⚠️ [RESEND NOTICE] Provided Resend API key is invalid or unauthorized (${originalErrorMsg}). Provider status: EMAIL_PROVIDER_ERROR.`);
         } else {
           const isBulk = options.triggerEvent === 'bulk_email';
           console.log(`================ [${isBulk ? 'BULK EMAIL AUDIT' : 'EMAIL SERVER DISPATCH AUDIT'}] ================`);
@@ -311,10 +315,11 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
     } catch (resendCatchErr: any) {
       httpStatus = resendCatchErr?.status || resendCatchErr?.statusCode || 500;
       originalErrorMsg = resendCatchErr?.message || String(resendCatchErr);
+      console.error(`❌ [RESEND EXCEPTION] Error calling Resend:`, originalErrorMsg);
+
       const isInvalidKey = originalErrorMsg.toLowerCase().includes('api key') || originalErrorMsg.toLowerCase().includes('validation_error');
       if (isInvalidKey) {
         markResendKeyInvalid(resendApiKey);
-        console.warn(`⚠️ [RESEND NOTICE] Resend request caught invalid key: ${originalErrorMsg}`);
       } else {
         const isBulk = options.triggerEvent === 'bulk_email';
         console.log(`================ [${isBulk ? 'BULK EMAIL AUDIT' : 'EMAIL SERVER DISPATCH AUDIT'}] ================`);
@@ -327,6 +332,9 @@ export async function sendRealEmail(options: EmailDispatchOptions): Promise<{
         console.log("===============================================================");
       }
     }
+  } else {
+    // Resend is not configured or dummy/empty: no HTTP request made
+    console.log(`ℹ️ [EMAIL DISPATCH AUDIT] Resend status: RESEND_NOT_CONFIGURED (no active API key). Skipping Resend API call.`);
   }
 
   // --------------------------------------------------------------------------
