@@ -800,7 +800,7 @@ const defaultSettings: GlobalSettings = {
     enabled: true,
     code: "WELCOME15",
     discountPercent: 15,
-    durationMinutes: 25,
+    durationMinutes: 1440,
     messageAr: "أهلاً بك في متجر رايفو الفاخر! 🎉 بمناسبة زيارتك الأولى، نوجه لك هذه الهدية الخاصة: خصم 15% فوري ومطبق تلقائياً عند الدفع!",
     messageEn: "Welcome to Ryvo Luxury Store! 🎉 To celebrate your first visit, we are presenting you with a special gift: 15% instant discount applied automatically at checkout!",
     messageFr: "Bienvenue sur Ryvo Luxury Store ! 🎉 Pour fêter votre première visite, nous vous offrons un cadeau spécial : 15% de réduction immédiate appliquée automatiquement au paiement !",
@@ -1015,6 +1015,23 @@ app.post("/api/welcome-coupon/track-click", async (req, res) => {
   }
 });
 
+// Helper function to safely parse dates/timestamps (Date, string, number, Firestore Timestamp) into milliseconds
+export function parseTimestampMs(val: any): number | null {
+  if (val === null || val === undefined || val === "") return null;
+  if (typeof val === "number") return val;
+  if (typeof val === "object" && typeof val.seconds === "number") {
+    return val.seconds * 1000 + Math.round((val.nanoseconds || 0) / 1000000);
+  }
+  if (typeof val === "string") {
+    const parsed = new Date(val).getTime();
+    return isNaN(parsed) ? null : parsed;
+  }
+  if (val instanceof Date) {
+    return val.getTime();
+  }
+  return null;
+}
+
 // Centralized Coupon Validation Logic
 export async function validateCouponInternal(
   rawCode: string,
@@ -1029,10 +1046,22 @@ export async function validateCouponInternal(
   let couponData: any = null;
   let isWelcomeCoupon = false;
   let source = "";
+  let dbError: any = null;
 
   const settings = getSettings();
   const welcomeConfig = settings.welcomeCoupon || defaultSettings.welcomeCoupon;
   const globalWelcomeCode = (welcomeConfig.code || "WELCOME15").trim().toUpperCase();
+
+  // Flag if the code matches known welcome codes
+  if (
+    normalizedCode === globalWelcomeCode ||
+    normalizedCode === "WELCOME15" ||
+    normalizedCode === "WELCOME" ||
+    normalizedCode === "NEW-WELCOME-2026" ||
+    (!normalizedCode && Boolean(welcomeSessionId))
+  ) {
+    isWelcomeCoupon = true;
+  }
 
   // 1. Search in Firestore coupons collection
   if (db && normalizedCode) {
@@ -1047,7 +1076,7 @@ export async function validateCouponInternal(
         }
       } else {
         const allCouponsSnap = await getDocs(collection(db, "coupons"));
-        const matched = allCouponsSnap.docs.find(d => {
+        const matched = allCouponsSnap.docs.find((d: any) => {
           const dData = d.data();
           const dCode = (dData.code || d.id || "").toString().trim().toUpperCase();
           return dCode === normalizedCode;
@@ -1061,26 +1090,37 @@ export async function validateCouponInternal(
           }
         }
       }
-    } catch (err) {
-      console.warn("Firestore coupons query warning:", err);
+    } catch (err: any) {
+      console.error("Firestore coupons query error:", err);
+      dbError = err;
     }
   }
 
   // 2. Check Global Welcome Coupon configured in store settings
-  if (!couponFound && (normalizedCode === globalWelcomeCode || (!normalizedCode && welcomeSessionId))) {
+  if (!couponFound && (isWelcomeCoupon || normalizedCode === globalWelcomeCode || (!normalizedCode && welcomeSessionId))) {
     if (welcomeConfig.enabled !== false) {
       couponFound = true;
       isWelcomeCoupon = true;
       source = "store_settings_welcome";
+      const nowIso = new Date().toISOString();
+      const expiry24hIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       couponData = {
         code: globalWelcomeCode,
         discountType: "percent",
+        discountValue: Number(welcomeConfig.discountPercent || 15),
         discountPercent: Number(welcomeConfig.discountPercent || 15),
         isActive: true,
         welcomeCoupon: true,
+        createdAt: nowIso,
+        activatedAt: nowIso,
+        startDate: nowIso,
+        expiresAt: expiry24hIso,
+        endDate: expiry24hIso,
+        usageLimit: 10000,
+        usedCount: 0,
         targetUsers: welcomeConfig.targetUsers || "new",
-        description_ar: welcomeConfig.messageAr || "خصم ترحيبي خاص بالعملاء الجدد",
-        description_en: welcomeConfig.messageEn || "Welcome discount for new customers"
+        description_ar: welcomeConfig.messageAr || "خصم ترحيبي خاص بالعملاء الجدد - خصم 15% صالح لمدة 24 ساعة",
+        description_en: welcomeConfig.messageEn || "Welcome discount for new customers - 15% discount valid for 24 hours"
       };
     }
   }
@@ -1098,106 +1138,117 @@ export async function validateCouponInternal(
           couponData = {
             code: (sData.code || globalWelcomeCode).toUpperCase(),
             discountType: "percent",
+            discountValue: Number(sData.discountPercent || welcomeConfig.discountPercent || 15),
             discountPercent: Number(sData.discountPercent || welcomeConfig.discountPercent || 15),
             isActive: true,
             welcomeCoupon: true,
+            createdAt: sData.createdAt,
+            activatedAt: sData.activatedAt || sData.createdAt,
+            expiresAt: sData.expiresAt,
             targetUsers: welcomeConfig.targetUsers || "new",
             sessionId: welcomeSessionId
           };
         }
       }
-    } catch (err) {
-      console.warn("Firestore welcome sessions query warning:", err);
+    } catch (err: any) {
+      console.error("Firestore welcome sessions query error:", err);
+      dbError = err;
     }
   }
 
   // 4. Built-in promotional coupons fallback
   if (!couponFound && normalizedCode) {
     if (normalizedCode === "SARA10") {
-      couponFound = true; couponData = { code: "SARA10", discountType: "percent", discountPercent: 10, isActive: true };
+      couponFound = true; couponData = { code: "SARA10", discountType: "percent", discountValue: 10, discountPercent: 10, isActive: true };
     } else if (normalizedCode === "FAISAL20") {
-      couponFound = true; couponData = { code: "FAISAL20", discountType: "percent", discountPercent: 20, isActive: true };
+      couponFound = true; couponData = { code: "FAISAL20", discountType: "percent", discountValue: 20, discountPercent: 20, isActive: true };
     } else if (normalizedCode === "RYVO2026") {
-      couponFound = true; couponData = { code: "RYVO2026", discountType: "percent", discountPercent: 10, isActive: true };
+      couponFound = true; couponData = { code: "RYVO2026", discountType: "percent", discountValue: 10, discountPercent: 10, isActive: true };
     } else if (normalizedCode === "AI-BOOST2026" || normalizedCode === "AI-BOOST") {
-      couponFound = true; couponData = { code: "AI-BOOST2026", discountType: "percent", discountPercent: 15, isActive: true };
+      couponFound = true; couponData = { code: "AI-BOOST2026", discountType: "percent", discountValue: 15, discountPercent: 15, isActive: true };
     } else if (normalizedCode === "LUCKY5") {
-      couponFound = true; couponData = { code: "LUCKY5", discountType: "percent", discountPercent: 5, isActive: true };
+      couponFound = true; couponData = { code: "LUCKY5", discountType: "percent", discountValue: 5, discountPercent: 5, isActive: true };
     } else if (normalizedCode === "LUCKY10") {
-      couponFound = true; couponData = { code: "LUCKY10", discountType: "percent", discountPercent: 10, isActive: true };
+      couponFound = true; couponData = { code: "LUCKY10", discountType: "percent", discountValue: 10, discountPercent: 10, isActive: true };
     } else if (normalizedCode === "LUCKY15") {
-      couponFound = true; couponData = { code: "LUCKY15", discountType: "percent", discountPercent: 15, isActive: true };
+      couponFound = true; couponData = { code: "LUCKY15", discountType: "percent", discountValue: 15, discountPercent: 15, isActive: true };
     } else if (normalizedCode === "LUCKY25") {
-      couponFound = true; couponData = { code: "LUCKY25", discountType: "percent", discountPercent: 25, isActive: true };
+      couponFound = true; couponData = { code: "LUCKY25", discountType: "percent", discountValue: 25, discountPercent: 25, isActive: true };
     }
   }
 
-  // Log debug info
-  const isActive = couponData ? (couponData.isActive !== false && couponData.status !== "inactive") : false;
-  const startDate = couponData?.startDate || couponData?.start_date || null;
-  const endDate = couponData?.endDate || couponData?.end_date || null;
-  const usageCount = Number(couponData?.usageCount || couponData?.usage_count || 0);
-  const usageLimit = couponData?.usageLimit !== undefined ? Number(couponData.usageLimit) : (couponData?.usage_limit !== undefined ? Number(couponData.usage_limit) : null);
-
-  console.log(`[COUPON DEBUG]
-enteredCode: ${enteredCode}
-normalizedCode: ${normalizedCode}
-couponFound: ${couponFound ? "YES" : "NO"}
-isActive: ${isActive}
-startDate: ${startDate || "none"}
-endDate: ${endDate || "none"}
-currentTime: ${new Date().toISOString()}
-usageCount: ${usageCount}
-usageLimit: ${usageLimit !== null ? usageLimit : "unlimited"}
-`);
-
+  // 5. Failure state: DB error vs Not Found
   if (!couponFound || !couponData) {
+    if (dbError) {
+      return {
+        valid: false,
+        reason: "database_error",
+        messageAr: "حدث خطأ أثناء التحقق من الكوبون، يرجى المحاولة لاحقاً.",
+        messageEn: "An error occurred while validating coupon. Please try again."
+      };
+    }
     return {
       valid: false,
       reason: "coupon_not_found",
-      messageAr: "كوبون الخصم غير موجود أو غير صالح",
-      messageEn: "Coupon code does not exist or is invalid"
+      messageAr: "كوبون الخصم غير موجود.",
+      messageEn: "Discount coupon does not exist."
     };
   }
 
+  // 6. Active check
+  const isActive = couponData.isActive !== false && couponData.status !== "inactive" && couponData.enabled !== false;
   if (!isActive) {
     return {
       valid: false,
       reason: "coupon_inactive",
-      messageAr: "هذا الكوبون غير مفعّل حالياً",
-      messageEn: "This coupon is currently inactive"
+      messageAr: "هذا الكوبون غير فعال حالياً.",
+      messageEn: "This coupon is currently inactive."
     };
   }
 
+  // 7. Authoritative Server Time Check (Never relies on client clock)
   const now = Date.now();
 
-  // Validate startDate if present
-  if (startDate) {
-    const sMs = typeof startDate === "number" ? startDate : new Date(startDate).getTime();
-    if (!isNaN(sMs) && now < sMs) {
-      return {
-        valid: false,
-        reason: "coupon_not_started",
-        messageAr: "هذا الكوبون لم يبدأ بعد",
-        messageEn: "This coupon has not started yet"
-      };
-    }
+  // Start Date / Activated At Check
+  const activatedAtRaw = couponData.activatedAt || couponData.startDate || couponData.start_date || couponData.createdAt;
+  const activatedAtMs = parseTimestampMs(activatedAtRaw);
+  if (activatedAtMs !== null && now < activatedAtMs) {
+    return {
+      valid: false,
+      reason: "coupon_not_started",
+      messageAr: "هذا الكوبون لم يبدأ بعد.",
+      messageEn: "This coupon has not started yet."
+    };
   }
 
-  // Validate endDate if present (do not treat undefined, null, or empty as expired)
-  if (endDate && String(endDate).trim() !== "") {
-    const eMs = typeof endDate === "number" ? endDate : new Date(endDate).getTime();
-    if (!isNaN(eMs) && now > eMs) {
-      return {
-        valid: false,
-        reason: "coupon_expired",
-        messageAr: "عذراً، انتهت صلاحية هذا الكوبون",
-        messageEn: "Sorry, this coupon has expired"
-      };
-    }
+  // Expiration / 24-Hour Validity Check
+  let expiresAtMs = parseTimestampMs(couponData.expiresAt || couponData.endDate || couponData.end_date);
+  // For welcome coupons, if no explicit expiresAt was set, enforce strictly 24 hours from activation
+  if (isWelcomeCoupon && expiresAtMs === null && activatedAtMs !== null) {
+    expiresAtMs = activatedAtMs + 24 * 60 * 60 * 1000;
+  }
+  if (expiresAtMs !== null && now >= expiresAtMs) {
+    return {
+      valid: false,
+      reason: "coupon_expired",
+      messageAr: "انتهت صلاحية هذا الكوبون.",
+      messageEn: "This coupon has expired."
+    };
   }
 
-  // Validate minimum order
+  // 8. Usage Limit Check
+  const usageLimit = couponData.usageLimit !== undefined ? Number(couponData.usageLimit) : (couponData.usage_limit !== undefined ? Number(couponData.usage_limit) : null);
+  const usedCount = Number(couponData.usedCount !== undefined ? couponData.usedCount : (couponData.usageCount !== undefined ? couponData.usageCount : (couponData.usage_count || 0)));
+  if (usageLimit !== null && usageLimit > 0 && usedCount >= usageLimit) {
+    return {
+      valid: false,
+      reason: "usage_limit_exceeded",
+      messageAr: "تم الوصول إلى الحد الأقصى لاستخدام هذا الكوبون.",
+      messageEn: "Maximum usage limit reached for this coupon."
+    };
+  }
+
+  // 9. Minimum order check
   const minOrder = Number(couponData.minimumOrder || couponData.min_order || couponData.minimum_order || 0);
   if (minOrder > 0 && subtotal < minOrder) {
     return {
@@ -1208,55 +1259,43 @@ usageLimit: ${usageLimit !== null ? usageLimit : "unlimited"}
     };
   }
 
-  // Validate usage limit
-  if (usageLimit !== null && usageLimit > 0 && usageCount >= usageLimit) {
-    return {
-      valid: false,
-      reason: "usage_limit_exceeded",
-      messageAr: "تم استنفاد الحد الأقصى لاستخدام هذا الكوبون",
-      messageEn: "This coupon has reached its maximum usage limit"
-    };
-  }
-
-  // Validate welcome coupon eligibility
+  // 10. Validate welcome coupon user eligibility
   if (isWelcomeCoupon && userEmail) {
     const cleanEmail = userEmail.toLowerCase().trim();
-    if (cleanEmail) {
-      if (db) {
-        try {
-          const userData = await resolveAndMigrateUserProfile(db, null, cleanEmail);
-          if (userData && (userData.welcome_coupon_used || userData.welcomeCouponUsed)) {
-            return {
-              valid: false,
-              reason: "welcome_already_used",
-              messageAr: "لقد سبق لك استخدام كوبون الترحيب من قبل على هذا الحساب",
-              messageEn: "Welcome coupon has already been used on this account"
-            };
-          }
-
-          const ordersSnap = await getDocs(collection(db, "orders"));
-          const userOrders = ordersSnap.docs.filter((d: any) => {
-            const oData = d.data();
-            return oData.user_email && oData.user_email.toLowerCase().trim() === cleanEmail && oData.status !== "cancelled";
-          });
-          const targetAudience = couponData.targetUsers || welcomeConfig.targetUsers || "new";
-          if (userOrders.length > 0 && targetAudience === "new") {
-            return {
-              valid: false,
-              reason: "welcome_only_new_users",
-              messageAr: "كوبون الترحيب متاح للعملاء الجدد والطلبات الأولى فقط",
-              messageEn: "Welcome coupon is only available for new customers on first orders"
-            };
-          }
-        } catch (uErr) {
-          console.warn("Welcome user check warning:", uErr);
+    if (cleanEmail && db) {
+      try {
+        const userData = await resolveAndMigrateUserProfile(db, null, cleanEmail);
+        if (userData && (userData.welcome_coupon_used || userData.welcomeCouponUsed)) {
+          return {
+            valid: false,
+            reason: "welcome_already_used",
+            messageAr: "لقد سبق لك استخدام كوبون الترحيب من قبل على هذا الحساب.",
+            messageEn: "Welcome coupon has already been used on this account."
+          };
         }
+
+        const ordersSnap = await getDocs(collection(db, "orders"));
+        const userOrders = ordersSnap.docs.filter((d: any) => {
+          const oData = d.data();
+          return oData.user_email && oData.user_email.toLowerCase().trim() === cleanEmail && oData.status !== "cancelled";
+        });
+        const targetAudience = couponData.targetUsers || welcomeConfig.targetUsers || "new";
+        if (userOrders.length > 0 && targetAudience === "new") {
+          return {
+            valid: false,
+            reason: "welcome_only_new_users",
+            messageAr: "كوبون الترحيب متاح للعملاء الجدد والطلبات الأولى فقط.",
+            messageEn: "Welcome coupon is only available for new customers on first orders."
+          };
+        }
+      } catch (uErr) {
+        console.warn("Welcome user check warning:", uErr);
       }
     }
   }
 
-  // Calculate discount
-  let discountPercent = Number(couponData.discountPercent || couponData.discount_percent || couponData.discountValue || 0);
+  // 11. Calculate Discount
+  let discountPercent = Number(couponData.discountValue || couponData.discountPercent || couponData.discount_percent || 0);
   let discountFlat = Number(couponData.discountFlat || couponData.discount_flat || couponData.discount_sar || 0);
   const isPercent = couponData.discountType === "percent" || (!couponData.discountType && discountPercent > 0);
   let discountAmount = 0;
@@ -1267,17 +1306,22 @@ usageLimit: ${usageLimit !== null ? usageLimit : "unlimited"}
   }
 
   const finalCode = couponData.code || normalizedCode;
+  const secondsRemaining = expiresAtMs ? Math.max(0, Math.round((expiresAtMs - now) / 1000)) : null;
 
   return {
     valid: true,
     code: finalCode,
     isWelcome: isWelcomeCoupon,
     discountType: isPercent ? "percent" : "flat",
+    discountValue: isPercent ? discountPercent : discountFlat,
     discountPercent: isPercent ? discountPercent : 0,
     discountFlat: !isPercent ? discountFlat : 0,
     discountAmount,
     subtotal,
     finalTotal: Math.max(0, subtotal - discountAmount),
+    activatedAt: activatedAtMs ? new Date(activatedAtMs).toISOString() : null,
+    expiresAt: expiresAtMs ? new Date(expiresAtMs).toISOString() : null,
+    secondsRemaining,
     messageAr: isPercent 
       ? `تم تفعيل الكوبون [ ${finalCode} ] بنجاح! خصم ${discountPercent}% (-${discountAmount} ريال)`
       : `تم تفعيل الكوبون [ ${finalCode} ] بنجاح! خصم ${discountFlat} ريال`,
@@ -1394,6 +1438,13 @@ app.post("/api/welcome-coupon/session", async (req, res) => {
             });
             await deleteDoc(sessRef);
             await addAuditLog("system", "System", "COUPON_EXPIRED", `Welcome coupon session ${sessionId} expired.`, sessionId);
+            return res.json({
+              success: false,
+              reason: "coupon_expired",
+              messageAr: "انتهت صلاحية هذا الكوبون.",
+              messageEn: "This coupon has expired.",
+              serverTime: now
+            });
           }
         }
       }
@@ -1412,17 +1463,21 @@ app.post("/api/welcome-coupon/session", async (req, res) => {
       }
     }
 
-    // Create new session
+    // Create new session with 24 hours (1440 minutes) validity
     const newSessionId = "welcome_sess_" + Math.random().toString(36).substring(2, 11) + "_" + Date.now();
-    const expiresAt = now + config.durationMinutes * 60 * 1000;
+    const durationMinutes = Number(config.durationMinutes) || 1440;
+    const expiresAt = now + durationMinutes * 60 * 1000;
 
     session = {
       id: newSessionId,
-      code: config.code,
-      discountPercent: config.discountPercent,
+      code: config.code || "WELCOME15",
+      discountPercent: Number(config.discountPercent) || 15,
       createdAt: now,
+      activatedAt: now,
       expiresAt: expiresAt,
+      durationMinutes: durationMinutes,
       status: "active",
+      isActive: true,
       userEmail: userEmail || null,
       messageAr: config.messageAr,
       messageEn: config.messageEn,
@@ -1744,6 +1799,43 @@ async function seedDatabaseIfNeeded() {
       for (const c of defaultCoupons) {
         await setDoc(doc(db, "coupons", c.code.toUpperCase()), c);
       }
+    }
+
+    // Ensure Welcome Coupon exists with full 24h validity schema in Firestore
+    try {
+      const welcomeConfig = defaultSettings.welcomeCoupon;
+      const welcomeCode = (welcomeConfig.code || "WELCOME15").trim().toUpperCase();
+      const welcomeDocRef = doc(db, "coupons", welcomeCode);
+      const welcomeDocSnap = await getDoc(welcomeDocRef);
+      const nowIso = new Date().toISOString();
+      const expiry24hIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      if (!welcomeDocSnap.exists()) {
+        console.log(`Seeding Welcome Coupon ${welcomeCode} into Firestore with 24h validity...`);
+        await setDoc(welcomeDocRef, {
+          code: welcomeCode,
+          createdAt: nowIso,
+          activatedAt: nowIso,
+          startDate: nowIso,
+          expiresAt: expiry24hIso,
+          endDate: expiry24hIso,
+          isActive: true,
+          discountType: "percent",
+          discountValue: Number(welcomeConfig.discountPercent || 15),
+          discountPercent: Number(welcomeConfig.discountPercent || 15),
+          discount_percent: Number(welcomeConfig.discountPercent || 15),
+          usageLimit: 10000,
+          usedCount: 0,
+          usageCount: 0,
+          welcomeCoupon: true,
+          is_welcome: true,
+          targetUsers: welcomeConfig.targetUsers || "new",
+          description_ar: welcomeConfig.messageAr || "كوبون الترحيب بالعملاء الجدد - خصم 15% صالح لمدة 24 ساعة",
+          description_en: welcomeConfig.messageEn || "Welcome Coupon for new customers - 15% discount valid for 24 hours"
+        });
+      }
+    } catch (wErr) {
+      console.warn("Welcome coupon initialization warning:", wErr);
     }
 
     // 6. Seed Blog posts

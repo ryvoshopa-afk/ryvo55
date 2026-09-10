@@ -32,7 +32,7 @@ export default function WelcomeCouponSettings({ settings, onSave, currentLanguag
   const [enabled, setEnabled] = useState(true);
   const [code, setCode] = useState('WELCOME15');
   const [discountPercent, setDiscountPercent] = useState(15);
-  const [durationMinutes, setDurationMinutes] = useState(25);
+  const [durationMinutes, setDurationMinutes] = useState(1440);
   const [messageAr, setMessageAr] = useState('');
   const [messageEn, setMessageEn] = useState('');
   const [messageFr, setMessageFr] = useState('');
@@ -56,7 +56,7 @@ export default function WelcomeCouponSettings({ settings, onSave, currentLanguag
       setEnabled(settings.enabled !== undefined ? settings.enabled : true);
       setCode(settings.code || 'WELCOME15');
       setDiscountPercent(settings.discountPercent || 15);
-      setDurationMinutes(settings.durationMinutes || 25);
+      setDurationMinutes(settings.durationMinutes !== undefined ? settings.durationMinutes : 1440);
       setMessageAr(settings.messageAr || '');
       setMessageEn(settings.messageEn || '');
       setMessageFr(settings.messageFr || '');

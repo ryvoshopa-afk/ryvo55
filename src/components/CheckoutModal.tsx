@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CartItem, Language, Order, User } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
-import { X, ShieldCheck, CheckCircle2, Loader2, ShoppingBag, CreditCard, Tag, Wallet } from 'lucide-react';
+import { X, ShieldCheck, CheckCircle2, Loader2, ShoppingBag, CreditCard, Tag, Wallet, Clock } from 'lucide-react';
 import { formatPrice } from '../utils/price';
 import { playCheckoutSuccessSound } from '../utils/audio';
 
@@ -181,11 +181,19 @@ export default function CheckoutModal({
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
 
-  // Auto-apply welcome coupon on mount/load if active and permitted
+  const formatCountdown = (totalSecs: number) => {
+    const s = Math.max(0, totalSecs);
+    const hours = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    const secs = s % 60;
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  // Auto-apply welcome coupon on mount/load if active and permitted, or revoke if expired
   useEffect(() => {
-    if (welcomeCouponSession && welcomeCouponSecondsLeft > 0 && welcomeCouponSession.autoApply !== false && !appliedPromo) {
-      const code = welcomeCouponSession.code;
-      const matchedPercent = welcomeCouponSession.discountPercent;
+    if (welcomeCouponSession && welcomeCouponSecondsLeft !== undefined && welcomeCouponSecondsLeft > 0 && welcomeCouponSession.autoApply !== false && !appliedPromo) {
+      const code = welcomeCouponSession.code || 'WELCOME15';
+      const matchedPercent = welcomeCouponSession.discountPercent || 15;
       const calcDiscount = Math.round((matchedPercent / 100) * subtotal);
       setDiscountAmount(calcDiscount);
       setAppliedPromo(code);
@@ -194,8 +202,19 @@ export default function CheckoutModal({
           ? `🎁 تم تطبيق خصم الترحيب التلقائي [ ${code} ] بنجاح! خصم ${matchedPercent}% (-${calcDiscount} ريال)` 
           : `🎁 Welcome auto-discount [ ${code} ] applied! Saved ${matchedPercent}% (-${formatPrice(calcDiscount, currentLanguage)})`
       );
+    } else if (
+      appliedPromo && 
+      welcomeCouponSession && 
+      appliedPromo.toUpperCase() === (welcomeCouponSession.code || 'WELCOME15').toUpperCase() && 
+      welcomeCouponSecondsLeft !== undefined && 
+      welcomeCouponSecondsLeft <= 0
+    ) {
+      setDiscountAmount(0);
+      setAppliedPromo(null);
+      setPromoSuccess('');
+      setPromoError(isRtl ? 'انتهت صلاحية هذا الكوبون.' : 'This coupon has expired.');
     }
-  }, [welcomeCouponSession, welcomeCouponSecondsLeft, subtotal, currentLanguage, isRtl]);
+  }, [welcomeCouponSession, welcomeCouponSecondsLeft, subtotal, currentLanguage, isRtl, appliedPromo]);
 
   // Submit states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -287,11 +306,27 @@ export default function CheckoutModal({
         } else {
           setDiscountAmount(0);
           setAppliedPromo(null);
-          setPromoError(
-            isRtl 
-              ? (data.messageAr || data.error || 'عذراً، هذا الكود غير صحيح، منتهي، أو تم استخدامه مسبقاً!') 
-              : (data.messageEn || data.error || 'Invalid, expired, or already used promotional code!')
-          );
+          
+          let errorMsg = '';
+          if (data.reason === 'coupon_expired') {
+            errorMsg = isRtl ? 'انتهت صلاحية هذا الكوبون.' : 'This coupon has expired.';
+          } else if (data.reason === 'usage_limit_exceeded') {
+            errorMsg = isRtl ? 'تم الوصول إلى الحد الأقصى لاستخدام هذا الكوبون.' : 'Maximum usage limit reached for this coupon.';
+          } else if (data.reason === 'coupon_inactive') {
+            errorMsg = isRtl ? 'هذا الكوبون غير فعال حالياً.' : 'This coupon is currently inactive.';
+          } else if (data.reason === 'coupon_not_started') {
+            errorMsg = isRtl ? 'هذا الكوبون لم يبدأ بعد.' : 'This coupon has not started yet.';
+          } else if (data.reason === 'coupon_not_found') {
+            errorMsg = isRtl ? 'كوبون الخصم غير موجود.' : 'Discount coupon does not exist.';
+          } else if (data.reason === 'database_error' || data.reason === 'server_error') {
+            errorMsg = isRtl ? 'حدث خطأ أثناء التحقق من الكوبون، يرجى المحاولة لاحقاً.' : 'An error occurred while validating coupon. Please try again.';
+          } else {
+            errorMsg = isRtl 
+              ? (data.messageAr || data.error || 'كوبون الخصم غير موجود.') 
+              : (data.messageEn || data.error || 'Discount coupon does not exist.');
+          }
+
+          setPromoError(errorMsg);
         }
       }
     } catch (err: any) {
@@ -620,6 +655,39 @@ export default function CheckoutModal({
 
                 {/* Secure Coupons/Promos Form Wrapper */}
                 <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+                  {/* 24-Hour Welcome Coupon Countdown Banner (Authoritative Backend-Backed) */}
+                  {welcomeCouponSession && (
+                    <div id="checkout-welcome-countdown-timer" className="mb-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-start">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🎁</span>
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                              {welcomeCouponSecondsLeft !== undefined && welcomeCouponSecondsLeft > 0
+                                ? (isRtl ? 'كوبون الترحيب الخاص بك فعال لمدة:' : 'Your Welcome Coupon is active for:')
+                                : (isRtl ? 'انتهت صلاحية كوبون الترحيب الخاص بك:' : 'Your Welcome Coupon has expired:')}
+                            </p>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">
+                              {welcomeCouponSession?.code || 'WELCOME15'} ({welcomeCouponSession?.discountPercent || 15}%)
+                            </span>
+                          </div>
+                        </div>
+                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-mono font-black text-xs tracking-wider shadow-xs ${
+                          welcomeCouponSecondsLeft !== undefined && welcomeCouponSecondsLeft > 0
+                            ? 'bg-white dark:bg-slate-900 border-amber-500/40 text-amber-600 dark:text-amber-400'
+                            : 'bg-rose-50 dark:bg-slate-900 border-rose-500/40 text-rose-600 dark:text-rose-400'
+                        }`}>
+                          <Clock className={`w-3.5 h-3.5 ${welcomeCouponSecondsLeft !== undefined && welcomeCouponSecondsLeft > 0 ? 'text-amber-500 animate-pulse' : 'text-rose-500'}`} />
+                          <span>
+                            {welcomeCouponSecondsLeft !== undefined && welcomeCouponSecondsLeft > 0
+                              ? formatCountdown(welcomeCouponSecondsLeft)
+                              : '00:00:00'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <label className="text-[10px] uppercase font-black tracking-wider text-slate-400 dark:text-slate-400 block mb-1 text-start">
                     {isRtl ? 'هل لديك رمز أو كود خصم؟' : 'Have a Promo / Discount Code?'}
                   </label>
