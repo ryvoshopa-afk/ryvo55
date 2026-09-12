@@ -465,24 +465,24 @@ export class ClientDbAdapter {
  * NEVER assumes or calls `.doc()` directly on any raw Modular Firestore or Collection reference!
  */
 export function doc(
-  target: SupportedDatabase,
+  dbInstanceOrCol: SupportedDatabase,
   collectionPath: string,
   docId: string
 ): ClientDocRefWrapper | LocalDocRefWrapper;
 export function doc(
-  target: SupportedCollection,
+  dbInstanceOrCol: SupportedCollection,
   docId: string
 ): ClientDocRefWrapper | LocalDocRefWrapper;
 export function doc(
-  target: SupportedDatabase,
+  dbInstanceOrCol: SupportedDatabase,
   fullDocPath: string
 ): ClientDocRefWrapper | LocalDocRefWrapper;
 export function doc(
-  target: SupportedDatabase | SupportedCollection | any,
+  dbInstanceOrCol: SupportedDatabase | SupportedCollection | any,
   pathOrCol: string,
   docId?: string
 ): ClientDocRefWrapper | LocalDocRefWrapper {
-  if (!target) {
+  if (!dbInstanceOrCol) {
     throw new Error("[FIRESTORE doc()] Database or Collection reference is null or undefined");
   }
   if (!pathOrCol) {
@@ -490,26 +490,35 @@ export function doc(
   }
 
   // -------------------------------------------------------------
-  // Branch A: 3 arguments provided -> doc(target, "colName", "docId")
+  // Branch A: 3 arguments provided -> doc(dbInstanceOrCol, "colName", "docId")
   // -------------------------------------------------------------
   if (docId !== undefined && docId !== null && docId !== "") {
     // 1. ClientDbAdapter or object wrapping rawFirestore
-    if (isClientDbAdapter(target)) {
-      const dRef = clientDoc(target.rawFirestore, pathOrCol, docId);
+    if (isClientDbAdapter(dbInstanceOrCol)) {
+      const dRef = clientDoc(dbInstanceOrCol.rawFirestore, pathOrCol, docId);
       return new ClientDocRefWrapper(dRef);
     }
     // 2. Raw Firebase Modular Firestore instance
-    if (isRawFirestore(target)) {
-      const dRef = clientDoc(target, pathOrCol, docId);
+    if (isRawFirestore(dbInstanceOrCol)) {
+      const dRef = clientDoc(dbInstanceOrCol, pathOrCol, docId);
       return new ClientDocRefWrapper(dRef);
     }
     // 3. LocalDbAdapter
-    if (isLocalDbAdapter(target)) {
+    if (isLocalDbAdapter(dbInstanceOrCol)) {
       return new LocalDocRefWrapper(pathOrCol, docId);
     }
     // 4. Any object with rawFirestore property
-    if (target.rawFirestore) {
-      const dRef = clientDoc(target.rawFirestore, pathOrCol, docId);
+    if (dbInstanceOrCol.rawFirestore) {
+      const dRef = clientDoc(dbInstanceOrCol.rawFirestore, pathOrCol, docId);
+      return new ClientDocRefWrapper(dRef);
+    }
+    // 5. If dbInstanceOrCol is a Collection reference passed with 3 args: doc(colRef, "subcol", "id")
+    if (isClientCollectionWrapper(dbInstanceOrCol)) {
+      const dRef = clientDoc(dbInstanceOrCol.rawRef, pathOrCol, docId);
+      return new ClientDocRefWrapper(dRef);
+    }
+    if (isRawCollectionRef(dbInstanceOrCol)) {
+      const dRef = clientDoc(dbInstanceOrCol, pathOrCol, docId);
       return new ClientDocRefWrapper(dRef);
     }
     // Fallback: Local fallback
@@ -522,53 +531,64 @@ export function doc(
   }
 
   // -------------------------------------------------------------
-  // Branch B: 2 arguments provided
+  // Branch B: 2 arguments provided -> doc(collectionRef, "docId") or doc(db, "col/docId")
   // -------------------------------------------------------------
 
-  // Case B1: target is a Collection Reference (raw or wrapped)
-  if (isClientCollectionWrapper(target)) {
-    const dRef = clientDoc(target.rawRef, pathOrCol);
+  // Case B1: dbInstanceOrCol is a Collection Reference (raw or wrapped)
+  if (isClientCollectionWrapper(dbInstanceOrCol)) {
+    const dRef = clientDoc(dbInstanceOrCol.rawRef, pathOrCol);
     return new ClientDocRefWrapper(dRef);
   }
-  if (isRawCollectionRef(target)) {
-    const dRef = clientDoc(target, pathOrCol);
+  if (isRawCollectionRef(dbInstanceOrCol)) {
+    const dRef = clientDoc(dbInstanceOrCol, pathOrCol);
     return new ClientDocRefWrapper(dRef);
   }
-  if (isLocalCollectionWrapper(target)) {
-    return new LocalDocRefWrapper(target.path, pathOrCol);
+  if (isLocalCollectionWrapper(dbInstanceOrCol)) {
+    return new LocalDocRefWrapper(dbInstanceOrCol.path, pathOrCol);
   }
 
-  // Case B2: target is a Database instance/adapter with a full path (e.g. "users/abc")
+  // Case B2: dbInstanceOrCol is a Database instance/adapter with a full path (e.g. "users/abc")
   const parts = pathOrCol.split("/").filter(Boolean);
   const colName = parts[0] || "default";
   const docName = parts.length >= 2 ? parts.slice(1).join("/") : "default";
 
-  if (isClientDbAdapter(target)) {
+  if (isClientDbAdapter(dbInstanceOrCol)) {
     const dRef = parts.length >= 2
-      ? clientDoc(target.rawFirestore, colName, docName)
-      : clientDoc(target.rawFirestore, pathOrCol);
+      ? clientDoc(dbInstanceOrCol.rawFirestore, colName, docName)
+      : clientDoc(dbInstanceOrCol.rawFirestore, pathOrCol);
     return new ClientDocRefWrapper(dRef);
   }
 
-  if (isRawFirestore(target)) {
+  if (isRawFirestore(dbInstanceOrCol)) {
     const dRef = parts.length >= 2
-      ? clientDoc(target, colName, docName)
-      : clientDoc(target, pathOrCol);
+      ? clientDoc(dbInstanceOrCol, colName, docName)
+      : clientDoc(dbInstanceOrCol, pathOrCol);
     return new ClientDocRefWrapper(dRef);
   }
 
-  if (isLocalDbAdapter(target)) {
+  if (isLocalDbAdapter(dbInstanceOrCol)) {
     return new LocalDocRefWrapper(colName, docName);
   }
 
-  if (target.rawFirestore) {
+  if (dbInstanceOrCol.rawFirestore) {
     const dRef = parts.length >= 2
-      ? clientDoc(target.rawFirestore, colName, docName)
-      : clientDoc(target.rawFirestore, pathOrCol);
+      ? clientDoc(dbInstanceOrCol.rawFirestore, colName, docName)
+      : clientDoc(dbInstanceOrCol.rawFirestore, pathOrCol);
     return new ClientDocRefWrapper(dRef);
   }
 
   return new LocalDocRefWrapper(colName, docName);
+}
+
+/**
+ * Explicit resolveDoc helper alias matching the user's architectural contract
+ */
+export function resolveDoc(
+  dbInstanceOrCol: SupportedDatabase | SupportedCollection | any,
+  pathOrCol: string,
+  docId?: string
+): ClientDocRefWrapper | LocalDocRefWrapper {
+  return doc(dbInstanceOrCol, pathOrCol, docId);
 }
 
 // ----------------------------------------------------------------------------

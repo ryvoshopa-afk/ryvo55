@@ -2,7 +2,7 @@ import React from 'react';
 import { useConfirm } from './ConfirmationDialog';
 import { Language, Order, Product, User } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
-import { ShoppingBag, Heart, Settings, Plus, Key, Calendar, Mail, CheckCircle, ShieldCheck, Coins, History, Award, Wallet, CreditCard, ArrowRightLeft, MapPin, Phone, Sparkles, TrendingUp, LogOut } from 'lucide-react';
+import { ShoppingBag, Heart, Settings, Plus, Key, Calendar, Mail, CheckCircle, ShieldCheck, Coins, History, Award, Wallet, CreditCard, ArrowRightLeft, MapPin, Phone, Sparkles, TrendingUp, LogOut, Ticket, Clock, Copy, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { formatPrice } from '../utils/price';
 
@@ -146,6 +146,72 @@ Track or check history anytime at our verified portal.
       }
     }
   }, [currentUser]);
+
+  // User-specific Welcome Coupon State (bound strictly to Firebase UID)
+  const [userWelcomeCoupon, setUserWelcomeCoupon] = useState<any>(null);
+  const [userCouponSecondsLeft, setUserCouponSecondsLeft] = useState<number>(0);
+  const [couponCopied, setCouponCopied] = useState<boolean>(false);
+
+  useEffect(() => {
+    let timerId: any = null;
+    let isMounted = true;
+
+    if (!currentUser?.uid) {
+      setUserWelcomeCoupon(null);
+      setUserCouponSecondsLeft(0);
+      return;
+    }
+
+    const fetchUserCoupon = async () => {
+      try {
+        const queryParams = new URLSearchParams({
+          userId: currentUser.uid,
+          email: currentUser.email || ''
+        });
+        const res = await fetch(`/api/user/welcome-coupon?${queryParams.toString()}`, {
+          headers: {
+            'x-user-uid': currentUser.uid
+          }
+        });
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (data.success && data.coupon) {
+            setUserWelcomeCoupon(data.coupon);
+            setUserCouponSecondsLeft(data.secondsRemaining || 0);
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching user welcome coupon:', err);
+      }
+    };
+
+    fetchUserCoupon();
+
+    timerId = setInterval(() => {
+      setUserCouponSecondsLeft(prev => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => {
+      isMounted = false;
+      if (timerId) clearInterval(timerId);
+    };
+  }, [currentUser?.uid, currentUser?.email]);
+
+  const handleCopyWelcomeCoupon = () => {
+    if (!userWelcomeCoupon?.code) return;
+    navigator.clipboard.writeText(userWelcomeCoupon.code).then(() => {
+      setCouponCopied(true);
+      setTimeout(() => setCouponCopied(false), 2500);
+    });
+  };
+
+  const formatCountdown = (totalSeconds: number) => {
+    if (totalSeconds <= 0) return isRtl ? 'منتهي الصلاحية' : 'Expired';
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   // Financial Wallet Action States
   const [chargeAmount, setChargeAmount] = useState('');
@@ -840,6 +906,74 @@ Track or check history anytime at our verified portal.
           )}
         </div>
       </div>
+
+      {/* User Bound Welcome Coupon Card */}
+      {userWelcomeCoupon && (
+        <div id="user-welcome-coupon-card" className="mb-4 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-4 sm:p-5 relative overflow-hidden backdrop-blur-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className={`flex items-start sm:items-center gap-3.5 ${isRtl ? 'text-right' : 'text-left'}`}>
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 text-amber-500 shadow-sm">
+                <Ticket className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    {isRtl ? 'كوبون الترحيب الخاص بحسابك' : 'Your Personal Welcome Coupon'}
+                  </h3>
+                  {userWelcomeCoupon.used ? (
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-500/20 text-slate-400 border border-slate-500/30">
+                      {isRtl ? 'تم الاستخدام' : 'Used'}
+                    </span>
+                  ) : userCouponSecondsLeft <= 0 ? (
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                      {isRtl ? 'منتهي الصلاحية' : 'Expired'}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      {isRtl ? 'نشط • صالح لمدة 24 ساعة' : 'Active • 24h Validity'}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {isRtl 
+                    ? `خصم ${userWelcomeCoupon.discountValue || 15}% مخصص لحسابك فقط، صالح لمدة 24 ساعة من التفعيل.` 
+                    : `${userWelcomeCoupon.discountValue || 15}% discount tied exclusively to your account, valid for 24 hours.`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 self-end md:self-center">
+              {!userWelcomeCoupon.used && userCouponSecondsLeft > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-xl text-amber-500 dark:text-amber-400 text-xs font-mono font-bold">
+                  <Clock className="w-3.5 h-3.5 animate-pulse" />
+                  <span>{formatCountdown(userCouponSecondsLeft)}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 bg-slate-900 dark:bg-black/60 border border-slate-800 rounded-xl p-1.5 px-3">
+                <span className="font-mono font-black text-amber-400 tracking-wider text-sm">
+                  {userWelcomeCoupon.code}
+                </span>
+                <button
+                  id="btn-copy-user-coupon"
+                  type="button"
+                  onClick={handleCopyWelcomeCoupon}
+                  disabled={userWelcomeCoupon.used || userCouponSecondsLeft <= 0}
+                  className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    couponCopied
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-white/10 hover:bg-white/20 text-slate-200'
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
+                  title={isRtl ? 'نسخ الكوبون' : 'Copy code'}
+                >
+                  {couponCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span className="text-[11px]">{couponCopied ? (isRtl ? 'تم النسخ' : 'Copied') : (isRtl ? 'نسخ' : 'Copy')}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tab Switch Headers */}
       <div className="flex bg-slate-100 dark:bg-[#090B0E] border dark:border-[var(--border-dark)] rounded-2xl p-1 gap-1 mb-3 max-w-2xl mx-auto flex-wrap sm:flex-nowrap">

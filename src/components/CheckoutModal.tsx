@@ -237,13 +237,18 @@ export default function CheckoutModal({
 
     try {
       const userEmail = currentUser?.email || email.trim() || '';
+      const currentUid = currentUser?.uid || currentUser?.id || '';
       const res = await fetch('/api/coupons/validate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(currentUid ? { 'x-user-uid': currentUid } : {})
+        },
         body: JSON.stringify({
           code: rawCode,
           subtotal,
-          userId: currentUser?.uid || currentUser?.id,
+          userId: currentUid,
+          uid: currentUid,
           userEmail,
           welcomeSessionId: welcomeCouponSession?.id
         })
@@ -308,7 +313,11 @@ export default function CheckoutModal({
           setAppliedPromo(null);
           
           let errorMsg = '';
-          if (data.reason === 'coupon_expired') {
+          if (data.reason === 'coupon_user_mismatch') {
+            errorMsg = isRtl ? 'هذا الكوبون غير مرتبط بحسابك.' : 'This coupon is not linked to your account.';
+          } else if (data.reason === 'already_used' || data.reason === 'welcome_already_used') {
+            errorMsg = isRtl ? 'تم استخدام هذا الكوبون مسبقاً.' : 'This coupon has already been used.';
+          } else if (data.reason === 'coupon_expired') {
             errorMsg = isRtl ? 'انتهت صلاحية هذا الكوبون.' : 'This coupon has expired.';
           } else if (data.reason === 'usage_limit_exceeded') {
             errorMsg = isRtl ? 'تم الوصول إلى الحد الأقصى لاستخدام هذا الكوبون.' : 'Maximum usage limit reached for this coupon.';
@@ -317,13 +326,13 @@ export default function CheckoutModal({
           } else if (data.reason === 'coupon_not_started') {
             errorMsg = isRtl ? 'هذا الكوبون لم يبدأ بعد.' : 'This coupon has not started yet.';
           } else if (data.reason === 'coupon_not_found') {
-            errorMsg = isRtl ? 'كوبون الخصم غير موجود.' : 'Discount coupon does not exist.';
+            errorMsg = isRtl ? 'كوبون الخصم غير موجود أو منتهي الصلاحية' : 'Discount coupon does not exist or has expired.';
           } else if (data.reason === 'database_error' || data.reason === 'server_error') {
             errorMsg = isRtl ? 'حدث خطأ أثناء التحقق من الكوبون، يرجى المحاولة لاحقاً.' : 'An error occurred while validating coupon. Please try again.';
           } else {
             errorMsg = isRtl 
-              ? (data.messageAr || data.error || 'كوبون الخصم غير موجود.') 
-              : (data.messageEn || data.error || 'Discount coupon does not exist.');
+              ? (data.messageAr || data.error || 'كوبون الخصم غير صالح.') 
+              : (data.messageEn || data.error || 'Discount coupon is invalid.');
           }
 
           setPromoError(errorMsg);
@@ -406,6 +415,7 @@ export default function CheckoutModal({
       id: tempUniqueId,
       customer_id: currentUser?.uid || currentUser?.id || undefined,
       uid: currentUser?.uid || currentUser?.id || undefined,
+      userId: currentUser?.uid || currentUser?.id || undefined,
       customer_name: fullname.trim(),
       user_email: email.trim().toLowerCase(),
       address,
@@ -456,9 +466,13 @@ export default function CheckoutModal({
       }
     };
 
+    const currentUid = currentUser?.uid || currentUser?.id || '';
     fetch('/api/orders', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(currentUid ? { 'x-user-uid': currentUid } : {})
+      },
       body: JSON.stringify(orderPayload)
     })
       .then(async res => {

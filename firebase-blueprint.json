@@ -42,6 +42,24 @@
       "type": "object",
       "properties": {}
     },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Discount coupon entity linked to Firebase Auth UID",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "userId": { "type": "string", "description": "Firebase Auth UID of the coupon owner" },
+        "createdAt": { "type": "string" },
+        "activatedAt": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "discountType": { "type": "string" },
+        "discountValue": { "type": "number" },
+        "used": { "type": "boolean" },
+        "usedAt": { "type": "string" }
+      },
+      "required": ["code", "userId", "createdAt", "activatedAt", "expiresAt", "isActive", "discountType", "discountValue", "used"]
+    },
     "Session": {
       "title": "Session",
       "description": "Active user login session tracking entity",
@@ -124,6 +142,10 @@
     "welcome_coupon_sessions": {
       "schema": "Session",
       "description": "Welcome coupon session tracking"
+    },
+    "coupons": {
+      "schema": "Coupon",
+      "description": "Discount coupons collection with userId and expiration tracking"
     },
     "welcome_coupon_sessions_archive": {
       "schema": "Session",

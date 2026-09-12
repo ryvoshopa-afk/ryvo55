@@ -335,9 +335,14 @@ export default function App() {
         const storedSessionId = localStorage.getItem('welcome_coupon_session_id') || '';
         const res = await fetch('/api/welcome-coupon/session', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(currentUser?.uid ? { 'x-user-uid': currentUser.uid } : {})
+          },
           body: JSON.stringify({ 
             sessionId: storedSessionId,
+            userId: currentUser?.uid || currentUser?.id || '',
+            uid: currentUser?.uid || currentUser?.id || '',
             email: currentUser?.email || ''
           }),
         });

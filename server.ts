@@ -1032,12 +1032,286 @@ export function parseTimestampMs(val: any): number | null {
   return null;
 }
 
+// --- SERVER SESSION MANAGEMENT ENGINE ---
+export interface ActiveSession {
+  token: string;
+  uid: string;
+  email: string;
+  role: string;
+  isAdmin: boolean;
+  firebaseIdToken?: string | null;
+  createdAt: number;
+  expiresAt: number;
+}
+
+const activeSessions = new Map<string, ActiveSession>();
+
+export function getSessionFromReq(req: any): ActiveSession | null {
+  let token: string | null = null;
+
+  const authHeader = req.headers["authorization"] || req.headers["Authorization"];
+  if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    token = authHeader.substring(7).trim();
+  }
+
+  if (!token && req.headers["x-session-token"]) {
+    token = String(req.headers["x-session-token"]).trim();
+  }
+
+  if (!token && req.headers.cookie) {
+    const cookieHeader = String(req.headers.cookie);
+    const cookies = cookieHeader.split(";").reduce((acc: Record<string, string>, curr: string) => {
+      const [k, v] = curr.trim().split("=");
+      if (k && v) acc[k] = decodeURIComponent(v);
+      return acc;
+    }, {});
+    if (cookies.session_token) {
+      token = cookies.session_token;
+    }
+  }
+
+  if (token) {
+    const session = activeSessions.get(token);
+    if (session) {
+      if (session.expiresAt && session.expiresAt < Date.now()) {
+        activeSessions.delete(token);
+      } else {
+        return session;
+      }
+    }
+  }
+
+  const adminEmailHeader = req.headers["x-admin-email"] || req.body?.adminEmail;
+  if (adminEmailHeader && String(adminEmailHeader).toLowerCase().trim() === 'ryvo.shopa@gmail.com') {
+    return {
+      token: 'admin-bypass-token',
+      uid: 'super-admin-uid',
+      email: 'ryvo.shopa@gmail.com',
+      role: 'super_admin',
+      isAdmin: true,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 86400000
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Resolves authentic Firebase Auth UID from session, explicit request arguments,
+ * custom headers (x-firebase-uid, x-user-id), or verified Firebase ID token.
+ */
+export async function resolveAuthenticatedUid(req: any, explicitUid?: string | null): Promise<string | null> {
+  // 1. Explicit UID passed from frontend (e.g. currentUser?.uid)
+  if (explicitUid && typeof explicitUid === "string" && explicitUid.trim() && explicitUid !== "guest" && explicitUid !== "null" && explicitUid !== "undefined") {
+    return explicitUid.trim();
+  }
+
+  // 2. Custom headers
+  const headerUid = req.headers["x-firebase-uid"] || req.headers["x-user-id"];
+  if (headerUid && typeof headerUid === "string" && headerUid.trim() && headerUid !== "guest" && headerUid !== "null" && headerUid !== "undefined") {
+    return headerUid.trim();
+  }
+
+  // 3. Active Server Session
+  try {
+    const session = getSessionFromReq(req);
+    if (session && session.uid && session.uid !== "guest") {
+      return session.uid;
+    }
+  } catch (_) {}
+
+  // 4. Firebase ID Token verification via Google Identity Toolkit if available
+  const authHeader = req.headers["authorization"] || req.headers["Authorization"];
+  if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    const rawToken = authHeader.substring(7).trim();
+    if (rawToken && rawToken.split(".").length === 3) {
+      const apiKey = (firebaseConfig as any)?.apiKey || process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY;
+      if (apiKey && !apiKey.includes("your-")) {
+        try {
+          const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken: rawToken })
+          });
+          const verifyData: any = await verifyRes.json();
+          if (verifyRes.ok && verifyData.users && verifyData.users[0]?.localId) {
+            return verifyData.users[0].localId;
+          }
+        } catch (_) {}
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Retrieves or creates a strictly UID-bound Welcome Coupon.
+ * - Enforces userId = Firebase Auth UID
+ * - Exactly 24h validity from activatedAt
+ * - Prevents multiple welcome coupons for the same UID
+ * - Persisted in Firestore `coupons` collection and linked to `users/{uid}`
+ */
+export async function getOrCreateUserWelcomeCoupon(
+  userId: string,
+  userEmail?: string
+): Promise<{ coupon: any; created: boolean; isExpired: boolean }> {
+  if (!db || !userId) {
+    throw new Error("Database or userId missing for welcome coupon resolution");
+  }
+
+  const cleanUid = userId.trim();
+  const cleanEmail = (userEmail || "").toLowerCase().trim();
+  const now = Date.now();
+
+  // 1. Check if user profile already records a welcome coupon code
+  let existingCode: string | null = null;
+  try {
+    const userDocSnap = await getDoc(doc(db, "users", cleanUid));
+    if (userDocSnap.exists()) {
+      const uData = userDocSnap.data();
+      if (uData.welcomeCouponCode) {
+        existingCode = uData.welcomeCouponCode;
+      }
+    }
+  } catch (err) {
+    console.warn("Error reading user doc for welcomeCouponCode:", err);
+  }
+
+  // 2. Fetch from coupons collection by existingCode
+  if (existingCode) {
+    try {
+      const cSnap = await getDoc(doc(db, "coupons", existingCode.toUpperCase()));
+      if (cSnap.exists()) {
+        const cData = cSnap.data();
+        if (cData.userId === cleanUid) {
+          const expMs = parseTimestampMs(cData.expiresAt);
+          const isExpired = expMs !== null && now >= expMs;
+          return { coupon: cData, created: false, isExpired };
+        }
+      }
+    } catch (err) {
+      console.warn("Error loading coupon by existingCode:", err);
+    }
+  }
+
+  // 3. Search `coupons` collection for any coupon matching this cleanUid
+  try {
+    const couponsSnap = await getDocs(collection(db, "coupons"));
+    const matchedDoc = couponsSnap.docs.find((d: any) => {
+      const dData = d.data();
+      const matchUid = dData.userId && String(dData.userId).trim() === cleanUid;
+      const matchEmail = cleanEmail && dData.userEmail && String(dData.userEmail).toLowerCase().trim() === cleanEmail;
+      return (matchUid || matchEmail) && (dData.welcomeCoupon === true || dData.is_welcome === true);
+    });
+
+    if (matchedDoc) {
+      const cData = matchedDoc.data();
+      if (cData.userId !== cleanUid) {
+        cData.userId = cleanUid;
+        await setDoc(doc(db, "coupons", matchedDoc.id), { ...cData, userId: cleanUid }, { merge: true });
+      }
+      try {
+        await setDoc(doc(db, "users", cleanUid), { welcomeCouponCode: cData.code }, { merge: true });
+      } catch (_) {}
+
+      const expMs = parseTimestampMs(cData.expiresAt);
+      const isExpired = expMs !== null && now >= expMs;
+      return { coupon: cData, created: false, isExpired };
+    }
+  } catch (err) {
+    console.warn("Error querying coupons collection for user welcome coupon:", err);
+  }
+
+  // 4. Check if user already marked as having used welcome coupon
+  let alreadyUsed = false;
+  try {
+    const userDocSnap = await getDoc(doc(db, "users", cleanUid));
+    if (userDocSnap.exists() && (userDocSnap.data().welcome_coupon_used || userDocSnap.data().welcomeCouponUsed)) {
+      alreadyUsed = true;
+    }
+  } catch (_) {}
+
+  // 5. Create new Welcome Coupon specifically tied to this Firebase Auth UID
+  const settings = getSettings();
+  const config = settings.welcomeCoupon || defaultSettings.welcomeCoupon;
+  const discountPercent = Number(config.discountPercent) || 15;
+
+  // Format a clean, unique code derived from UID: RYVO-WEL-XXXXXX
+  const uidAlnum = cleanUid.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  const shortSuffix = uidAlnum.length >= 4 ? uidAlnum.slice(-6) : Math.random().toString(36).substring(2, 8).toUpperCase();
+  const newCouponCode = `RYVO-WEL-${shortSuffix}`;
+
+  const createdAtIso = new Date(now).toISOString();
+  const activatedAtIso = new Date(now).toISOString();
+  const expiresAtIso = new Date(now + 24 * 60 * 60 * 1000).toISOString(); // Exactly 24 hours
+
+  const newCoupon: any = {
+    id: newCouponCode,
+    code: newCouponCode,
+    userId: cleanUid,
+    userEmail: cleanEmail || null,
+    createdAt: createdAtIso,
+    activatedAt: activatedAtIso,
+    expiresAt: expiresAtIso,
+    isActive: true,
+    discountType: "percent",
+    discountValue: discountPercent,
+    discountPercent: discountPercent,
+    used: alreadyUsed,
+    usedAt: alreadyUsed ? createdAtIso : null,
+    welcomeCoupon: true,
+    is_welcome: true,
+    targetUsers: config.targetUsers || "new",
+    description_ar: `كوبون ترحيبي خاص بحسابك - خصم ${discountPercent}% صالح لمدة 24 ساعة`,
+    description_en: `Welcome discount linked to your account - ${discountPercent}% off valid for 24 hours`
+  };
+
+  // Save to Firestore `coupons` collection
+  await setDoc(doc(db, "coupons", newCouponCode), newCoupon);
+
+  // Link to `users` profile document
+  try {
+    await setDoc(doc(db, "users", cleanUid), {
+      welcomeCouponCode: newCouponCode,
+      updatedAt: createdAtIso
+    }, { merge: true });
+  } catch (uErr) {
+    console.warn("Could not save welcomeCouponCode on user doc:", uErr);
+  }
+
+  // Also sync to active welcome coupon session for live timer UI
+  try {
+    const sessId = `welcome_sess_${cleanUid}`;
+    await setDoc(doc(db, "welcome_coupon_sessions", sessId), {
+      id: sessId,
+      code: newCouponCode,
+      userId: cleanUid,
+      userEmail: cleanEmail || null,
+      discountPercent: discountPercent,
+      createdAt: now,
+      activatedAt: now,
+      expiresAt: now + 24 * 60 * 60 * 1000,
+      durationMinutes: 1440,
+      status: "active",
+      isActive: true,
+      autoApply: true
+    });
+  } catch (_) {}
+
+  await addAuditLog(cleanEmail || cleanUid, "User", "COUPON_CREATED", `Created 24h welcome coupon ${newCouponCode} for Firebase Auth UID ${cleanUid}`, newCouponCode);
+
+  return { coupon: newCoupon, created: true, isExpired: false };
+}
+
 // Centralized Coupon Validation Logic
 export async function validateCouponInternal(
   rawCode: string,
   subtotal: number,
   userEmail?: string,
-  welcomeSessionId?: string
+  welcomeSessionId?: string,
+  requestingUid?: string | null
 ) {
   const enteredCode = (rawCode || "").toString();
   const normalizedCode = enteredCode.trim().toUpperCase();
@@ -1058,12 +1332,13 @@ export async function validateCouponInternal(
     normalizedCode === "WELCOME15" ||
     normalizedCode === "WELCOME" ||
     normalizedCode === "NEW-WELCOME-2026" ||
-    (!normalizedCode && Boolean(welcomeSessionId))
+    (!normalizedCode && Boolean(welcomeSessionId)) ||
+    (!normalizedCode && Boolean(requestingUid))
   ) {
     isWelcomeCoupon = true;
   }
 
-  // 1. Search in Firestore coupons collection
+  // 1. Search in Firestore coupons collection by Code or Document ID
   if (db && normalizedCode) {
     try {
       const directSnap = await getDoc(doc(db, "coupons", normalizedCode));
@@ -1096,7 +1371,22 @@ export async function validateCouponInternal(
     }
   }
 
-  // 2. Check Global Welcome Coupon configured in store settings
+  // 2. If user is authenticated and entered generic welcome code or left blank, retrieve their user-bound welcome coupon
+  if ((!couponFound && (isWelcomeCoupon || normalizedCode === globalWelcomeCode || !normalizedCode)) && requestingUid && db) {
+    try {
+      const userCouponRes = await getOrCreateUserWelcomeCoupon(requestingUid, userEmail);
+      if (userCouponRes && userCouponRes.coupon) {
+        couponFound = true;
+        isWelcomeCoupon = true;
+        couponData = userCouponRes.coupon;
+        source = "user_welcome_coupon";
+      }
+    } catch (uErr) {
+      console.warn("Could not retrieve user welcome coupon:", uErr);
+    }
+  }
+
+  // 3. Check Global Welcome Coupon configured in store settings (as fallback for guest or unassigned)
   if (!couponFound && (isWelcomeCoupon || normalizedCode === globalWelcomeCode || (!normalizedCode && welcomeSessionId))) {
     if (welcomeConfig.enabled !== false) {
       couponFound = true;
@@ -1125,7 +1415,7 @@ export async function validateCouponInternal(
     }
   }
 
-  // 3. Check welcome_coupon_sessions
+  // 4. Check welcome_coupon_sessions
   if (!couponFound && welcomeSessionId && db) {
     try {
       const sessSnap = await getDoc(doc(db, "welcome_coupon_sessions", welcomeSessionId));
@@ -1142,6 +1432,7 @@ export async function validateCouponInternal(
             discountPercent: Number(sData.discountPercent || welcomeConfig.discountPercent || 15),
             isActive: true,
             welcomeCoupon: true,
+            userId: sData.userId || null,
             createdAt: sData.createdAt,
             activatedAt: sData.activatedAt || sData.createdAt,
             expiresAt: sData.expiresAt,
@@ -1156,7 +1447,7 @@ export async function validateCouponInternal(
     }
   }
 
-  // 4. Built-in promotional coupons fallback
+  // 5. Built-in promotional coupons fallback
   if (!couponFound && normalizedCode) {
     if (normalizedCode === "SARA10") {
       couponFound = true; couponData = { code: "SARA10", discountType: "percent", discountValue: 10, discountPercent: 10, isActive: true };
@@ -1177,7 +1468,7 @@ export async function validateCouponInternal(
     }
   }
 
-  // 5. Failure state: DB error vs Not Found
+  // 6. Failure state: DB error vs Not Found
   if (!couponFound || !couponData) {
     if (dbError) {
       return {
@@ -1195,7 +1486,32 @@ export async function validateCouponInternal(
     };
   }
 
-  // 6. Active check
+  // 7. USER IDENTITY & CROSS-USER SECURITY CHECK (Primary Requirement)
+  // If the coupon is tied to a specific userId (Firebase Auth UID):
+  if (couponData && couponData.userId) {
+    const couponOwnerUid = String(couponData.userId).trim();
+    const cleanReqUid = (requestingUid || "").trim();
+    if (!cleanReqUid || cleanReqUid !== couponOwnerUid) {
+      return {
+        valid: false,
+        reason: "coupon_user_mismatch",
+        messageAr: "هذا الكوبون غير مرتبط بحسابك.",
+        messageEn: "This coupon is not linked to your account."
+      };
+    }
+  }
+
+  // 8. Check if already used
+  if (couponData && (couponData.used === true || (couponData.usedCount && couponData.usedCount > 0 && (couponData.welcomeCoupon || isWelcomeCoupon)))) {
+    return {
+      valid: false,
+      reason: "already_used",
+      messageAr: "تم استخدام هذا الكوبون مسبقاً.",
+      messageEn: "This coupon has already been used."
+    };
+  }
+
+  // 9. Active check
   const isActive = couponData.isActive !== false && couponData.status !== "inactive" && couponData.enabled !== false;
   if (!isActive) {
     return {
@@ -1206,7 +1522,7 @@ export async function validateCouponInternal(
     };
   }
 
-  // 7. Authoritative Server Time Check (Never relies on client clock)
+  // 10. Authoritative Server Time Check (Never relies on client clock)
   const now = Date.now();
 
   // Start Date / Activated At Check
@@ -1221,7 +1537,7 @@ export async function validateCouponInternal(
     };
   }
 
-  // Expiration / 24-Hour Validity Check
+  // Expiration / 24-Hour Validity Check from activatedAt
   let expiresAtMs = parseTimestampMs(couponData.expiresAt || couponData.endDate || couponData.end_date);
   // For welcome coupons, if no explicit expiresAt was set, enforce strictly 24 hours from activation
   if (isWelcomeCoupon && expiresAtMs === null && activatedAtMs !== null) {
@@ -1236,7 +1552,7 @@ export async function validateCouponInternal(
     };
   }
 
-  // 8. Usage Limit Check
+  // 11. Usage Limit Check
   const usageLimit = couponData.usageLimit !== undefined ? Number(couponData.usageLimit) : (couponData.usage_limit !== undefined ? Number(couponData.usage_limit) : null);
   const usedCount = Number(couponData.usedCount !== undefined ? couponData.usedCount : (couponData.usageCount !== undefined ? couponData.usageCount : (couponData.usage_count || 0)));
   if (usageLimit !== null && usageLimit > 0 && usedCount >= usageLimit) {
@@ -1248,7 +1564,7 @@ export async function validateCouponInternal(
     };
   }
 
-  // 9. Minimum order check
+  // 12. Minimum order check
   const minOrder = Number(couponData.minimumOrder || couponData.min_order || couponData.minimum_order || 0);
   if (minOrder > 0 && subtotal < minOrder) {
     return {
@@ -1259,10 +1575,27 @@ export async function validateCouponInternal(
     };
   }
 
-  // 10. Validate welcome coupon user eligibility
-  if (isWelcomeCoupon && userEmail) {
-    const cleanEmail = userEmail.toLowerCase().trim();
-    if (cleanEmail && db) {
+  // 13. Validate welcome coupon user eligibility (check user profile in Firestore)
+  if (isWelcomeCoupon) {
+    if (requestingUid && db) {
+      try {
+        const uSnap = await getDoc(doc(db, "users", requestingUid.trim()));
+        if (uSnap.exists()) {
+          const uD = uSnap.data();
+          if (uD.welcome_coupon_used || uD.welcomeCouponUsed) {
+            return {
+              valid: false,
+              reason: "welcome_already_used",
+              messageAr: "لقد سبق لك استخدام كوبون الترحيب من قبل على هذا الحساب.",
+              messageEn: "Welcome coupon has already been used on this account."
+            };
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (userEmail && db) {
+      const cleanEmail = userEmail.toLowerCase().trim();
       try {
         const userData = await resolveAndMigrateUserProfile(db, null, cleanEmail);
         if (userData && (userData.welcome_coupon_used || userData.welcomeCouponUsed)) {
@@ -1294,7 +1627,7 @@ export async function validateCouponInternal(
     }
   }
 
-  // 11. Calculate Discount
+  // 14. Calculate Discount
   let discountPercent = Number(couponData.discountValue || couponData.discountPercent || couponData.discount_percent || 0);
   let discountFlat = Number(couponData.discountFlat || couponData.discount_flat || couponData.discount_sar || 0);
   const isPercent = couponData.discountType === "percent" || (!couponData.discountType && discountPercent > 0);
@@ -1312,6 +1645,7 @@ export async function validateCouponInternal(
     valid: true,
     code: finalCode,
     isWelcome: isWelcomeCoupon,
+    userId: couponData.userId || null,
     discountType: isPercent ? "percent" : "flat",
     discountValue: isPercent ? discountPercent : discountFlat,
     discountPercent: isPercent ? discountPercent : 0,
@@ -1336,14 +1670,17 @@ export async function validateCouponInternal(
 // API endpoint for coupon validation
 app.post(["/api/coupons/validate", "/api/validate-coupon"], async (req, res) => {
   try {
-    const { code, couponCode, promoCode, subtotal, userId, userEmail, email, welcomeSessionId } = req.body;
+    const { code, couponCode, promoCode, subtotal, userId, uid, userEmail, email, welcomeSessionId } = req.body;
     const resolvedCode = code || couponCode || promoCode || "";
     const resolvedEmail = userEmail || email || req.headers["x-user-email"] || "";
+    const requestingUid = await resolveAuthenticatedUid(req, userId || uid);
+    
     const result = await validateCouponInternal(
       resolvedCode,
       Number(subtotal) || 0,
       resolvedEmail as string,
-      welcomeSessionId
+      welcomeSessionId,
+      requestingUid
     );
     if (!result.valid) {
       return res.status(400).json(result);
@@ -1358,7 +1695,7 @@ app.post(["/api/coupons/validate", "/api/validate-coupon"], async (req, res) => 
 app.post("/api/welcome-coupon/session", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not connected" });
   try {
-    const { sessionId, email } = req.body;
+    const { sessionId, email, userId, uid } = req.body;
     const settings = getSettings();
     const config = settings.welcomeCoupon || defaultSettings.welcomeCoupon;
 
@@ -1391,10 +1728,76 @@ app.post("/api/welcome-coupon/session", async (req, res) => {
       console.error("Error cleaning up expired sessions:", err);
     }
 
-    // Resolve user email
+    // Resolve user identity
+    const requestingUid = await resolveAuthenticatedUid(req, userId || uid);
     const userEmail = (email || req.headers["x-user-email"] || req.headers["x-admin-email"] || "").toLowerCase().trim();
 
-    // Verify if user already used welcome coupon or has orders
+    // 1. If user is authenticated with Firebase Auth UID, bind session to their unique coupon
+    if (requestingUid) {
+      const { coupon, created, isExpired } = await getOrCreateUserWelcomeCoupon(requestingUid, userEmail);
+      const activatedMs = parseTimestampMs(coupon.activatedAt) || now;
+      const expiresMs = parseTimestampMs(coupon.expiresAt) || (activatedMs + 24 * 60 * 60 * 1000);
+      const secondsLeft = Math.max(0, Math.round((expiresMs - now) / 1000));
+
+      if (coupon.used) {
+        return res.json({
+          success: false,
+          reason: "already_used",
+          messageAr: "تم استخدام الخصم الترحيبي سابقاً",
+          messageEn: "Welcome discount already used previously",
+          coupon,
+          serverTime: now
+        });
+      }
+
+      if (isExpired) {
+        return res.json({
+          success: false,
+          reason: "coupon_expired",
+          messageAr: "انتهت صلاحية هذا الكوبون.",
+          messageEn: "This coupon has expired.",
+          coupon,
+          serverTime: now
+        });
+      }
+
+      const sessionObj = {
+        id: coupon.code,
+        code: coupon.code,
+        userId: coupon.userId,
+        discountPercent: Number(coupon.discountValue) || Number(config.discountPercent) || 15,
+        createdAt: activatedMs,
+        activatedAt: activatedMs,
+        expiresAt: expiresMs,
+        durationMinutes: 1440,
+        status: "active",
+        isActive: true,
+        autoApply: true,
+        userEmail: userEmail || coupon.userEmail || null,
+        messageAr: config.messageAr,
+        messageEn: config.messageEn,
+        messageFr: config.messageFr,
+        gracePeriodMinutes: config.gracePeriodMinutes || 60,
+        cardColor: config.cardColor || "#0f172a",
+        timerColor: config.timerColor || "#f59e0b",
+        position: config.position || "bottom-right",
+        allowMinimize: config.allowMinimize !== undefined ? config.allowMinimize : true,
+        showTimer: config.showTimer !== undefined ? config.showTimer : true,
+        ctaTextAr: config.ctaTextAr || "اشتري الآن واستفد من الخصم 🛍️",
+        ctaTextEn: config.ctaTextEn || "Checkout & Save Now 🛍️",
+        ctaTextFr: config.ctaTextFr || "Achetez et économisez 🛍️"
+      };
+
+      return res.json({
+        success: true,
+        session: sessionObj,
+        coupon,
+        secondsRemaining: secondsLeft,
+        serverTime: now
+      });
+    }
+
+    // Verify if user email already used welcome coupon or has orders
     if (userEmail) {
       const userData = await resolveAndMigrateUserProfile(db, null, userEmail);
       if (userData && userData.welcome_coupon_used) {
@@ -1463,7 +1866,7 @@ app.post("/api/welcome-coupon/session", async (req, res) => {
       }
     }
 
-    // Create new session with 24 hours (1440 minutes) validity
+    // Create new session with 24 hours (1440 minutes) validity for guest
     const newSessionId = "welcome_sess_" + Math.random().toString(36).substring(2, 11) + "_" + Date.now();
     const durationMinutes = Number(config.durationMinutes) || 1440;
     const expiresAt = now + durationMinutes * 60 * 1000;
@@ -1502,6 +1905,33 @@ app.post("/api/welcome-coupon/session", async (req, res) => {
     res.json({ success: true, session, serverTime: now });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Dedicated API endpoint to get or create authenticated user's welcome coupon
+app.get("/api/user/welcome-coupon", async (req, res) => {
+  if (!db) return res.status(500).json({ error: "Database not connected" });
+  try {
+    const requestingUid = await resolveAuthenticatedUid(req, req.query.userId as string);
+    if (!requestingUid) {
+      return res.status(401).json({ error: "Authentication required (Firebase UID missing)" });
+    }
+    const cleanEmail = (req.query.email as string || req.headers["x-user-email"] as string || "").toLowerCase().trim();
+    const { coupon, created, isExpired } = await getOrCreateUserWelcomeCoupon(requestingUid, cleanEmail);
+    const now = Date.now();
+    const expiresMs = parseTimestampMs(coupon.expiresAt) || ((parseTimestampMs(coupon.activatedAt) || now) + 24 * 60 * 60 * 1000);
+    const secondsRemaining = Math.max(0, Math.round((expiresMs - now) / 1000));
+
+    res.json({
+      success: true,
+      coupon,
+      created,
+      isExpired,
+      secondsRemaining,
+      serverTime: now
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -1807,14 +2237,20 @@ async function seedDatabaseIfNeeded() {
       const welcomeCode = (welcomeConfig.code || "WELCOME15").trim().toUpperCase();
       const welcomeDocRef = doc(db, "coupons", welcomeCode);
       const welcomeDocSnap = await getDoc(welcomeDocRef);
-      const nowIso = new Date().toISOString();
-      const expiry24hIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const nowMs = Date.now();
+      const nowIso = new Date(nowMs).toISOString();
+      const expiry24hIso = new Date(nowMs + 24 * 60 * 60 * 1000).toISOString();
 
-      if (!welcomeDocSnap.exists()) {
-        console.log(`Seeding Welcome Coupon ${welcomeCode} into Firestore with 24h validity...`);
+      const existingData = welcomeDocSnap.exists() ? welcomeDocSnap.data() : null;
+      const existingExpMs = existingData?.expiresAt ? parseTimestampMs(existingData.expiresAt) : null;
+      const isExpired = existingExpMs !== null && nowMs >= existingExpMs;
+
+      if (!welcomeDocSnap.exists() || isExpired) {
+        console.log(`Seeding/Refreshing Welcome Coupon ${welcomeCode} into Firestore with 24h validity from activation...`);
         await setDoc(welcomeDocRef, {
+          ...(existingData || {}),
           code: welcomeCode,
-          createdAt: nowIso,
+          createdAt: existingData?.createdAt || nowIso,
           activatedAt: nowIso,
           startDate: nowIso,
           expiresAt: expiry24hIso,
@@ -1832,7 +2268,7 @@ async function seedDatabaseIfNeeded() {
           targetUsers: welcomeConfig.targetUsers || "new",
           description_ar: welcomeConfig.messageAr || "كوبون الترحيب بالعملاء الجدد - خصم 15% صالح لمدة 24 ساعة",
           description_en: welcomeConfig.messageEn || "Welcome Coupon for new customers - 15% discount valid for 24 hours"
-        });
+        }, { merge: true });
       }
     } catch (wErr) {
       console.warn("Welcome coupon initialization warning:", wErr);
@@ -2106,8 +2542,10 @@ app.post("/api/orders", async (req, res) => {
 
     // Customer Identity & Address Fields Extraction
     const customerUid = o.uid || o.customer_id || o.userId || null;
-    o.uid = customerUid || undefined;
-    o.customer_id = customerUid || undefined;
+    const resolvedAuthUid = await resolveAuthenticatedUid(req, customerUid);
+    o.uid = resolvedAuthUid || customerUid || undefined;
+    o.customer_id = resolvedAuthUid || customerUid || undefined;
+    o.userId = resolvedAuthUid || customerUid || undefined;
     o.customer_name = (o.customer_name || o.name || (o.shipping_address && o.shipping_address.name) || o.user_email.split('@')[0]).trim();
     o.phone = (o.phone || o.customer_phone || (o.shipping_address && o.shipping_address.phone) || "").trim();
     o.address = (o.address || "").trim();
@@ -2188,7 +2626,8 @@ app.post("/api/orders", async (req, res) => {
         requestedCouponCode,
         calculatedSubtotal,
         o.user_email,
-        o.welcomeSessionId
+        o.welcomeSessionId,
+        resolvedAuthUid
       );
 
       if (!couponCheck.valid) {
@@ -2204,6 +2643,44 @@ app.post("/api/orders", async (req, res) => {
       o.discount = authoritativeDiscount;
 
       if (couponCheck.isWelcome) {
+        // 1. Mark the coupon document as used
+        if (couponCheck.code && db) {
+          try {
+            const coupDocRef = doc(db, "coupons", couponCheck.code.toUpperCase());
+            const coupSnap = await getDoc(coupDocRef);
+            if (coupSnap.exists()) {
+              await updateDoc(coupDocRef, {
+                used: true,
+                usedAt: new Date().toISOString(),
+                usedCount: 1,
+                lastUsedAt: new Date().toISOString(),
+                usedByUid: resolvedAuthUid || couponCheck.userId || null,
+                usedInOrderId: o.id,
+                isActive: false
+              });
+            }
+          } catch (cErr) {
+            console.warn("Failed to mark welcome coupon used in coupons collection:", cErr);
+          }
+        }
+
+        // 2. Mark the user profile as having used their welcome coupon
+        const targetUserUid = resolvedAuthUid || couponCheck.userId;
+        if (targetUserUid && db) {
+          try {
+            const uDocRef = doc(db, "users", targetUserUid);
+            await setDoc(uDocRef, {
+              welcomeCouponUsed: true,
+              welcome_coupon_used: true,
+              welcomeCouponUsedAt: new Date().toISOString(),
+              welcomeCouponUsedOrderId: o.id
+            }, { merge: true });
+          } catch (uErr) {
+            console.warn("Failed to mark welcome coupon used on user profile:", uErr);
+          }
+        }
+
+        // 3. Archive the session if present
         if (o.welcomeSessionId && db) {
           try {
             const sessDocRef = doc(db, "welcome_coupon_sessions", o.welcomeSessionId);
@@ -4506,70 +4983,7 @@ const SupplierService = {
   }
 };
 
-// --- SERVER SESSION MANAGEMENT ENGINE ---
-export interface ActiveSession {
-  token: string;
-  uid: string;
-  email: string;
-  role: string;
-  isAdmin: boolean;
-  firebaseIdToken?: string | null;
-  createdAt: number;
-  expiresAt: number;
-}
-
-const activeSessions = new Map<string, ActiveSession>();
-
-function getSessionFromReq(req: any): ActiveSession | null {
-  let token: string | null = null;
-
-  const authHeader = req.headers["authorization"] || req.headers["Authorization"];
-  if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
-    token = authHeader.substring(7).trim();
-  }
-
-  if (!token && req.headers["x-session-token"]) {
-    token = String(req.headers["x-session-token"]).trim();
-  }
-
-  if (!token && req.headers.cookie) {
-    const cookieHeader = String(req.headers.cookie);
-    const cookies = cookieHeader.split(";").reduce((acc: Record<string, string>, curr: string) => {
-      const [k, v] = curr.trim().split("=");
-      if (k && v) acc[k] = decodeURIComponent(v);
-      return acc;
-    }, {});
-    if (cookies.session_token) {
-      token = cookies.session_token;
-    }
-  }
-
-  if (token) {
-    const session = activeSessions.get(token);
-    if (session) {
-      if (session.expiresAt && session.expiresAt < Date.now()) {
-        activeSessions.delete(token);
-      } else {
-        return session;
-      }
-    }
-  }
-
-  const adminEmailHeader = req.headers["x-admin-email"] || req.body?.adminEmail;
-  if (adminEmailHeader && String(adminEmailHeader).toLowerCase().trim() === 'ryvo.shopa@gmail.com') {
-    return {
-      token: 'admin-bypass-token',
-      uid: 'super-admin-uid',
-      email: 'ryvo.shopa@gmail.com',
-      role: 'super_admin',
-      isAdmin: true,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 86400000
-    };
-  }
-
-  return null;
-}
+// Note: ActiveSession, activeSessions, and getSessionFromReq moved to top of server.ts
 
 function requireRole(allowedRoles: string[]) {
   return async (req: any, res: any, next: any) => {
